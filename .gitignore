@@ -1,0 +1,37 @@
+# Autoconf files
+aclocal.m4
+autom4te.cache/
+compile
+config.guess
+config.h.in
+config.h
+config.log
+config.status
+config.sub
+configure
+depcomp
+install-sh
+libtool
+ltmain.sh
+m4/
+Makefile.in
+missing
+stamp-h1
+
+# Prerequisites
+*.d
+*.deps/
+
+# Object files
+*.o
+
+# Libraries
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+
+# Temporary files
+*.sw*
+*~
