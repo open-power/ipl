@@ -78,19 +78,21 @@ static bool run_istep(const char *arg, int *rc)
 
 int main(int argc, const char **argv)
 {
-	int rc;
+	int rc, i;
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage: ipl <istep>\n");
+	if (argc < 2) {
+		fprintf(stderr, "Usage: ipl <istep> [<istep>...]\n");
 		exit(1);
 	}
 
 	if (ipl_init())
 		exit(1);
 
-	rc = 0;
-	if (!run_istep(argv[1], &rc))
-		return -1;
+	for (i=1; i<argc; i++) {
+		rc = 0;
+		if (!run_istep(argv[i], &rc))
+			return -1;
+	}
 
 	return 0;
 }
