@@ -4,7 +4,7 @@ AM_SILENT_RULES([yes])
 
 AC_PROG_CXX
 
-AC_CHECK_LIB([pdbg], [pdbg_targets_init], [], [], [-lfdt])
+AC_CHECK_LIB([pdbg], [pdbg_targets_init], [LIBS="-lpdbg -lfdt $LIBS"], [], [-lfdt])
 if test x"$ac_cv_lib_pdbg_pdbg_targets_init" != "xyes" ; then
 	AC_MSG_ERROR([PDBG library not found])
 fi
