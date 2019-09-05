@@ -5,6 +5,7 @@ AM_SILENT_RULES([yes])
 AC_LANG([C++])
 
 AC_PROG_CXX
+AC_PROG_LIBTOOL
 
 AC_CHECK_LIB([pdbg], [pdbg_targets_init], [LIBS="-lpdbg -lfdt $LIBS"], [], [-lfdt])
 if test x"$ac_cv_lib_pdbg_pdbg_targets_init" != "xyes" ; then
