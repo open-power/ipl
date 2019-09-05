@@ -3,7 +3,7 @@ extern "C" {
 #include <stdlib.h>
 
 #include <libpdbg.h>
-#include <libipl.h>
+#include <libipl/libipl.h>
 };
 
 int main(void)

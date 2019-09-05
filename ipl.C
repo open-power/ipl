@@ -9,7 +9,7 @@ extern "C" {
 #include <errno.h>
 #include <assert.h>
 
-#include <libipl.h>
+#include <libipl/libipl.h>
 #include <libpdbg.h>
 }
 
