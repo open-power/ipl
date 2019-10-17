@@ -83,7 +83,7 @@ static int ipl_proc_attr_update(void)
 	return 0;
 }
 
-static int ipl_proc_chiplet_fabric_scominit(void)
+static int ipl_proc_chiplet_scominit(void)
 {
 	struct pdbg_target *pib;
 
@@ -135,7 +135,7 @@ static struct ipl_step ipl8[] = {
 	{ IPL_DEF(host_p9_fbc_eff_config),                8,  6,  true,  true  },
 	{ IPL_DEF(host_p9_eff_config_links),              8,  7,  true,  true  },
 	{ IPL_DEF(proc_attr_update),                      8,  8,  true,  true  },
-	{ IPL_DEF(proc_chiplet_fabric_scominit),          8,  9,  true,  true  },
+	{ IPL_DEF(proc_chiplet_scominit),                 8,  9,  true,  true  },
 	{ IPL_DEF(proc_xbus_scominit),                    8, 10,  true,  true  },
 	{ IPL_DEF(proc_xbus_enable_ridi),                 8, 11,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },

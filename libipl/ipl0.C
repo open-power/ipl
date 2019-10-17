@@ -43,21 +43,6 @@ static int ipl_startipl(void)
 	return -1;
 }
 
-static int ipl_disableattns(void)
-{
-	return -1;
-}
-
-static int ipl_updatehwmodel(void)
-{
-	return -1;
-}
-
-static int ipl_alignment_check(void)
-{
-	return -1;
-}
-
 static int ipl_set_ref_clock(void)
 {
 	return -1;
@@ -86,16 +71,6 @@ static int ipl_proc_prep_ipl(void)
 	return 0;
 }
 
-static int ipl_edramrepair(void)
-{
-	return -1;
-}
-
-static int ipl_asset_protection(void)
-{
-	return -1;
-}
-
 static int ipl_proc_select_boot_master(void)
 {
 	struct pdbg_target *pib;
@@ -104,11 +79,6 @@ static int ipl_proc_select_boot_master(void)
 		p9_select_boot_master(pib);
 
 	return 0;
-}
-
-static int ipl_hb_config_update(void)
-{
-	return -1;
 }
 
 static int ipl_sbe_config_update(void)
@@ -134,33 +104,15 @@ static int ipl_sbe_start(void)
 	return 0;
 }
 
-static int ipl_startPRD(void)
-{
-	return -1;
-}
-
-static int ipl_proc_attn_listen(void)
-{
-	return -1;
-}
-
 static struct ipl_step ipl0[] = {
 	{ IPL_DEF(poweron),                 0,  1,  true,  true  },
 	{ IPL_DEF(startipl),                0,  2,  false, true  },
-	{ IPL_DEF(disableattns),            0,  3,  false, true  },
-	{ IPL_DEF(updatehwmodel),           0,  4,  false, true  },
-	{ IPL_DEF(alignment_check),         0,  5,  false, true  },
 	{ IPL_DEF(set_ref_clock),           0,  6,  true,  true  },
 	{ IPL_DEF(proc_clock_test),         0,  7,  true,  true  },
 	{ IPL_DEF(proc_prep_ipl),           0,  8,  true,  true  },
-	{ IPL_DEF(edramrepair),             0,  9,  false, true  },
-	{ IPL_DEF(asset_protection),        0, 10,  false, true  },
 	{ IPL_DEF(proc_select_boot_master), 0, 11,  true,  true  },
-	{ IPL_DEF(hb_config_update),        0, 12,  false, true  },
 	{ IPL_DEF(sbe_config_update),       0, 13,  true,  true  },
 	{ IPL_DEF(sbe_start),               0, 14,  true,  true  },
-	{ IPL_DEF(startPRD),                0, 15,  false, true  },
-	{ IPL_DEF(proc_attn_listen),        0, 16,  false, true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 

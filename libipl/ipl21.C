@@ -30,28 +30,10 @@ static int ipl_host_start_payload(void)
 	return -1;
 }
 
-static int ipl_host_post_start_payload(void)
-{
-	return -1;
-}
-
-static int ipl_switchbcu(void)
-{
-	return -1;
-}
-
-static int ipl_completeipl(void)
-{
-	return -1;
-}
-
 static struct ipl_step ipl21[] = {
 	{ IPL_DEF(host_runtime_setup),      21,  1,  false, true  },
 	{ IPL_DEF(host_verify_hdat),        21,  2,  false, true  },
 	{ IPL_DEF(host_start_payload),      21,  3,  false, true  },
-	{ IPL_DEF(host_post_start_payload), 21,  4,  false, true  },
-	{ IPL_DEF(switchbcu),               21,  5,  false, true  },
-	{ IPL_DEF(completeipl),             21,  6,  false, true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 

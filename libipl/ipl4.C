@@ -80,11 +80,6 @@ static int ipl_proc_hcd_cache_initf(void)
 	return -1;
 }
 
-static int ipl_proc_l2loader(void)
-{
-	return -1;
-}
-
 static int ipl_proc_hcd_cache_startclocks(void)
 {
 	return -1;
@@ -170,11 +165,6 @@ static int ipl_proc_hcd_core_startclocks(void)
 	return -1;
 }
 
-static int ipl_proc_runn(void)
-{
-	return -1;
-}
-
 static int ipl_proc_hcd_core_scominit(void)
 {
 	return -1;
@@ -209,7 +199,6 @@ static struct ipl_step ipl4[] = {
 	{ IPL_DEF(proc_hcd_cache_abist),                  4, 11,  true,  false },
 	{ IPL_DEF(proc_hcd_cache_lbist),                  4, 12,  true,  false },
 	{ IPL_DEF(proc_hcd_cache_initf),                  4, 13,  true,  true  },
-	{ IPL_DEF(proc_l2loader),                         4, 99,  true,  false },
 	{ IPL_DEF(proc_hcd_cache_startclocks),            4, 14,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_scominit),               4, 15,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_scom_customize),         4, 16,  true,  true  },
@@ -227,7 +216,6 @@ static struct ipl_step ipl4[] = {
 	{ IPL_DEF(proc_hcd_core_lbist),                   4, 28,  true,  false },
 	{ IPL_DEF(proc_hcd_core_initf),                   4, 29,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_startclocks),             4, 30,  true,  true  },
-	{ IPL_DEF(proc_runn),                             4, 99,  true,  false },
 	{ IPL_DEF(proc_hcd_core_scominit),                4, 31,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_scom_customize),          4, 32,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_ras_runtime_scom),        4, 33,  true,  true  },

@@ -81,7 +81,7 @@ static int ipl_cen_scominits(void)
 }
 
 static struct ipl_step ipl11[] = {
-	{ IPL_DEF(host_prd_hwreconfig),  11,  1,  false, true  },
+	{ IPL_DEF(host_prd_hwreconfig),  11,  1,  true,  true  },
 	{ IPL_DEF(cen_tp_chiplet_init1), 11,  2,  true,  true  },
 	{ IPL_DEF(cen_pll_initf),        11,  3,  true,  true  },
 	{ IPL_DEF(cen_pll_setup),        11,  4,  true,  true  },

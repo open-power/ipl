@@ -20,7 +20,7 @@ static int ipl_proc_sbe_chiplet_reset(void)
 	return -1;
 }
 
-static int ipl_proc_sbe_gptr_time_init(void)
+static int ipl_proc_sbe_gptr_time_initf(void)
 {
 	return -1;
 }
@@ -85,7 +85,7 @@ static int ipl_proc_sbe_nest_enable_ridi(void)
 	return -1;
 }
 
-static int ipl_proc_sbe_io_init(void)
+static int ipl_proc_sbe_io_initf(void)
 {
 	return -1;
 }
@@ -127,7 +127,7 @@ static int ipl_proc_sbe_select_ex(void)
 
 static struct ipl_step ipl3[] = {
 	{ IPL_DEF(proc_sbe_chiplet_reset),        3,  1,  true,  true  },
-	{ IPL_DEF(proc_sbe_gptr_time_init),       3,  2,  true,  true  },
+	{ IPL_DEF(proc_sbe_gptr_time_initf),      3,  2,  true,  true  },
 	{ IPL_DEF(proc_sbe_chiplet_pll_initf),    3,  3,  true,  true  },
 	{ IPL_DEF(proc_sbe_chiplet_pll_setup),    3,  4,  true,  true  },
 	{ IPL_DEF(proc_sbe_repr_initf),           3,  5,  true,  true  },
@@ -140,7 +140,7 @@ static struct ipl_step ipl3[] = {
 	{ IPL_DEF(proc_sbe_initf),                3, 12,  true,  true  },
 	{ IPL_DEF(proc_sbe_nest_startclocks),     3, 13,  true,  true  },
 	{ IPL_DEF(proc_sbe_nest_enable_ridi),     3, 14,  true,  true  },
-	{ IPL_DEF(proc_sbe_io_init),              3, 15,  true,  true  },
+	{ IPL_DEF(proc_sbe_io_initf),             3, 15,  true,  true  },
 	{ IPL_DEF(proc_sbe_startclock_chiplets),  3, 16,  true,  true  },
 	{ IPL_DEF(proc_sbe_scominit),             3, 17,  true,  true  },
 	{ IPL_DEF(proc_sbe_lpc),                  3, 18,  true,  true  },

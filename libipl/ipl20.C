@@ -20,14 +20,8 @@ static int ipl_host_load_payload(void)
 	return -1;
 }
 
-static int ipl_host_load_complete(void)
-{
-	return -1;
-}
-
 static struct ipl_step ipl20[] = {
 	{ IPL_DEF(host_load_payload),  20,  1,  false, true  },
-	{ IPL_DEF(host_load_complete), 20,  2,  false, true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 

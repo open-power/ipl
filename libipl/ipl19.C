@@ -15,13 +15,7 @@ static void ipl_pre19(void)
 		pdbg_target_probe(pib);
 }
 
-static int ipl_prep_host(void)
-{
-	return -1;
-}
-
 static struct ipl_step ipl19[] = {
-	{ IPL_DEF(prep_host), 19,  1,  false, true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 
