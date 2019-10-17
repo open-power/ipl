@@ -17,12 +17,24 @@ static void ipl_pre5(void)
 
 static int ipl_proc_sbe_load_bootloader(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 5, 1);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_instruct_start(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 5, 1);
+
+	return rc;
 }
 
 static struct ipl_step ipl5[] = {

@@ -17,172 +17,376 @@ static void ipl_pre4(void)
 
 static int ipl_proc_hcd_cache_poweron(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 1);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_chiplet_reset(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 2);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_chiplet_l3_dcc_setup(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 3);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_gptr_time_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 4);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_dpll_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 5);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_dpll_setup(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 6);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_dcc_skewadjust_setup(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 7);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_chiplet_init(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 8);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_repair_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 9);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_arrayinit(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 10);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_abist(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 11);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_lbist(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 12);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 13);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_startclocks(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 14);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_scominit(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 15);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_scom_customize(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 16);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_ras_runtime_scom(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 17);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_cache_occ_runtime_scom(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 18);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_exit_mode(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 19);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_pcb_arb(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 20);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_poweron(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 21);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_chiplet_reset(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 22);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_gptr_time_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 23);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_chiplet_init(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 24);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_repair_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 25);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_arrayinit(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 26);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_abist(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 27);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_lbist(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 28);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 29);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_startclocks(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 30);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_scominit(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 31);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_scom_customize(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 32);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_ras_runtime_scom(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 33);
+
+	return rc;
 }
 
 static int ipl_proc_hcd_core_occ_runtime_scom(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 4, 34);
+
+	return rc;
 }
 
 static struct ipl_step ipl4[] = {

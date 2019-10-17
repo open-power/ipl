@@ -22,82 +22,178 @@ static int ipl_proc_sbe_ld_image(void)
 
 static int ipl_proc_sbe_attr_setup(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 2);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_chiplet_init1(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 3);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_gptr_time_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 4);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_dft_probe_setup_1(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 5);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_npll_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 6);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_npll_setup(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 7);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_switch_gears(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 8);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_clock_test(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 9);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_chiplet_reset(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 10);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_repr_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 11);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_chiplet_init2(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 12);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_setup_tp_abist(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 13);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_arrayinit(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 14);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_initf(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 15);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_dft_probe_setup_2(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 16);
+
+	return rc;
 }
 
 static int ipl_proc_sbe_tp_chiplet_init3(void)
 {
-	return -1;
+	struct pdbg_target *pib;
+	int rc = 0;
+
+	pdbg_for_each_class_target("pib", pib)
+		rc |= sbe_istep(pib, 2, 17);
+
+	return rc;
 }
 
 static struct ipl_step ipl2[] = {
