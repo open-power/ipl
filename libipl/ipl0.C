@@ -96,7 +96,7 @@ static int ipl_sbe_start(void)
 	struct pdbg_target *pib;
 
 	pdbg_for_each_class_target("pib", pib)
-		p9_start_cbs(pib, false);
+		p9_start_cbs(pib, true);
 
 	pdbg_for_each_class_target("pib", pib)
 		p9_nv_ref_clk_enable(pib);
