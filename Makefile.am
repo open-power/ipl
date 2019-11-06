@@ -5,6 +5,7 @@ AM_CXXFLAGS = -Wall -Werror
 
 bin_PROGRAMS = istep0 ipl
 lib_LTLIBRARIES = libipl.la
+include_HEADERS = libipl/libipl.h
 
 istep0_SOURCES = istep0.C
 istep0_LDADD = libipl.la
