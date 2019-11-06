@@ -26,7 +26,7 @@ fi
 INCDIR=$(dirname $gl_cv_absolute_libpdbg_h)
 AC_SUBST([INCDIR])
 
-EKB_CXXFLAGS="-DFAPI2_NO_FFDC \
+EKB_CXXFLAGS=" \
 -I${INCDIR}/hwpf/fapi2/include \
 -I${INCDIR}/hwpf/fapi2/include/attributes \
 -I${INCDIR}/hwpf/fapi2/include/error_info \
