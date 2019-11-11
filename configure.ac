@@ -31,7 +31,8 @@ EKB_CXXFLAGS=" \
 -I${INCDIR}/hwpf/fapi2/include/attributes \
 -I${INCDIR}/hwpf/fapi2/include/error_info \
 -I${INCDIR}/hwpf/fapi2/include/plat \
--I${INCDIR}/ekb/hwpf/fapi2/include"
+-I${INCDIR}/ekb/hwpf/fapi2/include \
+-I${INCDIR}/ekb/chips/p9/procedures/hwp/ffdc"
 AC_SUBST([EKB_CXXFLAGS])
 
 saved_LDFLAGS=$LDFLAGS
