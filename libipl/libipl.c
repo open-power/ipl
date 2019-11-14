@@ -8,6 +8,7 @@
 #include "libipl_internal.h"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
+static enum ipl_mode g_ipl_mode = IPL_DEFAULT;
 
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
 {
@@ -117,4 +118,14 @@ void ipl_list(int major)
 
 	for (i=0; idata->steps[i].major != -1; i++)
 		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
+}
+
+void ipl_set_mode(enum ipl_mode mode)
+{
+	g_ipl_mode = mode;
+}
+
+enum ipl_mode ipl_mode(void)
+{
+	return g_ipl_mode;
 }

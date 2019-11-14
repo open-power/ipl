@@ -20,5 +20,6 @@ struct ipl_step_data {
 };
 
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void));
+enum ipl_mode ipl_mode(void);
 
 #endif /* __IPL_H__ */

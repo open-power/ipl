@@ -3,6 +3,12 @@
 
 #define MAX_ISTEP	21
 
+enum ipl_mode {
+	IPL_DEFAULT,
+	IPL_INTERACTIVE,
+};
+
+void ipl_set_mode(enum ipl_mode mode);
 int ipl_init(void);
 int ipl_run_major_minor(int major, int minor);
 int ipl_run_major(int major);
