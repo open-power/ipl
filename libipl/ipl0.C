@@ -21,19 +21,31 @@ static void ipl_pre0(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_poweron(void)
 {
 	struct pdbg_target *pib, *memb;
 
-	pdbg_for_each_class_target("pib", pib)
-		p9_pre_poweron(pib);
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
 
-	pdbg_for_each_class_target("memb", memb)
+		p9_pre_poweron(pib);
+	}
+
+	pdbg_for_each_class_target("memb", memb) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		cen_pre_poweron(memb);
+	}
 
 	return 0;
 }
@@ -52,11 +64,18 @@ static int ipl_proc_clock_test(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
-		p9_select_clock_mux(pib);
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
 
-	pdbg_for_each_class_target("pib", pib)
+		p9_select_clock_mux(pib);
+	}
+
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
 		p9_clock_test(pib, BOTH_SRC0);
+	}
 
 	return 0;
 }
@@ -65,8 +84,12 @@ static int ipl_proc_prep_ipl(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		p9_set_fsi_gp_shadow(pib);
+	}
 
 	return 0;
 }
@@ -75,8 +98,12 @@ static int ipl_proc_select_boot_master(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		p9_select_boot_master(pib);
+	}
 
 	return 0;
 }
@@ -85,8 +112,12 @@ static int ipl_sbe_config_update(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		p9_setup_sbe_config(pib);
+	}
 
 	return 0;
 }
@@ -95,11 +126,19 @@ static int ipl_sbe_start(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
-		p9_start_cbs(pib, true);
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
 
-	pdbg_for_each_class_target("pib", pib)
+		p9_start_cbs(pib, true);
+	}
+
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		p9_nv_ref_clk_enable(pib);
+	}
 
 	return 0;
 }
