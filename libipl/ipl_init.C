@@ -15,7 +15,10 @@ int ipl_init(void)
 {
 	struct atdb_blob_info *binfo;
 
-	binfo = atdb_blob_open("attributes.atdb", true);
+	binfo = atdb_blob_open("/etc/pdata/attributes.atdb", true);
+	if (!binfo)
+		binfo = atdb_blob_open("attributes.atdb", true);
+
 	if (!binfo)
 		return -1;
 
