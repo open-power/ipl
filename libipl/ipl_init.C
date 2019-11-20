@@ -2,27 +2,39 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-#include <libpdbg.h>
-#include <atdb/atdb_blob.h>
-
+#include "mmap_file.h"
 #include "libipl.h"
 }
 
-#include "plat_trace.H"
-#include "plat_utils.H"
+#include "libekb.H"
+
+static const char *dtree_path[] = {
+	"/etc/pdata/p9.dtb",
+	"p9.dtb",
+	NULL,
+};
+
+static struct mmap_file_context *mfile;
 
 int ipl_init(void)
 {
-	struct atdb_blob_info *binfo;
+	int i;
 
-	binfo = atdb_blob_open("/etc/pdata/attributes.atdb", true);
-	if (!binfo)
-		binfo = atdb_blob_open("attributes.atdb", true);
+	for (i=0; dtree_path[i]; i++) {
+		mfile = mmap_file_open(dtree_path[i], true);
+		if (mfile) {
+			printf("Using %s\n", dtree_path[i]);
+			break;
+		}
+	}
 
-	if (!binfo)
+	if (!mfile)
 		return -1;
 
-	plat_set_atdb_context(atdb_blob_atdb(binfo));
+	return libekb_init(mmap_file_ptr(mfile));
+}
 
-	return 0;
+void ipl_close(void)
+{
+	mmap_file_close(mfile);
 }

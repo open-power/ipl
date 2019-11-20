@@ -12,18 +12,13 @@ if test x"$ac_cv_lib_pdbg_pdbg_targets_init" != "xyes" ; then
 	AC_MSG_ERROR([PDBG library not found])
 fi
 
-AC_CHECK_LIB([atdb], [atdb_blob_open])
-if test x"$ac_cv_lib_atdb_atdb_blob_open" != "xyes" ; then
-	AC_MSG_ERROR([ATDB library not found])
-fi
-
-# Assume EKB is isntalled at the same place as libpdbg.h
+# Find path to libekb.H
 CPPFLAGS=$CXXFLAGS
-AX_ABSOLUTE_HEADER([libpdbg.h])
-if [ x"$gl_cv_absolute_libpdbg_h" = "x" ] ; then
-	AC_MSG_ERROR([Cannot find libpdbg.h path])
+AX_ABSOLUTE_HEADER([libekb.H])
+if [ x"$gl_cv_absolute_libekb_H" = "x" ] ; then
+	AC_MSG_ERROR([Cannot find libekb.H path])
 fi
-INCDIR=$(dirname $gl_cv_absolute_libpdbg_h)
+INCDIR=$(dirname $gl_cv_absolute_libekb_H)
 AC_SUBST([INCDIR])
 
 EKB_CXXFLAGS=" \
@@ -37,13 +32,12 @@ AC_SUBST([EKB_CXXFLAGS])
 
 saved_LDFLAGS=$LDFLAGS
 saved_CXXFLAGS=$CXXFLAGS
-LDFLAGS="$LDFLAGS -lekb"
+LDFLAGS="$LDFLAGS -lekb -lfdt-prop"
 CXXFLAGS="$CXXFLAGS $EKB_CXXFLAGS"
 AC_LINK_IFELSE(
-  [AC_LANG_PROGRAM([#include <plat_trace.H>
-#include <plat_utils.H>],
-    [plat_set_atdb_context])],
-  [LIBS="$LIBS -lekb"],
+  [AC_LANG_PROGRAM([#include <libekb.H>],
+    [libekb_init])],
+  [LIBS="$LIBS -lekb -lfdt-prop"],
   [AC_MSG_ERROR([libekb not found.])])
 LDFLAGS=$saved_LDFLAGS
 CXXFLAGS=$saved_CXXFLAGS
