@@ -39,7 +39,9 @@ libipl_la_SOURCES = \
 	libipl/ipl21.C \
 	libipl/libipl_internal.h \
 	libipl/libipl.c \
-	libipl/libipl.h
+	libipl/libipl.h \
+	libipl/mmap_file.c \
+	libipl/mmap_file.h
 
 libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	-I$(INCDIR)/ekb/chips/p9/procedures/hwp/nest
