@@ -2,10 +2,15 @@ AC_INIT([ipl], [1.0])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
 
-CHIP="p9"
+AC_ARG_ENABLE([p10],
+    [AS_HELP_STRING([--enable-p10], [use p10 (default is p9)])],
+    [CHIP=p10],
+    [CHIP=p9])
+
 AC_SUBST([CHIP])
 
 AM_CONDITIONAL([BUILD_P9], [test "$CHIP" = "p9"])
+AM_CONDITIONAL([BUILD_P10], [test "$CHIP" = "p10"])
 
 AC_LANG([C++])
 

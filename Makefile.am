@@ -42,6 +42,32 @@ libipl_istep_CXXFLAGS = \
 	-I$(INCDIR)/ekb/chips/p9/procedures/hwp/nest
 endif
 
+if BUILD_P10
+libipl_istep_SOURCES = \
+	libipl/p10/ipl0.C \
+	libipl/p10/ipl1.C \
+	libipl/p10/ipl2.C \
+	libipl/p10/ipl3.C \
+	libipl/p10/ipl4.C \
+	libipl/p10/ipl5.C \
+	libipl/p10/ipl6.C \
+	libipl/p10/ipl7.C \
+	libipl/p10/ipl8.C \
+	libipl/p10/ipl9.C \
+	libipl/p10/ipl10.C \
+	libipl/p10/ipl11.C \
+	libipl/p10/ipl12.C \
+	libipl/p10/ipl13.C \
+	libipl/p10/ipl14.C \
+	libipl/p10/ipl15.C \
+	libipl/p10/ipl16.C \
+	libipl/p10/ipl17.C \
+	libipl/p10/ipl18.C \
+	libipl/p10/ipl19.C \
+	libipl/p10/ipl20.C \
+	libipl/p10/ipl21.C
+endif
+
 libipl_la_SOURCES = \
 	$(libipl_istep_SOURCES) \
 	libipl/ipl_init.C \
