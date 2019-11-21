@@ -2,6 +2,11 @@ AC_INIT([ipl], [1.0])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
 
+CHIP="p9"
+AC_SUBST([CHIP])
+
+AM_CONDITIONAL([BUILD_P9], [test "$CHIP" = "p9"])
+
 AC_LANG([C++])
 
 AC_PROG_CXX
@@ -27,7 +32,7 @@ EKB_CXXFLAGS=" \
 -I${INCDIR}/hwpf/fapi2/include/error_info \
 -I${INCDIR}/hwpf/fapi2/include/plat \
 -I${INCDIR}/ekb/hwpf/fapi2/include \
--I${INCDIR}/ekb/chips/p9/procedures/hwp/ffdc"
+-I${INCDIR}/ekb/chips/${CHIP}/procedures/hwp/ffdc"
 AC_SUBST([EKB_CXXFLAGS])
 
 saved_LDFLAGS=$LDFLAGS

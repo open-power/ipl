@@ -13,6 +13,7 @@ istep0_LDADD = libipl.la
 ipl_SOURCES = ipl.C
 ipl_LDADD = libipl.la
 
+if BUILD_P9
 libipl_istep_SOURCES = \
 	libipl/p9/ipl0.C \
 	libipl/p9/ipl1.C \
@@ -39,6 +40,7 @@ libipl_istep_SOURCES = \
 
 libipl_istep_CXXFLAGS = \
 	-I$(INCDIR)/ekb/chips/p9/procedures/hwp/nest
+endif
 
 libipl_la_SOURCES = \
 	$(libipl_istep_SOURCES) \
