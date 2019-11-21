@@ -13,30 +13,36 @@ istep0_LDADD = libipl.la
 ipl_SOURCES = ipl.C
 ipl_LDADD = libipl.la
 
+libipl_istep_SOURCES = \
+	libipl/p9/ipl0.C \
+	libipl/p9/ipl1.C \
+	libipl/p9/ipl2.C \
+	libipl/p9/ipl3.C \
+	libipl/p9/ipl4.C \
+	libipl/p9/ipl5.C \
+	libipl/p9/ipl6.C \
+	libipl/p9/ipl7.C \
+	libipl/p9/ipl8.C \
+	libipl/p9/ipl9.C \
+	libipl/p9/ipl10.C \
+	libipl/p9/ipl11.C \
+	libipl/p9/ipl12.C \
+	libipl/p9/ipl13.C \
+	libipl/p9/ipl14.C \
+	libipl/p9/ipl15.C \
+	libipl/p9/ipl16.C \
+	libipl/p9/ipl17.C \
+	libipl/p9/ipl18.C \
+	libipl/p9/ipl19.C \
+	libipl/p9/ipl20.C \
+	libipl/p9/ipl21.C
+
+libipl_istep_CXXFLAGS = \
+	-I$(INCDIR)/ekb/chips/p9/procedures/hwp/nest
+
 libipl_la_SOURCES = \
+	$(libipl_istep_SOURCES) \
 	libipl/ipl_init.C \
-	libipl/ipl0.C \
-	libipl/ipl1.C \
-	libipl/ipl2.C \
-	libipl/ipl3.C \
-	libipl/ipl4.C \
-	libipl/ipl5.C \
-	libipl/ipl6.C \
-	libipl/ipl7.C \
-	libipl/ipl8.C \
-	libipl/ipl9.C \
-	libipl/ipl10.C \
-	libipl/ipl11.C \
-	libipl/ipl12.C \
-	libipl/ipl13.C \
-	libipl/ipl14.C \
-	libipl/ipl15.C \
-	libipl/ipl16.C \
-	libipl/ipl17.C \
-	libipl/ipl18.C \
-	libipl/ipl19.C \
-	libipl/ipl20.C \
-	libipl/ipl21.C \
 	libipl/libipl_internal.h \
 	libipl/libipl.c \
 	libipl/libipl.h \
@@ -44,5 +50,5 @@ libipl_la_SOURCES = \
 	libipl/mmap_file.h
 
 libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
-	-I$(INCDIR)/ekb/chips/p9/procedures/hwp/nest
-
+	$(libipl_istep_CXXFLAGS) \
+	-I$(srcdir)/libipl
