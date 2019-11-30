@@ -6,27 +6,14 @@ extern "C" {
 #include "libipl.h"
 }
 
+#include "config.h"
 #include "libekb.H"
-
-static const char *dtree_path[] = {
-	"/etc/pdata/p9.dtb",
-	"p9.dtb",
-	NULL,
-};
 
 static struct mmap_file_context *mfile;
 
 int ipl_init(void)
 {
-	int i;
-
-	for (i=0; dtree_path[i]; i++) {
-		mfile = mmap_file_open(dtree_path[i], true);
-		if (mfile) {
-			printf("Using %s\n", dtree_path[i]);
-			break;
-		}
-	}
+    mfile = mmap_file_open(DTB_FILE, true);
 
 	if (!mfile)
 		return -1;
