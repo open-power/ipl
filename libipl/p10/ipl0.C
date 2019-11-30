@@ -13,8 +13,12 @@ static void ipl_pre0(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_poweron(void)
