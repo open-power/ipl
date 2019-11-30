@@ -2,10 +2,8 @@ AC_INIT([ipl], [1.0])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
 
-AC_ARG_ENABLE([p10],
-    [AS_HELP_STRING([--enable-p10], [use p10 (default is p9)])],
-    [CHIP=p10],
-    [CHIP=p9])
+AC_ARG_VAR(CHIP, [Target chip to build respective ipl steps])
+AS_IF([test "x$CHIP" == "x"], [CHIP="p10"])
 
 AC_SUBST([CHIP])
 
