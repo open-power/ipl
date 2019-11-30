@@ -56,8 +56,12 @@ static int ipl_sbe_start(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		p10_start_cbs(pib, true);
+	}
 
 	return 0;
 }
