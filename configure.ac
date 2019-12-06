@@ -50,10 +50,6 @@ AC_LINK_IFELSE(
 LDFLAGS=$saved_LDFLAGS
 CXXFLAGS=$saved_CXXFLAGS
 
-AC_ARG_VAR(DTB_FILE, [Device tree blob file path])
-AS_IF([test "x$DTB_FILE" == "x"], [DTB_FILE="p10.dtb"])
-AC_DEFINE_UNQUOTED([DTB_FILE], ["$DTB_FILE"], [Device tree blob file path])
-
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
