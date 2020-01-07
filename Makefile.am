@@ -73,9 +73,7 @@ libipl_la_SOURCES = \
 	libipl/ipl_init.C \
 	libipl/libipl_internal.h \
 	libipl/libipl.c \
-	libipl/libipl.h \
-	libipl/mmap_file.c \
-	libipl/mmap_file.h
+	libipl/libipl.h
 
 libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	$(libipl_istep_CXXFLAGS) \
