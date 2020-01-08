@@ -7,37 +7,43 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre7(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_host_mss_attr_cleanup(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(7, 1);
 }
 
 static int ipl_mss_volt(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(7, 2);
 }
 
 static int ipl_mss_freq(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(7, 3);
 }
 
 static int ipl_mss_eff_config(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(7, 4);
 }
 
 static int ipl_mss_attr_update(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(7, 5);
 }
 
 static struct ipl_step ipl7[] = {

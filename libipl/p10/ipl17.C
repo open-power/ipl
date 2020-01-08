@@ -7,12 +7,18 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre17(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static struct ipl_step ipl17[] = {

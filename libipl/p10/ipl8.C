@@ -7,82 +7,88 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre8(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_host_slave_sbe_config(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 1);
 }
 
 static int ipl_host_setup_sbe(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 2);
 }
 
 static int ipl_host_cbs_start(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 3);
 }
 
 static int ipl_proc_check_slave_sbe_seeprom_complete(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 4);
 }
 
 static int ipl_host_attnlisten_proc(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 5);
 }
 
 static int ipl_proc_fbc_eff_config(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 6);
 }
 
 static int ipl_proc_eff_config_links(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 7);
 }
 
 static int ipl_proc_attr_update(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 8);
 }
 
 static int ipl_proc_chiplet_fabric_scominit(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 9);
 }
 
 static int ipl_host_set_voltages(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 10);
 }
 
 static int ipl_proc_io_scominit(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 11);
 }
 
 static int ipl_proc_load_ioppe(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 12);
 }
 
 static int ipl_proc_init_ioppe(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 13);
 }
 
 static int ipl_proc_iohs_enable_ridi(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(8, 14);
 }
 
 static struct ipl_step ipl8[] = {

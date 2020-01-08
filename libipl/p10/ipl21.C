@@ -7,27 +7,33 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre21(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_host_runtime_setup(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 1);
 }
 
 static int ipl_host_verify_hdat(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 2);
 }
 
 static int ipl_host_start_payload(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 3);
 }
 
 static struct ipl_step ipl21[] = {

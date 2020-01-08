@@ -7,52 +7,58 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre14(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_mss_memdiag(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 1);
 }
 
 static int ipl_mss_thermal_init(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 2);
 }
 
 static int ipl_proc_load_io_xram(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 3);
 }
 
 static int ipl_proc_pcie_config(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 4);
 }
 
 static int ipl_proc_setup_mmio_bars(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 5);
 }
 
 static int ipl_proc_htm_setup(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 6);
 }
 
 static int ipl_proc_exit_cache_contained(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 7);
 }
 
 static int ipl_host_mpipl_service(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(14, 8);
 }
 
 static struct ipl_step ipl14[] = {

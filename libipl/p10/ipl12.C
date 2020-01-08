@@ -7,72 +7,78 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre12(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_mss_getecid(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 1);
 }
 
 static int ipl_omi_attr_update(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 2);
 }
 
 static int ipl_proc_omi_scominit(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 3);
 }
 
 static int ipl_ocmb_omi_scominit(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 4);
 }
 
 static int ipl_omi_pre_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 5);
 }
 
 static int ipl_omi_setup(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 6);
 }
 
 static int ipl_omi_io_run_training(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 7);
 }
 
 static int ipl_omi_train_check(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 8);
 }
 
 static int ipl_omi_post_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 9);
 }
 
 static int ipl_host_attnlisten_memb(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 10);
 }
 
 static int ipl_host_omi_init(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 11);
 }
 
 static int ipl_update_omi_firmware(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(12, 12);
 }
 
 static struct ipl_step ipl12[] = {

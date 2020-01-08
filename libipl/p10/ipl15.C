@@ -7,32 +7,38 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre15(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_host_build_stop_image(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(15, 1);
 }
 
 static int ipl_proc_set_homer_bar(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(15, 2);
 }
 
 static int ipl_host_establish_ec_chiplet(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(15, 3);
 }
 
 static int ipl_host_start_stop_engine(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(15, 4);
 }
 
 static struct ipl_step ipl15[] = {

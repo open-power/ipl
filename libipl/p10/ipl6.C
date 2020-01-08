@@ -7,12 +7,18 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre6(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_host_bootloader(void)
@@ -32,32 +38,32 @@ static int ipl_host_istep_enable(void)
 
 static int ipl_host_init_fsi(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 4);
 }
 
 static int ipl_host_set_ipl_parms(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 5);
 }
 
 static int ipl_host_discover_targets(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 6);
 }
 
 static int ipl_host_update_master_tpm(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 7);
 }
 
 static int ipl_host_gard(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 8);
 }
 
 static int ipl_host_voltage_config(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(6, 9);
 }
 
 static struct ipl_step ipl6[] = {

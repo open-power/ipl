@@ -8,47 +8,53 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre9(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_proc_io_dccal_done(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 1);
 }
 
 static int ipl_fabric_dl_pre_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 2);
 }
 
 static int ipl_fabric_dl_setup_training(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 3);
 }
 
 static int ipl_proc_fabric_link_layer(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 4);
 }
 
 static int ipl_proc_fabric_dl_post_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 5);
 }
 
 static int ipl_proc_fabric_iovalid(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 6);
 }
 
 static int ipl_proc_fbc_eff_config_aggregate(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(9, 7);
 }
 
 static struct ipl_step ipl9[] = {

@@ -7,62 +7,68 @@ extern "C" {
 #include "libipl_internal.h"
 }
 
+#include "common.H"
+
 static void ipl_pre18(void)
 {
 	struct pdbg_target *pib;
 
-	pdbg_for_each_class_target("pib", pib)
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
 		pdbg_target_probe(pib);
+	}
 }
 
 static int ipl_sys_proc_eff_config_links(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 1);
 }
 
 static int ipl_sys_proc_chiplet_fabric_scominit(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 2);
 }
 
 static int ipl_sys_fabric_dl_pre_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 3);
 }
 
 static int ipl_sys_fabric_dl_setup_training(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 4);
 }
 
 static int ipl_sys_proc_fabric_link_layer(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 5);
 }
 
 static int ipl_sys_fabric_dl_post_trainadv(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 6);
 }
 
 static int ipl_proc_fabric_iovalid(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 7);
 }
 
 static int ipl_proc_fbc_eff_config_aggregate(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 8);
 }
 
 static int ipl_proc_tod_setup(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 9);
 }
 
 static int ipl_proc_tod_init(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(18, 10);
 }
 
 static struct ipl_step ipl18[] = {
