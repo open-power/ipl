@@ -15,4 +15,6 @@ int ipl_run_major(int major);
 int ipl_run_step(const char *name);
 void ipl_list(int major);
 
+void ipl_log(const char *fmt, ...);
+
 #endif /* __LIBIPL_H__ */

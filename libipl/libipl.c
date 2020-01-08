@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "libipl.h"
 #include "libipl_internal.h"
@@ -128,4 +129,13 @@ void ipl_set_mode(enum ipl_mode mode)
 enum ipl_mode ipl_mode(void)
 {
 	return g_ipl_mode;
+}
+
+void ipl_log(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
 }
