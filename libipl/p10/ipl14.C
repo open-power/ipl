@@ -31,7 +31,7 @@ static int ipl_mss_thermal_init(void)
 	return ipl_istep_via_hostboot(14, 2);
 }
 
-static int ipl_proc_load_io_xram(void)
+static int ipl_proc_load_iop_xram(void)
 {
 	return ipl_istep_via_hostboot(14, 3);
 }
@@ -61,15 +61,21 @@ static int ipl_host_mpipl_service(void)
 	return ipl_istep_via_hostboot(14, 8);
 }
 
+static int ipl_proc_psiinit(void)
+{
+	return ipl_istep_via_hostboot(14, 9);
+}
+
 static struct ipl_step ipl14[] = {
 	{ IPL_DEF(mss_memdiag),                 14,  1,  true,  true  },
 	{ IPL_DEF(mss_thermal_init),            14,  2,  true,  true  },
-	{ IPL_DEF(proc_load_io_xram),           14,  3,  true,  true  },
+	{ IPL_DEF(proc_load_iop_xram),          14,  3,  true,  true  },
 	{ IPL_DEF(proc_pcie_config),            14,  4,  true,  true  },
 	{ IPL_DEF(proc_setup_mmio_bars),        14,  5,  true,  true  },
 	{ IPL_DEF(proc_exit_cache_contained),   14,  6,  true,  true  },
 	{ IPL_DEF(proc_htm_setup),              14,  7,  true,  true  },
 	{ IPL_DEF(host_mpipl_service),          14,  8,  true,  true  },
+	{ IPL_DEF(proc_psiinit),                14,  9,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 

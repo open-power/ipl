@@ -21,7 +21,13 @@ static void ipl_pre19(void)
 	}
 }
 
+static int ipl_prep_host(void)
+{
+	return ipl_istep_via_hostboot(19, 1);
+}
+
 static struct ipl_step ipl19[] = {
+	{ IPL_DEF(prep_host),   19,  1,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 
