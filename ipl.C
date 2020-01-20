@@ -85,7 +85,6 @@ int main(int argc, const char **argv)
 		exit(1);
 	}
 
-	ipl_set_mode(IPL_INTERACTIVE);
 	if (ipl_init())
 		exit(1);
 
