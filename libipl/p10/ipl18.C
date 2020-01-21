@@ -88,7 +88,7 @@ static int ipl_attn_listenall(void)
 
 static struct ipl_step ipl18[] = {
 	{ IPL_DEF(sys_proc_eff_config_links),          18,  1,  true,  true  },
-	{ IPL_DEF(sys_proc_chiplet_fabric_scominit),   18,  1,  true,  true  },
+	{ IPL_DEF(sys_proc_chiplet_fabric_scominit),   18,  2,  true,  true  },
 	{ IPL_DEF(sys_fabric_dl_pre_trainadv),         18,  3,  true,  true  },
 	{ IPL_DEF(sys_fabric_dl_setup_training),       18,  4,  true,  true  },
 	{ IPL_DEF(sys_proc_fabric_link_layer),         18,  5,  true,  true  },

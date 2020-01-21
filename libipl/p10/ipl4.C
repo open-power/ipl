@@ -124,7 +124,7 @@ static int ipl_proc_hcd_core_ras_runtime_scom(void)
 static struct ipl_step ipl4[] = {
 	{ IPL_DEF(proc_hcd_cache_poweron),            4,  1,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_reset),              4,  2,  true,  true  },
-	{ IPL_DEF(proc_hcd_cache_gptr_time_initf),    4,  4,  true,  true  },
+	{ IPL_DEF(proc_hcd_cache_gptr_time_initf),    4,  3,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_repair_initf),       4,  4,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_arrayinit),          4,  5,  true,  true  },
 	{ IPL_DEF(proc_hcd_cache_initf),              4,  6,  true,  true  },
@@ -134,7 +134,7 @@ static struct ipl_step ipl4[] = {
 	{ IPL_DEF(proc_hcd_cache_ras_runtime_scom),   4, 10,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_poweron),             4, 11,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_reset),               4, 12,  true,  true  },
-	{ IPL_DEF(proc_hcd_core_gptr_time_initf),     4, 14,  true,  true  },
+	{ IPL_DEF(proc_hcd_core_gptr_time_initf),     4, 13,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_repair_initf),        4, 14,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_arrayinit),           4, 15,  true,  true  },
 	{ IPL_DEF(proc_hcd_core_initf),               4, 16,  true,  true  },
