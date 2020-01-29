@@ -1,5 +1,6 @@
 extern "C" {
 #include <stdio.h>
+#include <unistd.h>
 
 #include <libpdbg.h>
 
@@ -96,6 +97,12 @@ static int ipl_sbe_start(void)
 
 		p10_start_cbs(pib, true);
 	}
+
+	/*
+         * Pause here for few seconds to give some time for sbe to boot
+         * FIXME: Replace this with HWP which will check SBE boot status
+	 */
+        sleep(5);
 
 	return 0;
 }
