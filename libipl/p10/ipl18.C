@@ -22,42 +22,42 @@ static void ipl_pre18(void)
 
 static int ipl_sys_proc_eff_config_links(void)
 {
-	return ipl_istep_via_hostboot(18, 1);
+	return -1;
 }
 
 static int ipl_sys_proc_chiplet_fabric_scominit(void)
 {
-	return ipl_istep_via_hostboot(18, 2);
+	return -1;
 }
 
 static int ipl_sys_fabric_dl_pre_trainadv(void)
 {
-	return ipl_istep_via_hostboot(18, 3);
+	return -1;
 }
 
 static int ipl_sys_fabric_dl_setup_training(void)
 {
-	return ipl_istep_via_hostboot(18, 4);
+	return -1;
 }
 
 static int ipl_sys_proc_fabric_link_layer(void)
 {
-	return ipl_istep_via_hostboot(18, 5);
+	return -1;
 }
 
 static int ipl_sys_fabric_dl_post_trainadv(void)
 {
-	return ipl_istep_via_hostboot(18, 6);
+	return -1;
 }
 
 static int ipl_proc_fabric_iovalid(void)
 {
-	return ipl_istep_via_hostboot(18, 7);
+	return -1;
 }
 
 static int ipl_proc_fbc_eff_config_aggregate(void)
 {
-	return ipl_istep_via_hostboot(18, 8);
+	return -1;
 }
 
 static int ipl_proc_tod_setup(void)
@@ -72,17 +72,17 @@ static int ipl_proc_tod_init(void)
 
 static int ipl_cec_ipl_complete(void)
 {
-	return ipl_istep_via_hostboot(18, 11);
+	return -1;
 }
 
 static int ipl_startprd_system(void)
 {
-	return ipl_istep_via_hostboot(18, 12);
+	return -1;
 }
 
 static int ipl_attn_listenall(void)
 {
-	return ipl_istep_via_hostboot(18, 13);
+	return -1;
 }
 
 static struct ipl_step ipl18[] = {

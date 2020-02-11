@@ -22,7 +22,7 @@ static void ipl_pre19(void)
 
 static int ipl_prep_host(void)
 {
-	return ipl_istep_via_hostboot(19, 1);
+	return -1;
 }
 
 static struct ipl_step ipl19[] = {

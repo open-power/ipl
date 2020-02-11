@@ -22,17 +22,17 @@ static void ipl_pre17(void)
 
 static int ipl_collect_drawers(void)
 {
-	return ipl_istep_via_hostboot(17, 1);
+	return -1;
 }
 
 static int ipl_proc_psiinit(void)
 {
-	return ipl_istep_via_hostboot(17, 2);
+	return -1;
 }
 
 static int ipl_psi_diag(void)
 {
-	return ipl_istep_via_hostboot(17, 3);
+	return -1;
 }
 
 static struct ipl_step ipl17[] = {

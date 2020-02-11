@@ -32,7 +32,7 @@ static int ipl_host_slave_sbe_update(void)
 
 static int ipl_host_secureboot_lockdown(void)
 {
-	return ipl_istep_via_hostboot(10, 3);
+	return -1;
 }
 
 static int ipl_proc_chiplet_scominit(void)
@@ -67,7 +67,7 @@ static int ipl_host_rng_bist(void)
 
 static struct ipl_step ipl10[] = {
 	{ IPL_DEF(proc_build_smp),               10,  1,  true,  true  },
-	{ IPL_DEF(host_slave_sbe_update),        10,  2,  false, true  },
+	{ IPL_DEF(host_slave_sbe_update),        10,  2,  true,  true  },
 	{ IPL_DEF(host_secureboot_lockdown),     10,  3,  true,  true  },
 	{ IPL_DEF(proc_chiplet_scominit),        10,  4,  true,  true  },
 	{ IPL_DEF(proc_pau_scominit),            10,  5,  true,  true  },
