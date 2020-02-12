@@ -2,10 +2,10 @@ extern "C" {
 #include <stdio.h>
 
 #include <libpdbg.h>
-
-#include "libipl.h"
-#include "libipl_internal.h"
 }
+
+#include "libipl.H"
+#include "libipl_internal.H"
 
 #include <ekb/chips/p9/procedures/hwp/perv/p9_check_slave_sbe_seeprom_complete.H>
 #include <ekb/chips/p9/procedures/hwp/nest/p9_fbc_eff_config.H>

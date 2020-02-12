@@ -3,10 +3,10 @@ extern "C" {
 #include <assert.h>
 
 #include <libpdbg.h>
-
-#include "libipl.h"
-#include "libipl_internal.h"
 }
+
+#include "libipl.H"
+#include "libipl_internal.H"
 
 #include "common.H"
 

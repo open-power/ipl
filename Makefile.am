@@ -5,7 +5,7 @@ AM_CXXFLAGS = -Wall -Werror
 
 bin_PROGRAMS = istep0 ipl
 lib_LTLIBRARIES = libipl.la
-include_HEADERS = libipl/libipl.h
+include_HEADERS = libipl/libipl.H
 
 istep0_SOURCES = istep0.C
 istep0_LDADD = libipl.la
@@ -71,10 +71,9 @@ endif
 
 libipl_la_SOURCES = \
 	$(libipl_istep_SOURCES) \
-	libipl/ipl_init.C \
-	libipl/libipl_internal.h \
-	libipl/libipl.c \
-	libipl/libipl.h
+	libipl/libipl.C \
+	libipl/libipl_internal.H \
+	libipl/libipl.H
 
 libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	$(libipl_istep_CXXFLAGS) \

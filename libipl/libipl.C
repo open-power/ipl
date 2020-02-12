@@ -1,12 +1,16 @@
+extern "C" {
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdarg.h>
+}
 
-#include "libipl.h"
-#include "libipl_internal.h"
+#include "libekb.H"
+#include "libipl.H"
+#include "libipl_internal.H"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
 static enum ipl_mode g_ipl_mode = IPL_DEFAULT;
@@ -19,10 +23,16 @@ void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
 	ipl_steps[major].pre_func = pre_func;
 }
 
+int ipl_init(void)
+{
+	return libekb_init();
+}
+
 int ipl_run_major_minor(int major, int minor)
 {
 	struct ipl_step_data *idata;
-	int i, rc;
+	int i;
+	int rc = 0;
 
 	if (major < 0 || major > MAX_ISTEP || minor < 0)
 		return EINVAL;
@@ -48,7 +58,8 @@ int ipl_run_major_minor(int major, int minor)
 int ipl_run_major(int major)
 {
 	struct ipl_step_data *idata;
-	int i, rc;
+	int i;
+	int rc = 0;
 
 	if (major < 0 || major > 21)
 		return EINVAL;
@@ -83,7 +94,8 @@ int ipl_run_step(const char *name)
 {
 	struct ipl_step_data *idata;
 	struct ipl_step *step = NULL;
-	int i, rc;
+	int i;
+	int rc = 0;
 
 	for (i=0; i<=MAX_ISTEP; i++) {
 		idata = &ipl_steps[i];

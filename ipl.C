@@ -9,9 +9,10 @@ extern "C" {
 #include <errno.h>
 #include <assert.h>
 
-#include <libipl/libipl.h>
 #include <libpdbg.h>
 }
+
+#include <libipl/libipl.H>
 
 static bool isstring(const char *arg)
 {

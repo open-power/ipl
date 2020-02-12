@@ -1,7 +1,9 @@
 #ifndef __IPL_H__
 #define __IPL_H__
 
+extern "C" {
 #include <stdbool.h>
+}
 
 #define IPL_DEF(a)	"#a", ipl_ ## a
 

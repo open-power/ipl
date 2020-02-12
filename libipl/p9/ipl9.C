@@ -3,10 +3,10 @@ extern "C" {
 #include <assert.h>
 
 #include <libpdbg.h>
-
-#include "libipl.h"
-#include "libipl_internal.h"
 }
+
+#include "libipl.H"
+#include "libipl_internal.H"
 
 #include <ekb/chips/p9/procedures/hwp/io/p9_io_xbus_dccal.H>
 #include <ekb/chips/p9/procedures/hwp/io/p9_io_xbus_linktrain.H>

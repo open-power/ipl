@@ -3,11 +3,10 @@ extern "C" {
 #include <unistd.h>
 
 #include <libpdbg.h>
-
-#include "libipl.h"
-#include "libipl_internal.h"
 }
 
+#include "libipl.H"
+#include "libipl_internal.H"
 #include <ekb/chips/p10/procedures/hwp/perv/p10_start_cbs.H>
 
 static void ipl_pre0(void)

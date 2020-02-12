@@ -2,11 +2,10 @@ extern "C" {
 #include <stdio.h>
 
 #include <libpdbg.h>
-
-#include "libipl.h"
-#include "libipl_internal.h"
 }
 
+#include "libipl.H"
+#include "libipl_internal.H"
 #include "common.H"
 
 #include <hwpf/fapi2/include/return_code_defs.H>

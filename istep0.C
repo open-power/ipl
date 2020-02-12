@@ -3,8 +3,9 @@ extern "C" {
 #include <stdlib.h>
 
 #include <libpdbg.h>
-#include <libipl/libipl.h>
-};
+}
+
+#include <libipl/libipl.H>
 
 int main(void)
 {
