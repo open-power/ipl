@@ -22,7 +22,7 @@ int ipl_istep_via_sbe(int major, int minor)
 
 		rc |= sbe_istep(pib, major, minor);
 		if (rc)
-			ipl_log("Istep %d.%d failed on chip %d, rc=%d\n",
+			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
 				major, minor, pdbg_target_index(pib), rc);
 	}
 
@@ -44,7 +44,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 		fapi_rc = p10_do_fw_hb_istep(pib, major, minor,
 					     retry_limit_ms, delay_ms);
 		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log("Istep %d.%d failed on chip %d, rc=%d\n",
+			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
 				major, minor, pdbg_target_index(pib), rc);
 			rc = rc + 1;
 		}
