@@ -8,7 +8,7 @@ extern "C" {
 #include "libipl_internal.H"
 #include "common.H"
 
-#include <hwpf/fapi2/include/return_code_defs.H>
+#include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <ekb/chips/p10/procedures/hwp/istep/p10_do_fw_hb_istep.H>
 
 int ipl_istep_via_sbe(int major, int minor)
