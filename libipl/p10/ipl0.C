@@ -94,7 +94,7 @@ static int ipl_sbe_start(void)
 		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
 			continue;
 
-		p10_start_cbs(pib, true);
+		ipl_error_callback((p10_start_cbs(pib, true) == fapi2::FAPI2_RC_SUCCESS));
 	}
 
 	/*

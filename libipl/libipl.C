@@ -15,6 +15,8 @@ extern "C" {
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
 static enum ipl_mode g_ipl_mode = IPL_DEFAULT;
 
+static ipl_error_callback_func_t g_ipl_error_callback_fn;
+
 static ipl_log_func_t g_ipl_log_fn;
 static void * g_ipl_log_priv;
 static int g_ipl_log_level = IPL_DEBUG;
@@ -74,10 +76,8 @@ int ipl_init(void)
 	ipl_set_loglevel(g_ipl_log_level);
 
 	ret = libekb_init();
-	if (ret != 0)
-		return ret;
-
-	return 0;
+	ipl_error_callback((ret == 0));
+	return ret; 
 }
 
 int ipl_run_major_minor(int major, int minor)
@@ -231,3 +231,16 @@ void ipl_log(int loglevel, const char *fmt, ...)
 	g_ipl_log_fn(g_ipl_log_priv, fmt, ap);
 	va_end(ap);
 }
+
+void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
+{
+	g_ipl_error_callback_fn = fn;
+}
+
+void ipl_error_callback(bool status)
+{
+	if (!g_ipl_error_callback_fn)
+		return;
+	g_ipl_error_callback_fn(status);
+}
+
