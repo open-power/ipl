@@ -43,7 +43,7 @@ static int ipl_to_libekb_loglevel(int ipl_loglevel)
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 {
-	fprintf(stdout, fmt, ap);
+	vfprintf(stdout, fmt, ap);
 }
 
 static void ipl_libekb_log(void *priv, const char *fmt, va_list ap)
@@ -60,17 +60,23 @@ void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
 
 	ipl_steps[major].steps = steps;
 	ipl_steps[major].pre_func = pre_func;
+}
+
+int ipl_init(void)
+{
+	int ret;
+
+	ret = libekb_init();
+	if (ret != 0)
+		return ret;
 
 	libekb_set_logfunc(ipl_libekb_log, NULL);
 	libekb_set_loglevel(LIBEKB_LOG_DBG);
 
 	ipl_set_logfunc(ipl_log_default, NULL);
 	ipl_set_loglevel(IPL_DEBUG);
-}
 
-int ipl_init(void)
-{
-	return libekb_init();
+	return 0;
 }
 
 int ipl_run_major_minor(int major, int minor)
