@@ -17,7 +17,7 @@ static enum ipl_mode g_ipl_mode = IPL_DEFAULT;
 
 static ipl_log_func_t g_ipl_log_fn;
 static void * g_ipl_log_priv;
-static int g_ipl_log_level;
+static int g_ipl_log_level = IPL_DEBUG;
 
 struct {
 	int ipl_loglevel;
@@ -66,15 +66,16 @@ int ipl_init(void)
 {
 	int ret;
 
+	if (!g_ipl_log_fn)
+		ipl_set_logfunc(ipl_log_default, NULL);
+
+	libekb_set_logfunc(ipl_libekb_log, NULL);
+
+	ipl_set_loglevel(g_ipl_log_level);
+
 	ret = libekb_init();
 	if (ret != 0)
 		return ret;
-
-	libekb_set_logfunc(ipl_libekb_log, NULL);
-	libekb_set_loglevel(LIBEKB_LOG_DBG);
-
-	ipl_set_logfunc(ipl_log_default, NULL);
-	ipl_set_loglevel(IPL_DEBUG);
 
 	return 0;
 }
