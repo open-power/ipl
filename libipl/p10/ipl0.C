@@ -81,13 +81,13 @@ static int ipl_sbe_config_update(void)
 
 static int ipl_sbe_start(void)
 {
-	struct pdbg_target *pib;
+	struct pdbg_target *proc;
 
-	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+	pdbg_for_each_class_target("proc", proc) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(proc) != 0)
 			continue;
 
-		ipl_error_callback((p10_start_cbs(pib, true) == fapi2::FAPI2_RC_SUCCESS));
+		ipl_error_callback((p10_start_cbs(proc, true) == fapi2::FAPI2_RC_SUCCESS));
 	}
 
 	/*
