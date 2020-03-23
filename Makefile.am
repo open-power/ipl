@@ -12,6 +12,7 @@ istep0_LDADD = libipl.la
 
 ipl_SOURCES = ipl.C
 ipl_LDADD = libipl.la
+ipl_LDFLAGS = -Wl,--whole-archive,-L.libs,-lipl,-lpdbg,--no-whole-archive
 
 if BUILD_P9
 libipl_istep_SOURCES = \
