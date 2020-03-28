@@ -9,6 +9,7 @@ extern "C" {
 #include "libipl_internal.H"
 #include <ekb/chips/p10/procedures/hwp/perv/p10_start_cbs.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_ref_clock.H>
+#include <ekb/chips/p10/procedures/hwp/perv/p10_clock_test.H>
 
 static void ipl_pre0(void)
 {
@@ -47,7 +48,22 @@ static int ipl_set_ref_clock(void)
 
 static int ipl_proc_clock_test(void)
 {
-	return -1;
+	struct pdbg_target *proc;
+	int rc = 0;
+
+	pdbg_for_each_class_target("proc", proc) {
+		fapi2::ReturnCode fapirc;
+
+		fapirc = p10_clock_test(proc);
+		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
+			ipl_log(IPL_ERROR, "HWP clock_test failed on proc %d, rc=%d\n",
+				pdbg_target_index(proc), fapirc);
+			ipl_error_callback(true);
+			rc++;
+		}
+	}
+
+	return rc;
 }
 
 static int ipl_proc_prep_ipl(void)
