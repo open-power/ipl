@@ -21,6 +21,7 @@ struct ipl_step_data {
 	void (*pre_func)(void);
 };
 
+void ipl_pre(void);
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void));
 enum ipl_mode ipl_mode(void);
 

@@ -6,6 +6,8 @@ extern "C" {
 #include <errno.h>
 #include <assert.h>
 #include <stdarg.h>
+
+#include <libpdbg.h>
 }
 
 #include "libekb.H"
@@ -54,6 +56,25 @@ static void ipl_libekb_log(void *priv, const char *fmt, va_list ap)
 		return;
 
 	g_ipl_log_fn(g_ipl_log_priv, fmt, ap);
+}
+
+void ipl_pre(void)
+{
+	struct pdbg_target *pib, *fsi;
+
+	pdbg_for_each_class_target("pib", pib) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+			continue;
+
+		pdbg_target_probe(pib);
+	}
+
+	pdbg_for_each_class_target("fsi", fsi) {
+		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(fsi) != 0)
+			continue;
+
+		pdbg_target_probe(fsi);
+	}
 }
 
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
