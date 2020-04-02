@@ -8,6 +8,7 @@ extern "C" {
 #include <stdarg.h>
 
 #include <libpdbg.h>
+#include <config.h>
 }
 
 #include "libekb.H"
@@ -85,6 +86,25 @@ void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
 	ipl_steps[major].pre_func = pre_func;
 }
 
+#ifdef IPL_P10
+static int ipl_init_p10(void)
+{
+	struct pdbg_target *root;
+	uint8_t istep_mode = 1;
+
+	if (ipl_mode() == IPL_BOOT)
+		istep_mode = 0;
+
+	root = pdbg_target_root();
+	if (!pdbg_target_set_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_ISTEP_MODE] update failed\n");
+		return 1;
+	}
+
+	return 0;
+}
+#endif /* IPL_P10 */
+
 int ipl_init(enum ipl_mode mode)
 {
 	int ret;
@@ -100,7 +120,16 @@ int ipl_init(enum ipl_mode mode)
 
 	ret = libekb_init();
 	ipl_error_callback((ret == 0));
-	return ret; 
+	if (ret != 0)
+		return ret;
+
+#ifdef IPL_P10
+	ret = ipl_init_p10();
+	if (ret != 0)
+		return ret;
+#endif /* IPL_P10 */
+
+	return 0;
 }
 
 int ipl_run_major_minor(int major, int minor)
