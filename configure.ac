@@ -10,6 +10,14 @@ AC_SUBST([CHIP])
 AM_CONDITIONAL([BUILD_P9], [test "$CHIP" = "p9"])
 AM_CONDITIONAL([BUILD_P10], [test "$CHIP" = "p10"])
 
+if test "$CHIP" = "p9" ; then
+	AC_DEFINE([IPL_P9], [1], [Define to 1 for P9])
+fi
+
+if test "$CHIP" = "p10" ; then
+	AC_DEFINE([IPL_P10], [1], [Define to 1 for P10])
+fi
+
 AC_LANG([C++])
 
 AC_PROG_CXX
