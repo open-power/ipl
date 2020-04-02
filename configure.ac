@@ -23,7 +23,7 @@ fi
 # Find path to libekb.H
 CPPFLAGS=$CXXFLAGS
 AX_ABSOLUTE_HEADER([libekb.H])
-if [ x"$gl_cv_absolute_libekb_H" = "x" ] ; then
+if test x"$gl_cv_absolute_libekb_H" = "x" ; then
 	AC_MSG_ERROR([Cannot find libekb.H path])
 fi
 INCDIR=$(dirname $gl_cv_absolute_libekb_H)
