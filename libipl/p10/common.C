@@ -17,7 +17,7 @@ int ipl_istep_via_sbe(int major, int minor)
 	int rc = 0;
 
 	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(pib) != 0)
 			continue;
 
 		rc |= sbe_istep(pib, major, minor);
@@ -38,7 +38,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 	int rc = 0;
 
 	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(pib) != 0)
+		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(pib) != 0)
 			continue;
 
 		fapi_rc = p10_do_fw_hb_istep(pib, major, minor,
