@@ -112,6 +112,9 @@ int ipl_run_major_minor(int major, int minor)
 	if (major < 0 || major > MAX_ISTEP || minor < 0)
 		return EINVAL;
 
+	if (ipl_mode() == IPL_BOOT && major != 0)
+		return EINVAL;
+
 	idata = &ipl_steps[major];
 	assert(idata->steps);
 
@@ -136,7 +139,10 @@ int ipl_run_major(int major)
 	int i;
 	int rc = 0;
 
-	if (major < 0 || major > 21)
+	if (major < 0 || major > MAX_ISTEP)
+		return EINVAL;
+
+	if (ipl_mode() == IPL_BOOT && major != 0)
 		return EINVAL;
 
 	idata = &ipl_steps[major];
@@ -180,6 +186,9 @@ int ipl_run_step(const char *name)
 	}
 
 	if (!step)
+		return EINVAL;
+
+	if (ipl_mode() == IPL_BOOT && step->major != 0)
 		return EINVAL;
 
 	idata->pre_func();
