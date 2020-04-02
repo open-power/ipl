@@ -4,6 +4,7 @@
 #define MAX_ISTEP	21
 
 enum ipl_mode {
+	IPL_BOOT = 0,
 	IPL_DEFAULT,
 	IPL_INTERACTIVE,
 };
