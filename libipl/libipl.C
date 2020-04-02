@@ -85,9 +85,11 @@ void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void))
 	ipl_steps[major].pre_func = pre_func;
 }
 
-int ipl_init(void)
+int ipl_init(enum ipl_mode mode)
 {
 	int ret;
+
+	ipl_set_mode(mode);
 
 	if (!g_ipl_log_fn)
 		ipl_set_logfunc(ipl_log_default, NULL);

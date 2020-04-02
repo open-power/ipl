@@ -23,6 +23,7 @@ struct ipl_step_data {
 
 void ipl_pre(void);
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void));
+void ipl_set_mode(enum ipl_mode mode);
 enum ipl_mode ipl_mode(void);
 
 void ipl_error_callback(bool status);

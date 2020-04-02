@@ -9,7 +9,7 @@ extern "C" {
 
 int main(void)
 {
-	if (ipl_init())
+	if (ipl_init(IPL_DEFAULT))
 		exit(1);
 
 	return ipl_run_major(0);

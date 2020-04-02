@@ -18,8 +18,7 @@ extern "C" {
 typedef void (*ipl_log_func_t)(void *private_data, const char *fmt, va_list ap);
 typedef void (*ipl_error_callback_func_t)(bool status);
 
-void ipl_set_mode(enum ipl_mode mode);
-int ipl_init(void);
+int ipl_init(enum ipl_mode mode);
 int ipl_run_major_minor(int major, int minor);
 int ipl_run_major(int major);
 int ipl_run_step(const char *name);
