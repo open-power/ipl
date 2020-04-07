@@ -48,12 +48,12 @@ AC_SUBST([EKB_CXXFLAGS])
 
 saved_LDFLAGS=$LDFLAGS
 saved_CXXFLAGS=$CXXFLAGS
-LDFLAGS="$LDFLAGS -lekb -lattribute-api"
+LDFLAGS="$LDFLAGS -lekb"
 CXXFLAGS="$CXXFLAGS $EKB_CXXFLAGS"
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM([#include <libekb.H>],
     [libekb_init])],
-  [LIBS="$LIBS -lekb -lattribute-api"],
+  [LIBS="$LIBS -lekb"],
   [AC_MSG_ERROR([libekb not found.])])
 LDFLAGS=$saved_LDFLAGS
 CXXFLAGS=$saved_CXXFLAGS
