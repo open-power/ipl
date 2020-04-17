@@ -86,7 +86,7 @@ int main(int argc, const char **argv)
 		exit(1);
 	}
 
-	if (ipl_init(IPL_DEFAULT))
+	if (ipl_init(IPL_HOSTBOOT))
 		exit(1);
 
 	for (i=1; i<argc; i++) {

@@ -16,7 +16,7 @@ extern "C" {
 #include "libipl_internal.H"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
-static enum ipl_mode g_ipl_mode = IPL_DEFAULT;
+static enum ipl_mode g_ipl_mode = IPL_HOSTBOOT;
 
 static ipl_error_callback_func_t g_ipl_error_callback_fn;
 
@@ -64,14 +64,14 @@ void ipl_pre(void)
 	struct pdbg_target *pib, *fsi;
 
 	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(pib) != 0)
+		if (ipl_mode() <= IPL_HOSTBOOT && pdbg_target_index(pib) != 0)
 			continue;
 
 		pdbg_target_probe(pib);
 	}
 
 	pdbg_for_each_class_target("fsi", fsi) {
-		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(fsi) != 0)
+		if (ipl_mode() <= IPL_HOSTBOOT && pdbg_target_index(fsi) != 0)
 			continue;
 
 		pdbg_target_probe(fsi);
@@ -92,7 +92,7 @@ static int ipl_init_p10(void)
 	struct pdbg_target *root;
 	uint8_t istep_mode = 1;
 
-	if (ipl_mode() == IPL_BOOT)
+	if (ipl_mode() == IPL_AUTOBOOT)
 		istep_mode = 0;
 
 	root = pdbg_target_root();
@@ -141,7 +141,7 @@ int ipl_run_major_minor(int major, int minor)
 	if (major < 0 || major > MAX_ISTEP || minor < 0)
 		return EINVAL;
 
-	if (ipl_mode() == IPL_BOOT && major != 0)
+	if (ipl_mode() == IPL_AUTOBOOT && major != 0)
 		return EINVAL;
 
 	idata = &ipl_steps[major];
@@ -171,7 +171,7 @@ int ipl_run_major(int major)
 	if (major < 0 || major > MAX_ISTEP)
 		return EINVAL;
 
-	if (ipl_mode() == IPL_BOOT && major != 0)
+	if (ipl_mode() == IPL_AUTOBOOT && major != 0)
 		return EINVAL;
 
 	idata = &ipl_steps[major];
@@ -217,7 +217,7 @@ int ipl_run_step(const char *name)
 	if (!step)
 		return EINVAL;
 
-	if (ipl_mode() == IPL_BOOT && step->major != 0)
+	if (ipl_mode() == IPL_AUTOBOOT && step->major != 0)
 		return EINVAL;
 
 	idata->pre_func();
