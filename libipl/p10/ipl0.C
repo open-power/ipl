@@ -36,6 +36,9 @@ static int ipl_set_ref_clock(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+			continue;
+
 		fapirc = p10_setup_ref_clock(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %d, rc=%d\n",
@@ -55,6 +58,9 @@ static int ipl_proc_clock_test(void)
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
+
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+			continue;
 
 		fapirc = p10_clock_test(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
