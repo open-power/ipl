@@ -131,7 +131,7 @@ static int ipl_sbe_config_update(void)
 	set_core_status();
 
 	pdbg_for_each_class_target("proc", proc) {
-		if (ipl_mode() == IPL_DEFAULT && pdbg_target_index(proc) != 0)
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
 		ipl_error_callback((p10_setup_sbe_config(proc) == fapi2::FAPI2_RC_SUCCESS));
@@ -145,7 +145,7 @@ static int ipl_sbe_start(void)
 	struct pdbg_target *proc;
 
 	pdbg_for_each_class_target("proc", proc) {
-		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(proc) != 0)
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
 		ipl_error_callback((p10_start_cbs(proc, true) == fapi2::FAPI2_RC_SUCCESS));

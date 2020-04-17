@@ -17,7 +17,7 @@ int ipl_istep_via_sbe(int major, int minor)
 	int rc = 0;
 
 	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(pib) != 0)
+		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
 
 		rc |= sbe_istep(pib, major, minor);
@@ -39,7 +39,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapi_rc;
 
-		if (ipl_mode() <= IPL_DEFAULT && pdbg_target_index(proc) != 0)
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
 		fapi_rc = p10_do_fw_hb_istep(proc, major, minor,
