@@ -86,16 +86,17 @@ static void usage(void)
 	fprintf(stderr, "      -b kernel  for kernel backend\n");
 	fprintf(stderr, "      -b sbefifo  for sbefifo backend (default)\n");
 	fprintf(stderr, "      -b cronus -d <host>  for cronus backend\n");
+	fprintf(stderr, "      -D <0-5>  set log level\n");
 }
 
 int main(int argc, char * const *argv)
 {
 	const char *device = NULL;
 	enum pdbg_backend backend = PDBG_BACKEND_SBEFIFO;
-	int rc, i, opt;
+	int rc, i, opt, log_level = 0;
 	bool do_backend = false;
 
-	while ((opt = getopt(argc, argv, "b:d:")) != -1) {
+	while ((opt = getopt(argc, argv, "b:d:D:")) != -1) {
 		switch (opt) {
 		case 'b':
 			if (!strcmp(optarg, "kernel"))
@@ -122,6 +123,14 @@ int main(int argc, char * const *argv)
 			device = optarg;
 			break;
 
+		case 'D':
+			log_level = atoi(optarg);
+			if (log_level < 0)
+				log_level = 0;
+			if (log_level > 5)
+				log_level = 5;
+			break;
+
 		default:
 			usage();
 			exit(1);
@@ -135,11 +144,17 @@ int main(int argc, char * const *argv)
 	if (do_backend)
 		pdbg_set_backend(backend, device);
 
+	pdbg_set_loglevel(log_level);
+
 	if (!pdbg_targets_init(NULL))
 		exit(1);
 
+	libekb_set_loglevel(log_level);
+
 	if (libekb_init())
 		exit(1);
+
+	ipl_set_loglevel(log_level);
 
 	if (ipl_init(IPL_HOSTBOOT))
 		exit(1);
