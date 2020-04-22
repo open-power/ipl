@@ -13,6 +13,7 @@ extern "C" {
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_ref_clock.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_clock_test.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_sbe_config.H>
+#include <ekb/chips/p10/procedures/hwp/perv/p10_select_boot_master.H>
 
 static void ipl_pre0(void)
 {
@@ -82,9 +83,46 @@ static int ipl_proc_prep_ipl(void)
 	return -1;
 }
 
+static bool is_master_proc(struct pdbg_target *proc)
+{
+	uint8_t type;
+
+	if (!pdbg_target_get_attribute(proc, "ATTR_PROC_MASTER_TYPE", 1, 1, &type)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_PROC_MASTER_TYPE] read failed \n");
+		/* TODO: Revisit this error logic. */
+		return false;
+	}
+
+	/* Attribute value 0 corresponds to master processor */
+	if (type == 0)
+		return true;
+	else
+		return false;
+}
+
 static int ipl_proc_select_boot_master(void)
 {
-	return -1;
+	struct pdbg_target *proc;
+	int rc = 1;
+
+	pdbg_for_each_class_target("proc", proc) {
+		fapi2::ReturnCode fapirc;
+
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+			continue;
+
+		if (!is_master_proc(proc))
+			continue;
+
+		fapirc = p10_select_boot_master(proc);
+		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
+			rc = 0;
+
+		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		break;
+        }
+
+	return rc;
 }
 
 static void set_core_status(void)
