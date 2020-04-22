@@ -1,5 +1,6 @@
 extern "C" {
 #include <stdio.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <libpdbg.h>
@@ -114,12 +115,30 @@ static void set_core_status(void)
 	}
 }
 
+static bool small_core_enabled(void)
+{
+	struct stat statbuf;
+	int ret;
+
+	/* If /tmp/small_core file exists, boot in small core mode */
+	ret = stat("/tmp/small_core", &statbuf);
+	if (ret == -1)
+		return false;
+
+	if (S_ISREG(statbuf.st_mode)) {
+		ipl_log(IPL_INFO, "Booting in small core mode\n");
+		return true;
+	}
+
+	return false;
+}
+
 static int ipl_sbe_config_update(void)
 {
 	struct pdbg_target *root, *proc;
 	uint32_t boot_flags = 0;
 	int rc = 0;
-	uint8_t istep_mode;
+	uint8_t istep_mode, core_mode;
 
 	root = pdbg_target_root();
 	if (!pdbg_target_get_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
@@ -138,6 +157,16 @@ static int ipl_sbe_config_update(void)
 
 	//Initialize core target functional status
 	set_core_status();
+
+	if (small_core_enabled())
+		core_mode = 0x00;  /* CORE_UNFUSED mode */
+	else
+		core_mode = 0x01;  /* CORE_FUSED mode */
+
+	if (!pdbg_target_set_attribute(root, "ATTR_FUSED_CORE_MODE", 1, 1, &core_mode)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_FUSED_CORE_MODE] update failed \n");
+		return 1;
+	}
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
