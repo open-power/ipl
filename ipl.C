@@ -8,6 +8,7 @@ extern "C" {
 #include <ctype.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include <libpdbg.h>
 }
@@ -78,14 +79,61 @@ static bool run_istep(const char *arg, int *rc)
 	return false;
 }
 
-int main(int argc, const char **argv)
+static void usage(void)
 {
-	int rc, i;
+	fprintf(stderr, "Usage: ipl [options] <istep> [<istep>...]\n");
+	fprintf(stderr, "   Options:\n");
+	fprintf(stderr, "      -b kernel  for kernel backend\n");
+	fprintf(stderr, "      -b sbefifo  for sbefifo backend (default)\n");
+	fprintf(stderr, "      -b cronus -d <host>  for cronus backend\n");
+}
 
-	if (argc < 2) {
-		fprintf(stderr, "Usage: ipl <istep> [<istep>...]\n");
+int main(int argc, char * const *argv)
+{
+	const char *device = NULL;
+	enum pdbg_backend backend = PDBG_BACKEND_SBEFIFO;
+	int rc, i, opt;
+	bool do_backend = false;
+
+	while ((opt = getopt(argc, argv, "b:d:")) != -1) {
+		switch (opt) {
+		case 'b':
+			if (!strcmp(optarg, "kernel"))
+				backend = PDBG_BACKEND_KERNEL;
+			else if (!strcmp(optarg, "fake"))
+				backend = PDBG_BACKEND_FAKE;
+			else if (!strcmp(optarg, "cronus"))
+				backend = PDBG_BACKEND_CRONUS;
+			else if (!strcmp(optarg, "sbefifo"))
+				backend = PDBG_BACKEND_SBEFIFO;
+			else {
+				fprintf(stderr, "Invalid backend '%s'\n", optarg);
+				exit(1);
+			}
+
+			do_backend = true;
+			break;
+
+		case 'd':
+			if (backend != PDBG_BACKEND_CRONUS) {
+				usage();
+				exit(1);
+			}
+			device = optarg;
+			break;
+
+		default:
+			usage();
+			exit(1);
+		}
+	}
+	if (argc - optind < 1) {
+		usage();
 		exit(1);
 	}
+
+	if (do_backend)
+		pdbg_set_backend(backend, device);
 
 	if (!pdbg_targets_init(NULL))
 		exit(1);
@@ -96,7 +144,7 @@ int main(int argc, const char **argv)
 	if (ipl_init(IPL_HOSTBOOT))
 		exit(1);
 
-	for (i=1; i<argc; i++) {
+	for (i=optind; i<argc; i++) {
 		rc = 0;
 		if (!run_istep(argv[i], &rc))
 			return -1;
