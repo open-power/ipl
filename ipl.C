@@ -12,6 +12,7 @@ extern "C" {
 #include <libpdbg.h>
 }
 
+#include <libekb.H>
 #include <libipl/libipl.H>
 
 static bool isstring(const char *arg)
@@ -85,6 +86,12 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "Usage: ipl <istep> [<istep>...]\n");
 		exit(1);
 	}
+
+	if (!pdbg_targets_init(NULL))
+		exit(1);
+
+	if (libekb_init())
+		exit(1);
 
 	if (ipl_init(IPL_HOSTBOOT))
 		exit(1);
