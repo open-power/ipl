@@ -11,7 +11,6 @@ extern "C" {
 #include <config.h>
 }
 
-#include "libekb.H"
 #include "libipl.H"
 #include "libipl_internal.H"
 
@@ -22,41 +21,11 @@ static ipl_error_callback_func_t g_ipl_error_callback_fn;
 
 static ipl_log_func_t g_ipl_log_fn;
 static void * g_ipl_log_priv;
-static int g_ipl_log_level = IPL_DEBUG;
-
-struct {
-	int ipl_loglevel;
-	int libekb_loglevel;
-} ipl_libekb_log_map[] = {
-	{ IPL_ERROR,  LIBEKB_LOG_ERR },
-	{ IPL_INFO,   LIBEKB_LOG_INF },
-	{ IPL_DEBUG,  LIBEKB_LOG_DBG },
-	{ -1,  -1 },
-};
-
-static int ipl_to_libekb_loglevel(int ipl_loglevel)
-{
-	int i;
-
-	for (i=0; ipl_libekb_log_map[i].ipl_loglevel != -1; i++) {
-		if (ipl_libekb_log_map[i].ipl_loglevel == ipl_loglevel)
-			return ipl_libekb_log_map[i].libekb_loglevel;
-	}
-
-	return LIBEKB_LOG_ERR;
-}
+static int g_ipl_log_level = IPL_ERROR;
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 {
 	vfprintf(stdout, fmt, ap);
-}
-
-static void ipl_libekb_log(void *priv, const char *fmt, va_list ap)
-{
-	if (!g_ipl_log_fn)
-		return;
-
-	g_ipl_log_fn(g_ipl_log_priv, fmt, ap);
 }
 
 void ipl_pre(void)
@@ -107,26 +76,19 @@ static int ipl_init_p10(void)
 
 int ipl_init(enum ipl_mode mode)
 {
-	int ret;
-
 	ipl_set_mode(mode);
 
 	if (!g_ipl_log_fn)
 		ipl_set_logfunc(ipl_log_default, NULL);
 
-	libekb_set_logfunc(ipl_libekb_log, NULL);
-
-	ipl_set_loglevel(g_ipl_log_level);
-
-	ret = libekb_init();
-	ipl_error_callback((ret == 0));
-	if (ret != 0)
-		return ret;
+	if (!pdbg_target_root()) {
+		ipl_log(IPL_ERROR, "libpdbg not initialized\n");
+		return -1;
+	}
 
 #ifdef IPL_P10
-	ret = ipl_init_p10();
-	if (ret != 0)
-		return ret;
+	if (ipl_init_p10())
+		return -1;
 #endif /* IPL_P10 */
 
 	return 0;
@@ -264,8 +226,6 @@ void ipl_set_logfunc(ipl_log_func_t fn, void *private_data)
 
 void ipl_set_loglevel(int loglevel)
 {
-	int libekb_loglevel;
-
 	if (loglevel < IPL_ERROR)
 		loglevel = IPL_ERROR;
 
@@ -273,9 +233,6 @@ void ipl_set_loglevel(int loglevel)
 		loglevel = IPL_DEBUG;
 
 	g_ipl_log_level = loglevel;
-
-	libekb_loglevel = ipl_to_libekb_loglevel(loglevel);
-	libekb_set_loglevel(libekb_loglevel);
 }
 
 void ipl_log(int loglevel, const char *fmt, ...)
@@ -304,4 +261,3 @@ void ipl_error_callback(bool status)
 		return;
 	g_ipl_error_callback_fn(status);
 }
-
