@@ -43,9 +43,10 @@ static int ipl_set_ref_clock(void)
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %d, rc=%d\n",
                                 pdbg_target_index(proc), fapirc);
-			ipl_error_callback(true);
 			rc++;
 		}
+
+		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
 	return rc;
@@ -66,9 +67,10 @@ static int ipl_proc_clock_test(void)
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "HWP clock_test failed on proc %d, rc=%d\n",
 				pdbg_target_index(proc), fapirc);
-			ipl_error_callback(true);
 			rc++;
 		}
+
+		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
 	return rc;
@@ -116,6 +118,7 @@ static int ipl_sbe_config_update(void)
 {
 	struct pdbg_target *root, *proc;
 	uint32_t boot_flags = 0;
+	int rc = 0;
 	uint8_t istep_mode;
 
 	root = pdbg_target_root();
@@ -137,24 +140,37 @@ static int ipl_sbe_config_update(void)
 	set_core_status();
 
 	pdbg_for_each_class_target("proc", proc) {
+		fapi2::ReturnCode fapirc;
+
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
-		ipl_error_callback((p10_setup_sbe_config(proc) == fapi2::FAPI2_RC_SUCCESS));
+		fapirc = p10_setup_sbe_config(proc);
+		if (fapirc != fapi2::FAPI2_RC_SUCCESS)
+			rc++;
+
+		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
-	return 0;
+	return rc;
 }
 
 static int ipl_sbe_start(void)
 {
 	struct pdbg_target *proc;
+	int rc = 0;
 
 	pdbg_for_each_class_target("proc", proc) {
+		fapi2::ReturnCode fapirc;
+
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
-		ipl_error_callback((p10_start_cbs(proc, true) == fapi2::FAPI2_RC_SUCCESS));
+		fapirc = p10_start_cbs(proc, true);
+		if (fapirc != fapi2::FAPI2_RC_SUCCESS)
+			rc++;
+
+		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
 	/*
@@ -163,7 +179,7 @@ static int ipl_sbe_start(void)
 	 */
         sleep(5);
 
-	return 0;
+	return rc;
 }
 
 static struct ipl_step ipl0[] = {

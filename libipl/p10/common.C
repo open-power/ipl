@@ -17,13 +17,19 @@ int ipl_istep_via_sbe(int major, int minor)
 	int rc = 0;
 
 	pdbg_for_each_class_target("pib", pib) {
+		int ret;
+
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
 
-		rc |= sbe_istep(pib, major, minor);
-		if (rc)
+		ret = sbe_istep(pib, major, minor);
+		if (ret) {
 			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
 				major, minor, pdbg_target_index(pib), rc);
+			rc = rc + 1;
+		}
+
+		ipl_error_callback(ret == 0);
 	}
 
 	return rc;
@@ -49,6 +55,8 @@ int ipl_istep_via_hostboot(int major, int minor)
 				major, minor, pdbg_target_index(proc), fapi_rc);
 			rc = rc + 1;
 		}
+
+		ipl_error_callback(fapi_rc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
 	return rc;
