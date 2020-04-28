@@ -13,12 +13,12 @@ static void ipl_pre8(void)
 	ipl_pre();
 }
 
-static int ipl_host_slave_sbe_config(void)
+static int ipl_host_setup_sbe(void)
 {
 	return ipl_istep_via_hostboot(8, 1);
 }
 
-static int ipl_host_setup_sbe(void)
+static int ipl_host_slave_sbe_config(void)
 {
 	return ipl_istep_via_hostboot(8, 2);
 }
@@ -84,8 +84,8 @@ static int ipl_proc_iohs_enable_ridi(void)
 }
 
 static struct ipl_step ipl8[] = {
-	{ IPL_DEF(host_slave_sbe_config),                   8,  1,  false, true  },
-	{ IPL_DEF(host_setup_sbe),                          8,  2,  false, true  },
+	{ IPL_DEF(host_setup_sbe),                          8,  1,  false, true  },
+	{ IPL_DEF(host_slave_sbe_config),                   8,  2,  false, true  },
 	{ IPL_DEF(host_cbs_start),                          8,  3,  false, true  },
 	{ IPL_DEF(proc_check_slave_sbe_seeprom_complete),   8,  4,  true,  true  },
 	{ IPL_DEF(host_attnlisten_proc),                    8,  5,  false, true  },
