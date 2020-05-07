@@ -1,6 +1,7 @@
 extern "C" {
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
@@ -22,6 +23,8 @@ static ipl_error_callback_func_t g_ipl_error_callback_fn;
 static ipl_log_func_t g_ipl_log_fn;
 static void * g_ipl_log_priv;
 static int g_ipl_log_level = IPL_ERROR;
+
+static bool g_ipl_test_mode = false;
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 {
@@ -76,6 +79,8 @@ static int ipl_init_p10(void)
 
 int ipl_init(enum ipl_mode mode)
 {
+	char *tmp;
+
 	ipl_set_mode(mode);
 
 	if (!g_ipl_log_fn)
@@ -86,12 +91,38 @@ int ipl_init(enum ipl_mode mode)
 		return -1;
 	}
 
+	tmp = getenv("IPL_TEST_MODE");
+	if (tmp) {
+		g_ipl_test_mode = true;
+		return 0;
+	}
+
 #ifdef IPL_P10
 	if (ipl_init_p10())
 		return -1;
 #endif /* IPL_P10 */
 
 	return 0;
+}
+
+static void ipl_execute_pre(struct ipl_step_data *idata)
+{
+	if (g_ipl_test_mode)
+		fprintf(stderr, "  Executing pre\n");
+	else
+		idata->pre_func();
+}
+
+static int ipl_execute_istep(struct ipl_step *step)
+{
+	int rc = 0;
+
+	if (g_ipl_test_mode)
+		fprintf(stderr, "  Executing %s\n", step->name);
+	else
+		rc = step->func();
+
+	return rc;
 }
 
 int ipl_run_major_minor(int major, int minor)
@@ -109,11 +140,11 @@ int ipl_run_major_minor(int major, int minor)
 	idata = &ipl_steps[major];
 	assert(idata->steps);
 
-	idata->pre_func();
+	ipl_execute_pre(idata);
 
 	for (i=0; idata->steps[i].major != -1; i++) {
 		if (idata->steps[i].minor == minor) {
-			rc = idata->steps[i].func();
+			rc = ipl_execute_istep(&idata->steps[i]);
 			if (rc == -1)
 				return ENOSYS;
 			else
@@ -139,10 +170,10 @@ int ipl_run_major(int major)
 	idata = &ipl_steps[major];
 	assert(idata->steps);
 
-	idata->pre_func();
+	ipl_execute_pre(idata);
 
 	for (i=0; idata->steps[i].major != -1; i++) {
-		rc = idata->steps[i].func();
+		rc = ipl_execute_istep(&idata->steps[i]);
 		if (rc != 0 && rc != -1)
 			break;
 	}
@@ -182,9 +213,9 @@ int ipl_run_step(const char *name)
 	if (ipl_mode() == IPL_AUTOBOOT && step->major != 0)
 		return EINVAL;
 
-	idata->pre_func();
+	ipl_execute_pre(idata);
 
-	rc = step->func();
+	rc = ipl_execute_istep(step);
 	if (rc == -1)
 		return ENOSYS;
 
