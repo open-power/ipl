@@ -165,6 +165,7 @@ static void set_core_status(void)
 		if (!pdbg_target_get_attribute_packed(core,
 						      "ATTR_HWAS_STATE",
 						      "41",
+						      1,
 						      buf)) {
 			ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
 			continue;
@@ -176,6 +177,7 @@ static void set_core_status(void)
 		if (!pdbg_target_set_attribute_packed(core,
 						      "ATTR_HWAS_STATE",
 						      "41",
+						      1,
 						      buf)) {
 			ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] update failed \n");
 			continue;
