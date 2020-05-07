@@ -31,16 +31,56 @@ static bool isstring(const char *arg)
 	return true;
 }
 
+static bool is_range(const char *arg, int *begin, int *end)
+{
+	int ret;
+
+	ret = sscanf(arg, "%d..%d", begin, end);
+	if (ret == 2)
+		return true;
+
+	return false;
+}
+
 static bool run_istep(const char *arg, int *rc)
 {
 	char *ptr1 = NULL, *ptr2 = NULL;
 	long int major, minor;
+	int begin = -1, end = -1;
 
 	assert(arg);
 
 	if (isstring(arg)) {
 		printf("Running istep procedure %s\n", arg);
 		*rc = ipl_run_step(arg);
+		return true;
+	}
+
+	if (is_range(arg, &begin, &end)) {
+		int i;
+
+		if (begin < 0 || begin > MAX_ISTEP) {
+			fprintf(stderr, "Invalid range %s\n", arg);
+			return false;
+		}
+
+		if (end < 0 || end > MAX_ISTEP) {
+			fprintf(stderr, "Invalid range %s\n", arg);
+			return false;
+		}
+
+		if (end < begin) {
+			fprintf(stderr, "Invalid range %s\n", arg);
+			return false;
+		}
+
+		for (i=begin; i<=end; i++) {
+			printf("Running istep %d\n", i);
+			*rc = ipl_run_major(i);
+			if (*rc)
+				break;
+		}
+
 		return true;
 	}
 
@@ -81,7 +121,7 @@ static bool run_istep(const char *arg, int *rc)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: ipl [options] <istep> [<istep>...]\n");
+	fprintf(stderr, "Usage: ipl [options] [<istep..<istep>] <istep> [<istep>...]\n");
 	fprintf(stderr, "   Options:\n");
 	fprintf(stderr, "      -b kernel  for kernel backend\n");
 	fprintf(stderr, "      -b sbefifo  for sbefifo backend (default)\n");
@@ -163,6 +203,9 @@ int main(int argc, char * const *argv)
 		rc = 0;
 		if (!run_istep(argv[i], &rc))
 			return -1;
+
+		if (rc)
+			break;
 	}
 
 	return 0;
