@@ -5,7 +5,7 @@ extern "C" {
 #include <stdbool.h>
 }
 
-#define IPL_DEF(a)	"#a", ipl_ ## a
+#define IPL_DEF(a)	#a, ipl_ ## a
 
 struct ipl_step {
 	const char *name;
