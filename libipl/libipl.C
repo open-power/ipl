@@ -125,10 +125,22 @@ static int ipl_execute_istep(struct ipl_step *step)
 	return rc;
 }
 
+static struct ipl_step *ipl_find_minor(struct ipl_step *steps, int minor)
+{
+	int i;
+
+	for (i=0; steps[i].minor != -1; i++) {
+		if (steps[i].minor == minor)
+			return &steps[i];
+	}
+
+	return NULL;
+}
+
 int ipl_run_major_minor(int major, int minor)
 {
 	struct ipl_step_data *idata;
-	int i;
+	struct ipl_step *step = NULL;
 	int rc = 0;
 
 	if (major < 0 || major > MAX_ISTEP || minor < 0)
@@ -140,19 +152,17 @@ int ipl_run_major_minor(int major, int minor)
 	idata = &ipl_steps[major];
 	assert(idata->steps);
 
+	step = ipl_find_minor(idata->steps, minor);
+	if (!step)
+		return EINVAL;
+
 	ipl_execute_pre(idata);
 
-	for (i=0; idata->steps[i].major != -1; i++) {
-		if (idata->steps[i].minor == minor) {
-			rc = ipl_execute_istep(&idata->steps[i]);
-			if (rc == -1)
-				return ENOSYS;
-			else
-				return rc;
-		}
-	}
+	rc = ipl_execute_istep(step);
+	if (rc == -1)
+		return ENOSYS;
 
-	return EINVAL;
+	return rc;
 }
 
 int ipl_run_major(int major)
