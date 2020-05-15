@@ -76,6 +76,8 @@ static int ipl_init_p10(void)
 }
 #endif /* IPL_P10 */
 
+static void ipl_set_mode(enum ipl_mode mode);
+
 int ipl_init(enum ipl_mode mode)
 {
 	char *tmp;
@@ -248,7 +250,7 @@ void ipl_list(int major)
 		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
 }
 
-void ipl_set_mode(enum ipl_mode mode)
+static void ipl_set_mode(enum ipl_mode mode)
 {
 	g_ipl_mode = mode;
 }
