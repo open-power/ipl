@@ -9,6 +9,11 @@ enum ipl_mode {
 	IPL_CRONUS,
 };
 
+enum ipl_type {
+	IPL_TYPE_NORMAL = 0,
+	IPL_TYPE_MPIPL,
+};
+
 #define IPL_ERROR   0
 #define IPL_INFO    1
 #define IPL_DEBUG   2
@@ -24,6 +29,9 @@ int ipl_run_major_minor(int major, int minor);
 int ipl_run_major(int major);
 int ipl_run_step(const char *name);
 void ipl_list(int major);
+
+void ipl_set_type(enum ipl_type type);
+enum ipl_type ipl_type(void);
 
 void ipl_set_logfunc(ipl_log_func_t fn, void *private_data);
 void ipl_set_loglevel(int loglevel);
