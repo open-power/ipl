@@ -62,7 +62,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 	struct pdbg_target *proc;
         uint64_t retry_limit_ms = 30 * 60 * 1000;
         uint64_t delay_ms = 100;
-	int rc = 0;
+	int rc = 1;
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapi_rc;
@@ -70,15 +70,20 @@ int ipl_istep_via_hostboot(int major, int minor)
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
+		// Run HWP only on master processor
+		if (!ipl_is_master_proc(proc))
+			continue;
+
 		fapi_rc = p10_do_fw_hb_istep(proc, major, minor,
 					     retry_limit_ms, delay_ms);
-		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS) {
+		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS)
 			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
 				major, minor, pdbg_target_index(proc), fapi_rc);
-			rc = rc + 1;
-		}
+		else
+			rc = 0;
 
 		ipl_error_callback(fapi_rc == fapi2::FAPI2_RC_SUCCESS);
+		break;
 	}
 
 	return rc;
