@@ -191,7 +191,7 @@ static int ipl_sbe_config_update(void)
 {
 	struct pdbg_target *root, *proc;
 	uint32_t boot_flags = 0;
-	int rc = 0;
+	int rc = 1;
 	uint8_t istep_mode, core_mode;
 
 	root = pdbg_target_root();
@@ -228,11 +228,16 @@ static int ipl_sbe_config_update(void)
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
+		// Run HWP only on master processor
+		if (!ipl_is_master_proc(proc))
+			continue;
+
 		fapirc = p10_setup_sbe_config(proc);
-		if (fapirc != fapi2::FAPI2_RC_SUCCESS)
-			rc++;
+		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
+			rc = 0;
 
 		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		break;
 	}
 
 	return rc;
