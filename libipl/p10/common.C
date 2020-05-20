@@ -33,23 +33,25 @@ bool ipl_is_master_proc(struct pdbg_target *proc)
 
 int ipl_istep_via_sbe(int major, int minor)
 {
-	struct pdbg_target *pib;
-	int rc = 0;
+	struct pdbg_target *pib, *proc;
+	int rc = 1;
 
 	pdbg_for_each_class_target("pib", pib) {
-		int ret;
-
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
 
-		ret = sbe_istep(pib, major, minor);
-		if (ret) {
+		// Run SBE isteps only on master processor
+		proc = pdbg_target_require_parent("proc", pib);
+		if (!ipl_is_master_proc(proc))
+			continue;
+
+		rc = sbe_istep(pib, major, minor);
+		if (rc)
 			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
 				major, minor, pdbg_target_index(pib), rc);
-			rc = rc + 1;
-		}
 
-		ipl_error_callback(ret == 0);
+		ipl_error_callback(rc == 0);
+		break;
 	}
 
 	return rc;
