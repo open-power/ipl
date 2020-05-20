@@ -246,7 +246,7 @@ static int ipl_sbe_config_update(void)
 static int ipl_sbe_start(void)
 {
 	struct pdbg_target *proc;
-	int rc = 0;
+	int rc = 1, ret = 0;
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
@@ -254,11 +254,25 @@ static int ipl_sbe_start(void)
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
-		fapirc = p10_start_cbs(proc, true);
-		if (fapirc != fapi2::FAPI2_RC_SUCCESS)
-			rc++;
+		if (ipl_mode() == IPL_CRONUS) {
+			fapirc = p10_start_cbs(proc, true);
+			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
+				ret++;
 
-		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+			ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+			rc = ret;
+			continue;
+		}
+
+		// Run HWP only on master processor in non cronus mode
+		if (ipl_is_master_proc(proc)) {
+			fapirc = p10_start_cbs(proc, true);
+			if (fapirc == fapi2::FAPI2_RC_SUCCESS)
+				rc = 0;
+
+			ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+			break;
+		}
 	}
 
 	/*
