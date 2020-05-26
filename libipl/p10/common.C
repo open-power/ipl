@@ -11,6 +11,26 @@ extern "C" {
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <ekb/chips/p10/procedures/hwp/istep/p10_do_fw_hb_istep.H>
 
+bool ipl_is_master_proc(struct pdbg_target *proc)
+{
+	uint8_t type;
+
+	if (!pdbg_target_get_attribute(proc, "ATTR_PROC_MASTER_TYPE", 1, 1, &type)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_PROC_MASTER_TYPE] read failed \n");
+
+		if (pdbg_target_index(proc) == 0)
+			return true;
+
+		return false;
+	}
+
+	/* Attribute value 0 corresponds to master processor */
+	if (type == 0)
+		return true;
+
+	return false;
+}
+
 int ipl_istep_via_sbe(int major, int minor)
 {
 	struct pdbg_target *pib;

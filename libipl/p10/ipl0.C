@@ -8,6 +8,7 @@ extern "C" {
 
 #include "libipl.H"
 #include "libipl_internal.H"
+#include "common.H"
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_start_cbs.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_ref_clock.H>
@@ -108,23 +109,6 @@ static int ipl_asset_protection(void)
 	return -1;
 }
 
-static bool is_master_proc(struct pdbg_target *proc)
-{
-	uint8_t type;
-
-	if (!pdbg_target_get_attribute(proc, "ATTR_PROC_MASTER_TYPE", 1, 1, &type)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_PROC_MASTER_TYPE] read failed \n");
-		/* TODO: Revisit this error logic. */
-		return false;
-	}
-
-	/* Attribute value 0 corresponds to master processor */
-	if (type == 0)
-		return true;
-	else
-		return false;
-}
-
 static int ipl_proc_select_boot_master(void)
 {
 	struct pdbg_target *proc;
@@ -136,7 +120,7 @@ static int ipl_proc_select_boot_master(void)
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
-		if (!is_master_proc(proc))
+		if (!ipl_is_master_proc(proc))
 			continue;
 
 		fapirc = p10_select_boot_master(proc);
