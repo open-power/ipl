@@ -252,6 +252,24 @@ void ipl_list(int major)
 
 static void ipl_set_mode(enum ipl_mode mode)
 {
+	switch (mode) {
+	case IPL_AUTOBOOT:
+		ipl_log(IPL_INFO, "IPL mode set to AUTOBOOT\n");
+		break;
+
+	case IPL_HOSTBOOT:
+		ipl_log(IPL_INFO, "IPL mode set to HOSTBOOT\n");
+		break;
+
+	case IPL_CRONUS:
+		ipl_log(IPL_INFO, "IPL mode set to CRONUS\n");
+		break;
+
+	default:
+		ipl_log(IPL_ERROR, "Invalid IPL mode\n");
+		assert(0);
+	}
+
 	g_ipl_mode = mode;
 }
 
