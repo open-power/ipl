@@ -51,6 +51,9 @@ static int ipl_set_ref_clock(void)
 	struct pdbg_target *proc;
 	int rc = 0;
 
+        if (ipl_type() == IPL_TYPE_MPIPL)
+                return -1;
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
@@ -74,6 +77,9 @@ static int ipl_proc_clock_test(void)
 {
 	struct pdbg_target *proc;
 	int rc = 0;
+
+	if (ipl_type() == IPL_TYPE_MPIPL)
+		return -1;
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
@@ -264,14 +270,32 @@ static int ipl_sbe_start(void)
 			continue;
 		}
 
-		// Run HWP only on master processor in non cronus mode
+		// Run HWP or MPIPL chip-op only on master processor in
+		// non cronus mode
 		if (ipl_is_master_proc(proc)) {
-			fapirc = p10_start_cbs(proc, true);
-			if (fapirc == fapi2::FAPI2_RC_SUCCESS)
-				rc = 0;
+			if (ipl_type() == IPL_TYPE_MPIPL) {
+				struct pdbg_target *pib;
 
-			ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
-			break;
+				pdbg_for_each_target("pib", proc, pib) {
+					ret = sbe_mpipl_continue(pib);
+					if (ret != 0) {
+						ipl_log(IPL_ERROR,
+							"Continue MPIPL failed, ret=%d\n",
+							ret);
+					}
+
+					ipl_error_callback(ret == 0);
+					return ret;
+				}
+			} else {
+				fapirc = p10_start_cbs(proc, true);
+				if (fapirc == fapi2::FAPI2_RC_SUCCESS)
+					rc = 0;
+
+				ipl_error_callback(fapirc
+					== fapi2::FAPI2_RC_SUCCESS);
+					break;
+			}
 		}
 	}
 
@@ -279,7 +303,7 @@ static int ipl_sbe_start(void)
          * Pause here for few seconds to give some time for sbe to boot
          * FIXME: Replace this with HWP which will check SBE boot status
 	 */
-        sleep(5);
+	sleep(5);
 
 	return rc;
 }
