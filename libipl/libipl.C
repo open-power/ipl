@@ -33,20 +33,19 @@ static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 
 void ipl_pre(void)
 {
-	struct pdbg_target *pib, *fsi;
+	struct pdbg_target *proc;
 
-	pdbg_for_each_class_target("pib", pib) {
-		if (ipl_mode() <= IPL_HOSTBOOT && pdbg_target_index(pib) != 0)
+	pdbg_for_each_class_target("proc", proc) {
+		struct pdbg_target *fsi, *pib;
+
+		if (ipl_mode() == IPL_AUTOBOOT && pdbg_target_index(proc) != 0)
 			continue;
 
-		pdbg_target_probe(pib);
-	}
+		pdbg_for_each_target("fsi", proc, fsi)
+			pdbg_target_probe(fsi);
 
-	pdbg_for_each_class_target("fsi", fsi) {
-		if (ipl_mode() <= IPL_HOSTBOOT && pdbg_target_index(fsi) != 0)
-			continue;
-
-		pdbg_target_probe(fsi);
+		pdbg_for_each_target("pib", proc, pib)
+			pdbg_target_probe(pib);
 	}
 }
 
