@@ -58,6 +58,11 @@ static int ipl_proc_psiinit(void)
 	return -1;
 }
 
+static int ipl_proc_bmc_pciinit(void)
+{
+	return -1;
+}
+
 static struct ipl_step ipl14[] = {
 	{ IPL_DEF(mss_memdiag),                 14,  1,  true,  true  },
 	{ IPL_DEF(mss_thermal_init),            14,  2,  true,  true  },
@@ -68,6 +73,7 @@ static struct ipl_step ipl14[] = {
 	{ IPL_DEF(proc_htm_setup),              14,  7,  true,  true  },
 	{ IPL_DEF(host_mpipl_service),          14,  8,  true,  true  },
 	{ IPL_DEF(proc_psiinit),                14,  9,  true,  true  },
+	{ IPL_DEF(proc_bmc_pciinit),            14, 10,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 
