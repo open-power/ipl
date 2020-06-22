@@ -38,15 +38,20 @@ void ipl_pre(void)
 
 	pdbg_for_each_class_target("proc", proc) {
 		struct pdbg_target *fsi, *pib;
+		char path[16];
 
-		if (ipl_mode() == IPL_AUTOBOOT && pdbg_target_index(proc) != 0)
-			continue;
+		sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
+		fsi = pdbg_target_from_path(NULL, path);
+		assert(fsi);
 
-		pdbg_for_each_target("fsi", proc, fsi)
-			pdbg_target_probe(fsi);
+		sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
+		pib = pdbg_target_from_path(NULL, path);
+		assert(pib);
 
-		pdbg_for_each_target("pib", proc, pib)
-			pdbg_target_probe(pib);
+		if (pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED ||
+		    pdbg_target_probe(pib) != PDBG_TARGET_ENABLED) {
+			pdbg_target_status_set(proc, PDBG_TARGET_DISABLED);
+		}
 	}
 }
 
