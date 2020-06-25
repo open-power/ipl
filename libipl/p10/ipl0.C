@@ -2,6 +2,7 @@ extern "C" {
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #include <libpdbg.h>
 }
@@ -15,6 +16,18 @@ extern "C" {
 #include <ekb/chips/p10/procedures/hwp/perv/p10_clock_test.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_sbe_config.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_select_boot_master.H>
+
+#include <libguard/guard_interface.hpp>
+#include <libguard/guard_entity.hpp>
+#include <filesystem>
+#include <fstream>
+#include <array>
+
+#define GENESIS_BOOT_FILE	"/var/lib/phal/genesisboot"
+
+#define FRU_TYPE_CORE   0x07
+#define FRU_TYPE_MC     0x44
+
 
 static void ipl_pre0(void)
 {
@@ -36,9 +49,162 @@ static int ipl_DisableAttns(void)
 	return -1;
 }
 
+static bool set_or_clear_state(struct pdbg_target *target, bool do_set)
+{
+	uint8_t buf[5];
+	uint8_t flag_present = 0x40;
+	uint8_t flag_functional = 0x20;
+
+	if (!pdbg_target_get_attribute_packed(target,
+					      "ATTR_HWAS_STATE",
+					      "41", 1, buf)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
+		return false;
+	}
+
+	if(do_set)
+		buf[4] |= (flag_present | flag_functional);
+	else
+		buf[4] &= (uint8_t)(~flag_functional);
+
+	if (!pdbg_target_set_attribute_packed(target,
+					      "ATTR_HWAS_STATE",
+					      "41", 1, buf)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] write failed\n");
+		return false;
+	}
+	return true;
+}
+
+static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
+{
+	uint8_t *match_path = (uint8_t *)priv;
+	uint8_t path[21] = { 0 };
+	uint8_t type;
+
+	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
+		return 0;
+
+	if (memcmp(match_path, path, sizeof(path)) != 0)
+		return 0;
+
+	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
+		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
+		                 pdbg_target_path(target));
+		return 0;
+	}
+
+	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
+
+		if (!set_or_clear_state(target, false)) {
+			ipl_log(IPL_ERROR, "Failed to clear functional state of core, \
+			                    index=0x%x\n", pdbg_target_index(target));
+			return 1;
+		}
+
+	} else if (ipl_type() == IPL_TYPE_NORMAL && type != FRU_TYPE_MC) {
+
+		if (!set_or_clear_state(target, false)) {
+			ipl_log(IPL_ERROR, "Failed to clear functional state of fru \
+			                    type 0x%x\n", type);
+			return 1;
+		}
+
+	} else {
+		ipl_log(IPL_DEBUG, "Skipping to clear functional state for \
+		                   fru type 0x%x in ipl mode %d\n", type, ipl_type());
+	}
+
+	return 0;
+}
+
+//@Brief Function will get the guard records and will unset the functional
+//state of the guarded resources in HWAS state attribute in device tree.
+static void update_hwas_state(void)
+{
+	openpower::guard::libguard_init(false);
+
+	auto records = openpower::guard::getAll();
+	if (records.size()) {
+		ipl_log(IPL_INFO, "Number of Records = %d\n",records.size());
+
+		for (const auto& elem : records) {
+			uint8_t path[21];
+			int index = 0, i, err;
+
+			memset(path, 0, sizeof(path));
+
+			path[index] = elem.targetId.type_size;
+			index += 1;
+
+			for (i = 0; i < (0x0F & elem.targetId.type_size); i++) {
+
+				path[index] = elem.targetId.pathElements[i].targetType;
+				path[index+1] = elem.targetId.pathElements[i].instance;
+
+				index += sizeof(elem.targetId.pathElements[0]);
+			}
+
+			err = pdbg_target_traverse(NULL, update_hwas_state_callback, path);
+			if (err == 0)
+				ipl_log(IPL_ERROR, "Guarded record not found in device tree\n");
+		}
+	}
+}
+
+//@Brief Function will set the functional and present state of master proc
+// and of available procs in the system. For few children of master proc
+// functional and present state will be set in device tree during genesis
+// boot.
+static bool update_genesis_hwas_state(void)
+{
+	std::array<const char*, 5> mProcChild =
+		{"core", "pauc", "pau", "iohs", "mc"};
+	struct pdbg_target *proc, *child;
+
+	pdbg_for_each_class_target("proc", proc) {
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+			continue;
+
+		if (!set_or_clear_state(proc, true)) {
+			ipl_log(IPL_ERROR,
+				"Failed to set HWAS state of proc %d\n",
+				pdbg_target_index(proc));
+			return false;
+		}
+
+		if(!ipl_is_master_proc(proc))
+			continue;
+
+		for(const char* data : mProcChild) {
+			pdbg_for_each_target(data, proc, child) {
+				if (!set_or_clear_state(child, true)) {
+					ipl_log(IPL_ERROR,
+						"Failed to set HWAS state of %s, index %d\n",
+						data, pdbg_target_index(child));
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 static int ipl_updatehwmodel(void)
 {
-	return -1;
+	if (!std::filesystem::exists((char *)GENESIS_BOOT_FILE)) {
+		if(!update_genesis_hwas_state()) {
+			ipl_log(IPL_ERROR,"Failed to set genesis boot state\n");
+			return 1;
+		}
+
+		std::filesystem::create_directories(dirname((char *)GENESIS_BOOT_FILE));
+		std::ofstream file((char *)GENESIS_BOOT_FILE);
+	}
+
+	update_hwas_state();
+	return 0;
 }
 
 static int ipl_alignment_check(void)
@@ -145,36 +311,6 @@ static int ipl_hb_config_update(void)
 	return -1;
 }
 
-static void set_core_status(void)
-{
-	struct pdbg_target *core;
-
-	pdbg_for_each_class_target("core", core) {
-		uint8_t buf[5];
-
-		if (!pdbg_target_get_attribute_packed(core,
-						      "ATTR_HWAS_STATE",
-						      "41",
-						      1,
-						      buf)) {
-			ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
-			continue;
-		}
-
-		// TODO hwas state should be set based on guard records status.
-		buf[4] |= 0x40;
-
-		if (!pdbg_target_set_attribute_packed(core,
-						      "ATTR_HWAS_STATE",
-						      "41",
-						      1,
-						      buf)) {
-			ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] update failed \n");
-			continue;
-		}
-	}
-}
-
 static bool small_core_enabled(void)
 {
 	struct stat statbuf;
@@ -214,9 +350,6 @@ static int ipl_sbe_config_update(void)
 		ipl_log(IPL_ERROR, "Attribute [ATTR_BOOT_FLAGS] update failed \n");
 		return 1;
 	}
-
-	//Initialize core target functional status
-	set_core_status();
 
 	if (small_core_enabled())
 		core_mode = 0x00;  /* CORE_UNFUSED mode */

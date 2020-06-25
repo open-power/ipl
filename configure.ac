@@ -19,6 +19,7 @@ if test "$CHIP" = "p10" ; then
 fi
 
 AC_LANG([C++])
+AX_CXX_COMPILE_STDCXX_17([noext])
 
 AC_PROG_CXX
 AC_PROG_LIBTOOL
@@ -55,6 +56,18 @@ AC_LINK_IFELSE(
     [libekb_init])],
   [LIBS="$LIBS -lekb"],
   [AC_MSG_ERROR([libekb not found.])])
+LDFLAGS=$saved_LDFLAGS
+CXXFLAGS=$saved_CXXFLAGS
+
+saved_LDFLAGS=$LDFLAGS
+saved_CXXFLAGS=$CXXFLAGS
+LDFLAGS="$LDFLAGS -lguard"
+CXXFLAGS="$CXXFLAGS -I${INCDIR}/libguard -I${INCDIR}/libguard/include"
+AC_LINK_IFELSE(
+               [AC_LANG_PROGRAM([#include <guard_interface.hpp>],
+			   [openpower::guard::libguard_init])],
+			   [LIBS="$LIBS -lguard"],
+			   [AC_MSG_ERROR([Guard library not found])])
 LDFLAGS=$saved_LDFLAGS
 CXXFLAGS=$saved_CXXFLAGS
 
