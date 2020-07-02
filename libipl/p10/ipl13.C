@@ -20,12 +20,12 @@ static int ipl_mss_scominit(void)
 
 static int ipl_mss_draminit(void)
 {
-	return ipl_istep_via_hostboot(13, 1);
+	return ipl_istep_via_hostboot(13, 2);
 }
 
 static int ipl_mss_draminit_mc(void)
 {
-	return ipl_istep_via_hostboot(13, 1);
+	return ipl_istep_via_hostboot(13, 3);
 }
 
 static struct ipl_step ipl13[] = {
