@@ -167,7 +167,7 @@ int ipl_run_major_minor(int major, int minor)
 
 	rc = ipl_execute_istep(step);
 	if (rc == -1)
-		return ENOSYS;
+		rc = 0;
 
 	return rc;
 }
@@ -194,6 +194,9 @@ int ipl_run_major(int major)
 		if (rc != 0 && rc != -1)
 			break;
 	}
+
+	if (rc == -1)
+		rc = 0;
 
 	return rc;
 }
@@ -234,7 +237,7 @@ int ipl_run_step(const char *name)
 
 	rc = ipl_execute_istep(step);
 	if (rc == -1)
-		return ENOSYS;
+		rc = 0;
 
 	return rc;
 }
