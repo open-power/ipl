@@ -114,7 +114,7 @@ static int ipl_proc_sbe_fabricinit(void)
 	return ipl_istep_via_sbe(3, 20);
 }
 
-static int ipl_proc_sbe_check_master(void)
+static int ipl_proc_sbe_check_boot_proc(void)
 {
 	return ipl_istep_via_sbe(3, 21);
 }
@@ -150,7 +150,7 @@ static struct ipl_step ipl3[] = {
 	{ IPL_DEF(proc_sbe_scominit),             3, 18,  true,  true  },
 	{ IPL_DEF(proc_sbe_lpc),                  3, 19,  true,  true  },
 	{ IPL_DEF(proc_sbe_fabricinit),           3, 20,  true,  true  },
-	{ IPL_DEF(proc_sbe_check_master),         3, 21,  true,  true  },
+	{ IPL_DEF(proc_sbe_check_boot_proc),      3, 21,  true,  true  },
 	{ IPL_DEF(proc_sbe_mcs_setup),            3, 22,  true,  true  },
 	{ IPL_DEF(proc_sbe_select_ex),            3, 23,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },

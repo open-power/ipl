@@ -38,12 +38,12 @@ static int ipl_proc_setup_mmio_bars(void)
 	return ipl_istep_via_hostboot(14, 5);
 }
 
-static int ipl_proc_htm_setup(void)
+static int ipl_proc_exit_cache_contained(void)
 {
 	return ipl_istep_via_hostboot(14, 6);
 }
 
-static int ipl_proc_exit_cache_contained(void)
+static int ipl_proc_htm_setup(void)
 {
 	return ipl_istep_via_hostboot(14, 7);
 }

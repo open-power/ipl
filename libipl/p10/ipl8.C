@@ -18,7 +18,7 @@ static int ipl_host_setup_sbe(void)
 	return ipl_istep_via_hostboot(8, 1);
 }
 
-static int ipl_host_slave_sbe_config(void)
+static int ipl_host_secondary_sbe_config(void)
 {
 	return ipl_istep_via_hostboot(8, 2);
 }
@@ -28,7 +28,7 @@ static int ipl_host_cbs_start(void)
 	return ipl_istep_via_hostboot(8, 3);
 }
 
-static int ipl_proc_check_slave_sbe_seeprom_complete(void)
+static int ipl_proc_check_secondary_sbe_seeprom_complete(void)
 {
 	return ipl_istep_via_hostboot(8, 4);
 }
@@ -84,20 +84,20 @@ static int ipl_proc_iohs_enable_ridi(void)
 }
 
 static struct ipl_step ipl8[] = {
-	{ IPL_DEF(host_setup_sbe),                          8,  1,  false, true  },
-	{ IPL_DEF(host_slave_sbe_config),                   8,  2,  false, true  },
-	{ IPL_DEF(host_cbs_start),                          8,  3,  false, true  },
-	{ IPL_DEF(proc_check_slave_sbe_seeprom_complete),   8,  4,  true,  true  },
-	{ IPL_DEF(host_attnlisten_proc),                    8,  5,  false, true  },
-	{ IPL_DEF(proc_fbc_eff_config),                     8,  6,  true,  true  },
-	{ IPL_DEF(proc_eff_config_links),                   8,  7,  true,  true  },
-	{ IPL_DEF(proc_attr_update),                        8,  8,  true,  true  },
-	{ IPL_DEF(proc_chiplet_fabric_scominit),            8,  9,  true,  true  },
-	{ IPL_DEF(host_set_voltages),                       8, 10,  true,  true  },
-	{ IPL_DEF(proc_io_scominit),                        8, 11,  true,  true  },
-	{ IPL_DEF(proc_load_ioppe),                         8, 12,  true,  true  },
-	{ IPL_DEF(proc_init_ioppe),                         8, 13,  true,  true  },
-	{ IPL_DEF(proc_iohs_enable_ridi),                   8, 14,  true,  true  },
+	{ IPL_DEF(host_setup_sbe),                              8,  1,  false, true  },
+	{ IPL_DEF(host_secondary_sbe_config),                   8,  2,  false, true  },
+	{ IPL_DEF(host_cbs_start),                              8,  3,  false, true  },
+	{ IPL_DEF(proc_check_secondary_sbe_seeprom_complete),   8,  4,  true,  true  },
+	{ IPL_DEF(host_attnlisten_proc),                        8,  5,  false, true  },
+	{ IPL_DEF(proc_fbc_eff_config),                         8,  6,  true,  true  },
+	{ IPL_DEF(proc_eff_config_links),                       8,  7,  true,  true  },
+	{ IPL_DEF(proc_attr_update),                            8,  8,  true,  true  },
+	{ IPL_DEF(proc_chiplet_fabric_scominit),                8,  9,  true,  true  },
+	{ IPL_DEF(host_set_voltages),                           8, 10,  true,  true  },
+	{ IPL_DEF(proc_io_scominit),                            8, 11,  true,  true  },
+	{ IPL_DEF(proc_load_ioppe),                             8, 12,  true,  true  },
+	{ IPL_DEF(proc_init_ioppe),                             8, 13,  true,  true  },
+	{ IPL_DEF(proc_iohs_enable_ridi),                       8, 14,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },
 };
 

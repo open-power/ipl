@@ -43,7 +43,7 @@ static int ipl_host_discover_targets(void)
 	return ipl_istep_via_hostboot(6, 6);
 }
 
-static int ipl_host_update_master_tpm(void)
+static int ipl_host_update_primary_tpm(void)
 {
 	return ipl_istep_via_hostboot(6, 7);
 }
@@ -65,7 +65,7 @@ static struct ipl_step ipl6[] = {
 	{ IPL_DEF(host_init_fsi),            6,  4,  true,  true  },
 	{ IPL_DEF(host_set_ipl_parms),       6,  5,  true,  true  },
 	{ IPL_DEF(host_discover_targets),    6,  6,  true,  true  },
-	{ IPL_DEF(host_update_master_tpm),   6,  7,  true,  true  },
+	{ IPL_DEF(host_update_primary_tpm),  6,  7,  true,  true  },
 	{ IPL_DEF(host_gard),                6,  8,  true,  true  },
 	{ IPL_DEF(host_voltage_config),      6,  9,  true,  true  },
 	{ NULL, NULL, -1, -1, false, false },

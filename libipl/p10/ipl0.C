@@ -115,7 +115,7 @@ static int ipl_asset_protection(void)
 	return -1;
 }
 
-static int ipl_proc_select_boot_master(void)
+static int ipl_proc_select_boot_prom(void)
 {
 	struct pdbg_target *proc;
 	int rc = 1;
@@ -329,7 +329,7 @@ static struct ipl_step ipl0[] = {
 	{ IPL_DEF(proc_prep_ipl),             0,  8,  true,  true  },
 	{ IPL_DEF(edmarepair),                0,  9,  true,  true  },
 	{ IPL_DEF(asset_protection),          0, 10,  true,  true  },
-	{ IPL_DEF(proc_select_boot_master),   0, 11,  true,  true  },
+	{ IPL_DEF(proc_select_boot_prom),     0, 11,  true,  true  },
 	{ IPL_DEF(hb_config_update),          0, 12,  true,  true  },
 	{ IPL_DEF(sbe_config_update),         0, 13,  true,  true  },
 	{ IPL_DEF(sbe_start),                 0, 14,  true,  true  },
