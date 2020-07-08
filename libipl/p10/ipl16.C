@@ -13,7 +13,7 @@ static void ipl_pre16(void)
 	ipl_pre();
 }
 
-static int ipl_host_activate_core(void)
+static int ipl_host_activate_boot_core(void)
 {
 	return ipl_istep_via_hostboot(16, 1);
 }
@@ -39,7 +39,7 @@ static int ipl_host_ipl_complete(void)
 }
 
 static struct ipl_step ipl16[] = {
-	{ IPL_DEF(host_activate_core),              16,  1,  true,  true  },
+	{ IPL_DEF(host_activate_boot_core),         16,  1,  true,  true  },
 	{ IPL_DEF(host_activate_secondary_cores),   16,  2,  true,  true  },
 	{ IPL_DEF(host_secure_rng),                 16,  3,  true,  true  },
 	{ IPL_DEF(mss_scrub),                       16,  4,  true,  true  },
