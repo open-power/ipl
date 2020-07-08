@@ -23,8 +23,6 @@ extern "C" {
 #include <fstream>
 #include <array>
 
-#define GENESIS_BOOT_FILE	"/var/lib/phal/genesisboot"
-
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 
@@ -193,14 +191,25 @@ static bool update_genesis_hwas_state(void)
 
 static int ipl_updatehwmodel(void)
 {
-	if (!std::filesystem::exists((char *)GENESIS_BOOT_FILE)) {
+	namespace fs = std::filesystem;
+	constexpr auto GENESIS_BOOT_FILE = "/var/lib/phal/genesisboot";
+	fs::path genesis_boot_file = GENESIS_BOOT_FILE;
+
+	ipl_log(IPL_INFO, "Istep: updatehwmodel: started\n");
+
+	if (!fs::exists(genesis_boot_file)) {
+		ipl_log(IPL_INFO, "updatehwmodel: Genesis mode boot\n");
 		if(!update_genesis_hwas_state()) {
 			ipl_log(IPL_ERROR,"Failed to set genesis boot state\n");
 			return 1;
 		}
 
-		std::filesystem::create_directories(dirname((char *)GENESIS_BOOT_FILE));
-		std::ofstream file((char *)GENESIS_BOOT_FILE);
+		//Create new file to skip the genesis setup in next boot.
+		if (!fs::create_directories(genesis_boot_file.parent_path())){
+			ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
+			return 1;
+		}
+		std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
 	update_hwas_state();
