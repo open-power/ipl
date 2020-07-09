@@ -81,6 +81,8 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	uint8_t type;
 
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
+	  	//Returning 0 for continue traversal, as the requested target is not
+		//found
 		return 0;
 
 	if (memcmp(match_path, path, sizeof(path)) != 0)
@@ -89,7 +91,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
 		                 pdbg_target_path(target));
-		return 0;
+		//ATTR_TYPE attribute not found for the target, hence this is an
+		//error case, so need to stop
+		return 2;
 	}
 
 	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
@@ -97,7 +101,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		if (!set_or_clear_state(target, false)) {
 			ipl_log(IPL_ERROR, "Failed to clear functional state of core, \
 			                    index=0x%x\n", pdbg_target_index(target));
-			return 1;
+			//Unable to clear the functional state of HWAS attribute of the
+			//target, so we need to stop
+			return 2;
 		}
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL && type != FRU_TYPE_MC) {
@@ -105,7 +111,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		if (!set_or_clear_state(target, false)) {
 			ipl_log(IPL_ERROR, "Failed to clear functional state of fru \
 			                    type 0x%x\n", type);
-			return 1;
+			//Unable to clear the functional state of HWAS attribute of the
+			//target, so we need to stop
+			return 2;
 		}
 
 	} else {
@@ -113,7 +121,8 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		                   fru type 0x%x in ipl mode %d\n", type, ipl_type());
 	}
 
-	return 0;
+	//Requested target found
+	return 1;
 }
 
 //@Brief Function will get the guard records and will unset the functional
@@ -144,8 +153,9 @@ static void update_hwas_state(void)
 			}
 
 			err = pdbg_target_traverse(NULL, update_hwas_state_callback, path);
-			if (err == 0)
-				ipl_log(IPL_ERROR, "Guarded record not found in device tree\n");
+			if ((err == 0) || (err == 2))
+				ipl_log(IPL_ERROR, "Failed to set HWAS state for guard \
+				          record[ID: %d]\n", elem.recordId);
 		}
 	}
 }
