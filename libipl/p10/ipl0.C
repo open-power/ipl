@@ -229,12 +229,16 @@ static int ipl_set_ref_clock(void)
         if (ipl_type() == IPL_TYPE_MPIPL)
                 return -1;
 
+	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
+		ipl_log(IPL_INFO, "Running p10_setup_ref_clock HWP on processor %d\n",
+			pdbg_target_index(proc));
 		fapirc = p10_setup_ref_clock(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %d, rc=%d\n",
@@ -256,12 +260,16 @@ static int ipl_proc_clock_test(void)
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
+	ipl_log(IPL_INFO, "Istep: proc_clock_test: started\n");
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
+		ipl_log(IPL_INFO,"Running p10_clock_test HWP on processor %d\n",
+			pdbg_target_index(proc));
 		fapirc = p10_clock_test(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "HWP clock_test failed on proc %d, rc=%d\n",
@@ -295,6 +303,8 @@ static int ipl_proc_select_boot_prom(void)
 	struct pdbg_target *proc;
 	int rc = 1;
 
+	ipl_log(IPL_INFO, "Istep: proc_select_boot_prom: started\n");
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
@@ -304,6 +314,8 @@ static int ipl_proc_select_boot_prom(void)
 		if (!ipl_is_master_proc(proc))
 			continue;
 
+		ipl_log(IPL_INFO,"Running p10_select_boot_master HWP on processor %d\n",
+			pdbg_target_index(proc));
 		fapirc = p10_select_boot_master(proc);
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
@@ -345,6 +357,8 @@ static int ipl_sbe_config_update(void)
 	int rc = 1;
 	uint8_t istep_mode, core_mode;
 
+	ipl_log(IPL_INFO, "Istep: sbe_config_update: started\n");
+
 	root = pdbg_target_root();
 	if (!pdbg_target_get_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_ISTEP_MODE] read failed \n");
@@ -380,6 +394,8 @@ static int ipl_sbe_config_update(void)
 		if (!ipl_is_master_proc(proc))
 			continue;
 
+		ipl_log(IPL_INFO, "Running p10_setup_sbe_config HWP on processor %d\n",
+			pdbg_target_index(proc));
 		fapirc = p10_setup_sbe_config(proc);
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
@@ -396,6 +412,8 @@ static int ipl_sbe_start(void)
 	struct pdbg_target *proc;
 	int rc = 1, ret = 0;
 
+	ipl_log(IPL_INFO, "Istep: sbe_start: started\n");
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
@@ -403,6 +421,8 @@ static int ipl_sbe_start(void)
 			continue;
 
 		if (ipl_mode() == IPL_CRONUS) {
+			ipl_log(IPL_INFO, "Running p10_start_cbs HWP on processor %d\n",
+				pdbg_target_index(proc));
 			fapirc = p10_start_cbs(proc, true);
 			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
 				ret++;
@@ -419,6 +439,8 @@ static int ipl_sbe_start(void)
 				struct pdbg_target *pib;
 
 				pdbg_for_each_target("pib", proc, pib) {
+					ipl_log(IPL_INFO, "Running sbe_mpipl_continue on processor %d\n",
+						pdbg_target_index(proc));
 					ret = sbe_mpipl_continue(pib);
 					if (ret != 0) {
 						ipl_log(IPL_ERROR,

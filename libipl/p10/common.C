@@ -36,6 +36,8 @@ int ipl_istep_via_sbe(int major, int minor)
 	struct pdbg_target *pib, *proc;
 	int rc = 1;
 
+	ipl_log(IPL_INFO, "Istep: SBE %d.%d : started\n", major, minor);
+
 	pdbg_for_each_class_target("pib", pib) {
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
@@ -45,10 +47,13 @@ int ipl_istep_via_sbe(int major, int minor)
 		if (!ipl_is_master_proc(proc))
 			continue;
 
+		ipl_log(IPL_INFO, "Running sbe_istep on processor %d\n",
+			pdbg_target_index(proc));
+
 		rc = sbe_istep(pib, major, minor);
 		if (rc)
 			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
-				major, minor, pdbg_target_index(pib), rc);
+				major, minor, pdbg_target_index(proc), rc);
 
 		ipl_error_callback(rc == 0);
 		break;
@@ -64,6 +69,8 @@ int ipl_istep_via_hostboot(int major, int minor)
         uint64_t delay_ms = 100;
 	int rc = 1;
 
+	ipl_log(IPL_INFO, "Istep: Hostboot %d.%d : started\n", major, minor);
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapi_rc;
 
@@ -74,6 +81,8 @@ int ipl_istep_via_hostboot(int major, int minor)
 		if (!ipl_is_master_proc(proc))
 			continue;
 
+		ipl_log(IPL_INFO, "Running p10_do_fw_hb_istep HWP on processor %d\n",
+			pdbg_target_index(proc));
 		fapi_rc = p10_do_fw_hb_istep(proc, major, minor,
 					     retry_limit_ms, delay_ms);
 		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS)
