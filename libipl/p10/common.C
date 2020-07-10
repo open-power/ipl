@@ -1,6 +1,6 @@
 extern "C" {
 #include <stdio.h>
-
+#include <unistd.h>
 #include <libpdbg.h>
 }
 
@@ -10,6 +10,7 @@ extern "C" {
 
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <ekb/chips/p10/procedures/hwp/istep/p10_do_fw_hb_istep.H>
+#include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
 
 bool ipl_is_master_proc(struct pdbg_target *proc)
 {
@@ -96,4 +97,36 @@ int ipl_istep_via_hostboot(int major, int minor)
 	}
 
 	return rc;
+}
+
+bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
+{
+	sbeMsgReg_t sbeReg;
+	fapi2::ReturnCode fapi_rc;
+	uint32_t loopcount;
+
+	loopcount = wait_time_seconds > 0 ? wait_time_seconds : 5;
+
+	while (loopcount > 0) {
+	  	fapi_rc = p10_get_sbe_msg_register(proc, sbeReg);
+		if (fapi_rc == fapi2::FAPI2_RC_SUCCESS) {
+			if (sbeReg.sbeBooted) {
+				ipl_log(IPL_INFO, "SBE started. sbeReg[0x%08x]",
+					uint32_t(sbeReg.reg));
+				return true;
+			} else {
+				ipl_log(IPL_INFO, "SBE not started. sbeReg[0x%08x]",
+					uint32_t(sbeReg.reg));
+			}
+		} else {
+			ipl_log(IPL_ERROR,
+				"p10_get_sbe_msg_register failed for proc %d, rc=%d\n",
+				pdbg_target_index(proc), fapi_rc);
+		}
+
+		loopcount--;
+		sleep(1);
+	}
+
+	return false;
 }
