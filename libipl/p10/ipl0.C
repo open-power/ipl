@@ -463,21 +463,20 @@ static int ipl_sbe_start(void)
 				}
 			} else {
 				fapirc = p10_start_cbs(proc, true);
-				if (fapirc == fapi2::FAPI2_RC_SUCCESS)
-					rc = 0;
+				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
+					if (ipl_sbe_booted(proc, 5)) {
+						rc = 0;
+					} else {
+						ipl_log(IPL_ERROR, "SBE did not boot\n");
+						fapirc = ~(fapi2::FAPI2_RC_SUCCESS);
+					}
+				}
 
-				ipl_error_callback(fapirc
-					== fapi2::FAPI2_RC_SUCCESS);
-					break;
+				ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+				break;
 			}
 		}
 	}
-
-	/*
-         * Pause here for few seconds to give some time for sbe to boot
-         * FIXME: Replace this with HWP which will check SBE boot status
-	 */
-	sleep(5);
 
 	return rc;
 }
