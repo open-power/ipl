@@ -215,10 +215,12 @@ static int ipl_updatehwmodel(void)
 		}
 
 		//Create new file to skip the genesis setup in next boot.
-		if (!fs::create_directories(genesis_boot_file.parent_path())){
-			ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
-			return 1;
-		}
+        if (!fs::exists(genesis_boot_file.parent_path())) {
+            if (!fs::create_directories(genesis_boot_file.parent_path())){
+                ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
+                return 1;
+            }
+        }
 		std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
