@@ -490,7 +490,50 @@ static int ipl_startPRD(void)
 
 static int ipl_proc_attn_listen(void)
 {
-	return -1;
+	struct pdbg_target *fsi, *proc = NULL;
+	uint32_t regval; // for register read/write
+	int rc = 1;
+
+	ipl_log(IPL_INFO, "ipl_proc_attn_listen starting");
+
+	pdbg_for_each_class_target("fsi", fsi) {
+		if (pdbg_target_status(fsi) != PDBG_TARGET_ENABLED)
+			continue;
+
+		proc = pdbg_target_require_parent("proc", fsi);
+
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+			continue;
+
+		if (ipl_is_master_proc(proc)) {
+			break;
+		}
+	}
+
+	if (!proc)
+		return 1;
+
+	ipl_log(IPL_INFO, "enable attention listen on processor %d\n", pdbg_target_index(proc));
+
+	rc = fsi_read(fsi, 0x100d, &regval); // FSI2_PIB_TRUE_MASK
+	if (rc != 0) {
+		ipl_log(IPL_ERROR, "read TRUEMASK register failed, rc=%d\n", rc);
+	} else {
+		// ANY_ERROR, RECOVERABLE_ERROR
+		regval &= ~0x90000000;	// mask
+
+		// SYSTEM_CHECKSTOP, SPECIAL_ATTENTION, SELFBOOT_ENGINE_ATTENTION
+		regval |= 0x60000002;	// un-mask
+
+		rc = fsi_write(fsi, 0x100d, regval); // FSI2_PIB_TRUE_MASK
+		if (rc != 0) {
+			ipl_log(IPL_ERROR, "write TRUEMASK register failed, rc=%d\n", rc);
+		}
+		rc = 0;
+	}
+
+	ipl_error_callback(rc == 0);
+	return rc;
 }
 
 static struct ipl_step ipl0[] = {
