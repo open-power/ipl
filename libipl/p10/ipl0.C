@@ -166,8 +166,8 @@ static void update_hwas_state(void)
 // boot.
 static bool update_genesis_hwas_state(void)
 {
-	std::array<const char*, 6> mProcChild =
-		{"core", "pauc", "pau", "iohs", "mc", "chiplet"};
+	std::array<const char*, 7> mProcChild =
+		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec"};
 	struct pdbg_target *proc, *child;
 
 	pdbg_for_each_class_target("proc", proc) {
