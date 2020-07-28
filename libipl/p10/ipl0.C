@@ -529,7 +529,6 @@ static int ipl_proc_attn_listen(void)
 		if (rc != 0) {
 			ipl_log(IPL_ERROR, "write TRUEMASK register failed, rc=%d\n", rc);
 		}
-		rc = 0;
 	}
 
 	ipl_error_callback(rc == 0);
