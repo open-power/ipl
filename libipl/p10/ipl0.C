@@ -492,28 +492,31 @@ static int ipl_proc_attn_listen(void)
 {
 	struct pdbg_target *fsi, *proc = NULL;
 	uint32_t regval; // for register read/write
-	int rc = 1;
+	char path[16];
+	int rc;
 
-	ipl_log(IPL_INFO, "ipl_proc_attn_listen starting");
-
-	pdbg_for_each_class_target("fsi", fsi) {
-		if (pdbg_target_status(fsi) != PDBG_TARGET_ENABLED)
-			continue;
-
-		proc = pdbg_target_require_parent("proc", fsi);
-
+	pdbg_for_each_class_target("proc", proc) {
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
 			continue;
 
-		if (ipl_is_master_proc(proc)) {
+		if (ipl_is_master_proc(proc))
 			break;
-		}
 	}
 
-	if (!proc)
+	if (!proc) {
+		ipl_error_callback(false);
 		return 1;
+	}
 
-	ipl_log(IPL_INFO, "enable attention listen on processor %d\n", pdbg_target_index(proc));
+	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
+	fsi = pdbg_target_from_path(NULL, path);
+	if (!fsi) {
+		ipl_error_callback(false);
+		return 1;
+	}
+
+	ipl_log(IPL_INFO, "enable attention listen on processor %d\n",
+		pdbg_target_index(proc));
 
 	rc = fsi_read(fsi, 0x100d, &regval); // FSI2_PIB_TRUE_MASK
 	if (rc != 0) {
