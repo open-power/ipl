@@ -43,10 +43,17 @@ int ipl_istep_via_sbe(int major, int minor)
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
 
-		// Run SBE isteps only on master processor
+		// Run SBE isteps only on functional master processor
 		proc = pdbg_target_require_parent("proc", pib);
 		if (!ipl_is_master_proc(proc))
 			continue;
+
+		if (!ipl_is_functional(proc)) {
+			ipl_log(IPL_ERROR, "Master processor (%d) is not functional\n",
+				pdbg_target_index(proc));
+			ipl_error_callback(false);
+			return 1;
+		}
 
 		ipl_log(IPL_INFO, "Running sbe_istep on processor %d\n",
 			pdbg_target_index(proc));
@@ -75,15 +82,20 @@ int ipl_istep_via_hostboot(int major, int minor)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapi_rc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
-			continue;
-
-		// Run HWP only on master processor
+		// Run HWP only on functional master processor
 		if (!ipl_is_master_proc(proc))
 			continue;
 
+		if (!ipl_is_functional(proc)) {
+			ipl_log(IPL_ERROR, "Master processor(%d) is not functional\n",
+				pdbg_target_index(proc));
+			ipl_error_callback(false);
+			return 1;
+		}
+
 		ipl_log(IPL_INFO, "Running p10_do_fw_hb_istep HWP on processor %d\n",
 			pdbg_target_index(proc));
+
 		fapi_rc = p10_do_fw_hb_istep(proc, major, minor,
 					     retry_limit_ms, delay_ms);
 		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS)
@@ -92,7 +104,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 		else
 			rc = 0;
 
-		ipl_error_callback(fapi_rc == fapi2::FAPI2_RC_SUCCESS);
+		ipl_error_callback(rc == 0);
 		break;
 	}
 
@@ -129,4 +141,22 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 	}
 
 	return false;
+}
+
+bool ipl_is_functional(struct pdbg_target *target)
+{
+	uint8_t buf[5];
+
+	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41", 1, buf)) {
+		ipl_log(IPL_INFO, "Attribute [ATTR_HWAS_STATE] read failed\n");
+
+		//Checking pdbg functional state
+		if (pdbg_target_status(target) == PDBG_TARGET_ENABLED)
+			return true;
+
+		return false;
+	}
+
+	//isFuntional bit is stored in 4th byte and bit 3 position in HWAS_STATE
+	return (buf[4] & 0x20);
 }

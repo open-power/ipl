@@ -246,7 +246,7 @@ static int ipl_set_ref_clock(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+		if (!ipl_is_functional(proc))
 			continue;
 
 		ipl_log(IPL_INFO, "Running p10_setup_ref_clock HWP on processor %d\n",
@@ -277,7 +277,7 @@ static int ipl_proc_clock_test(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+		if (!ipl_is_functional(proc))
 			continue;
 
 		ipl_log(IPL_INFO,"Running p10_clock_test HWP on processor %d\n",
@@ -320,10 +320,7 @@ static int ipl_proc_select_boot_prom(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
-			continue;
-
-		if (!ipl_is_master_proc(proc))
+		if (!ipl_is_master_proc(proc) || !ipl_is_functional(proc))
 			continue;
 
 		ipl_log(IPL_INFO,"Running p10_select_boot_master HWP on processor %d\n",
@@ -399,11 +396,8 @@ static int ipl_sbe_config_update(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
-			continue;
-
-		// Run HWP only on master processor
-		if (!ipl_is_master_proc(proc))
+		// Run HWP only on functional master processor
+		if (!ipl_is_master_proc(proc) || !ipl_is_functional(proc))
 			continue;
 
 		ipl_log(IPL_INFO, "Running p10_setup_sbe_config HWP on processor %d\n",
@@ -429,7 +423,7 @@ static int ipl_sbe_start(void)
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+		if (!ipl_is_functional(proc))
 			continue;
 
 		if (ipl_mode() == IPL_CRONUS) {
@@ -496,7 +490,7 @@ static int ipl_proc_attn_listen(void)
 	int rc;
 
 	pdbg_for_each_class_target("proc", proc) {
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
+		if (!ipl_is_functional(proc))
 			continue;
 
 		if (ipl_is_master_proc(proc))

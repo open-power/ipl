@@ -20,4 +20,13 @@ int ipl_istep_via_hostboot(int major, int minor);
  */
 bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds);
 
+/**
+ * @brief Determine whether the target is functional or not
+ *
+ * param[in] target pdbg_target
+ *
+ * @return true if the target is functional, false otherwise
+ */
+bool ipl_is_functional(struct pdbg_target *target);
+
 #endif /* __LIBIPL_P10_COMMON_H__ */
