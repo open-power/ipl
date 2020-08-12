@@ -225,6 +225,12 @@ static int ipl_updatehwmodel(void)
 	}
 
 	update_hwas_state();
+
+	if (!ipl_check_functional_master()){
+		ipl_error_callback(false);
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -261,6 +267,11 @@ static int ipl_set_ref_clock(void)
 		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
 
+	if (!ipl_check_functional_master()){
+		ipl_error_callback(false);
+		return 1;
+	}
+
 	return rc;
 }
 
@@ -291,6 +302,11 @@ static int ipl_proc_clock_test(void)
 
 		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 	}
+
+	if (!ipl_check_functional_master()){
+		ipl_error_callback(false);
+		return 1;
+        }
 
 	return rc;
 }
@@ -332,6 +348,11 @@ static int ipl_proc_select_boot_prom(void)
 		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
 		break;
         }
+
+	if (!ipl_check_functional_master()) {
+		ipl_error_callback(false);
+		return 1;
+	}
 
 	return rc;
 }
@@ -410,6 +431,11 @@ static int ipl_sbe_config_update(void)
 		break;
 	}
 
+	if (!ipl_check_functional_master()) {
+		ipl_error_callback(false);
+		return 1;
+	}
+
 	return rc;
 }
 
@@ -472,6 +498,11 @@ static int ipl_sbe_start(void)
 				break;
 			}
 		}
+	}
+
+	if (!ipl_check_functional_master()) {
+		ipl_error_callback(false);
+		return 1;
 	}
 
 	return rc;

@@ -160,3 +160,21 @@ bool ipl_is_functional(struct pdbg_target *target)
 	//isFuntional bit is stored in 4th byte and bit 3 position in HWAS_STATE
 	return (buf[4] & 0x20);
 }
+
+bool ipl_check_functional_master(void)
+{
+	struct pdbg_target *proc;
+
+	pdbg_for_each_class_target("proc", proc) {
+		if (!ipl_is_master_proc(proc))
+			continue;
+
+		if (!ipl_is_functional(proc)) {
+			ipl_log(IPL_ERROR, "Master processor(%d) is not functional\n",
+				pdbg_target_index(proc));
+			return false;
+		}
+	}
+
+	return true;
+}

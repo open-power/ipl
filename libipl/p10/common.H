@@ -29,4 +29,11 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds);
  */
 bool ipl_is_functional(struct pdbg_target *target);
 
+/**
+ * @brief Check if functional master processor is available.
+ *
+ * @return true if function master available, false otherwise
+ */
+bool ipl_check_functional_master(void);
+
 #endif /* __LIBIPL_P10_COMMON_H__ */
