@@ -25,6 +25,7 @@ extern "C" {
 
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
+#define FRU_TYPE_FC     0x53
 
 
 static void ipl_pre0(void)
@@ -45,6 +46,24 @@ static int ipl_startipl(void)
 static int ipl_DisableAttns(void)
 {
 	return -1;
+}
+
+static bool small_core_enabled(void)
+{
+	struct stat statbuf;
+	int ret;
+
+	/* If /tmp/small_core file exists, boot in small core mode */
+	ret = stat("/tmp/small_core", &statbuf);
+	if (ret == -1)
+		return false;
+
+	if (S_ISREG(statbuf.st_mode)) {
+		ipl_log(IPL_INFO, "Booting in small core mode\n");
+		return true;
+	}
+
+	return false;
 }
 
 static bool set_or_clear_state(struct pdbg_target *target, bool do_set)
@@ -116,6 +135,22 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 			return 2;
 		}
 
+		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
+			struct pdbg_target *core;
+
+			pdbg_for_each_target("core", target, core) {
+				if (!set_or_clear_state(core, false)) {
+					ipl_log(IPL_ERROR,
+						"Failed to clear functional state"
+						" of core with index 0x%x\n",
+						pdbg_target_index(core));
+					// Unable to clear the functional state of HWAS
+					// attribute of the target, so we need to stop
+					return 2;
+				}
+			}
+		}
+
 	} else {
 		ipl_log(IPL_DEBUG, "Skipping to clear functional state for \
 		                   fru type 0x%x in ipl mode %d\n", type, ipl_type());
@@ -166,8 +201,8 @@ static void update_hwas_state(void)
 // boot.
 static bool update_genesis_hwas_state(void)
 {
-	std::array<const char*, 7> mProcChild =
-		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec"};
+	std::array<const char*, 8> mProcChild =
+		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
 	struct pdbg_target *proc, *child;
 
 	pdbg_for_each_class_target("proc", proc) {
@@ -360,24 +395,6 @@ static int ipl_proc_select_boot_prom(void)
 static int ipl_hb_config_update(void)
 {
 	return -1;
-}
-
-static bool small_core_enabled(void)
-{
-	struct stat statbuf;
-	int ret;
-
-	/* If /tmp/small_core file exists, boot in small core mode */
-	ret = stat("/tmp/small_core", &statbuf);
-	if (ret == -1)
-		return false;
-
-	if (S_ISREG(statbuf.st_mode)) {
-		ipl_log(IPL_INFO, "Booting in small core mode\n");
-		return true;
-	}
-
-	return false;
 }
 
 static int ipl_sbe_config_update(void)
