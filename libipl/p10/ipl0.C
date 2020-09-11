@@ -100,7 +100,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	uint8_t type;
 
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
-	  	//Returning 0 for continue traversal, as the requested target is not
+		//Returning 0 for continue traversal, as the requested target is not
 		//found
 		return 0;
 
@@ -109,7 +109,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
-		                 pdbg_target_path(target));
+			pdbg_target_path(target));
 		//ATTR_TYPE attribute not found for the target, hence this is an
 		//error case, so need to stop
 		return 2;
@@ -118,8 +118,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
 
 		if (!set_or_clear_state(target, false)) {
-			ipl_log(IPL_ERROR, "Failed to clear functional state of core, \
-			                    index=0x%x\n", pdbg_target_index(target));
+			ipl_log(IPL_ERROR,
+				"Failed to clear functional state of core, index=0x%x\n",
+				pdbg_target_index(target));
 			//Unable to clear the functional state of HWAS attribute of the
 			//target, so we need to stop
 			return 2;
@@ -128,8 +129,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	} else if (ipl_type() == IPL_TYPE_NORMAL && type != FRU_TYPE_MC) {
 
 		if (!set_or_clear_state(target, false)) {
-			ipl_log(IPL_ERROR, "Failed to clear functional state of fru \
-			                    type 0x%x\n", type);
+			ipl_log(IPL_ERROR,
+				"Failed to clear functional state of fru type 0x%x\n",
+				type);
 			//Unable to clear the functional state of HWAS attribute of the
 			//target, so we need to stop
 			return 2;
@@ -152,8 +154,10 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		}
 
 	} else {
-		ipl_log(IPL_DEBUG, "Skipping to clear functional state for \
-		                   fru type 0x%x in ipl mode %d\n", type, ipl_type());
+		ipl_log(IPL_DEBUG,
+			"Skipping to clear functional state for"
+			" fru type 0x%x in ipl mode %d\n",
+			type, ipl_type());
 	}
 
 	//Requested target found
@@ -189,8 +193,10 @@ static void update_hwas_state(void)
 
 			err = pdbg_target_traverse(NULL, update_hwas_state_callback, path);
 			if ((err == 0) || (err == 2))
-				ipl_log(IPL_ERROR, "Failed to set HWAS state for guard \
-				          record[ID: %d]\n", elem.recordId);
+				ipl_log(IPL_ERROR,
+					"Failed to set HWAS state for guard"
+					" record[ID: %d]\n",
+					elem.recordId);
 		}
 	}
 }
@@ -244,18 +250,18 @@ static int ipl_updatehwmodel(void)
 
 	if (!fs::exists(genesis_boot_file)) {
 		ipl_log(IPL_INFO, "updatehwmodel: Genesis mode boot\n");
-		if(!update_genesis_hwas_state()) {
+		if (!update_genesis_hwas_state()) {
 			ipl_log(IPL_ERROR,"Failed to set genesis boot state\n");
 			return 1;
 		}
 
 		//Create new file to skip the genesis setup in next boot.
-        if (!fs::exists(genesis_boot_file.parent_path())) {
-            if (!fs::create_directories(genesis_boot_file.parent_path())){
-                ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
-                return 1;
-            }
-        }
+		if (!fs::exists(genesis_boot_file.parent_path())) {
+			if (!fs::create_directories(genesis_boot_file.parent_path())){
+				ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
+				return 1;
+			}
+		}
 		std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
@@ -279,8 +285,8 @@ static int ipl_set_ref_clock(void)
 	struct pdbg_target *proc;
 	int rc = 0;
 
-        if (ipl_type() == IPL_TYPE_MPIPL)
-                return -1;
+	if (ipl_type() == IPL_TYPE_MPIPL)
+		return -1;
 
 	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
 
