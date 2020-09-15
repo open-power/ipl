@@ -406,9 +406,9 @@ static int ipl_hb_config_update(void)
 static int ipl_sbe_config_update(void)
 {
 	struct pdbg_target *root, *proc;
-	uint32_t boot_flags = 0;
 	int rc = 1;
-	uint8_t istep_mode, core_mode;
+	uint8_t istep_mode, core_mode, disable_security;
+	fapi2::buffer<uint32_t> boot_flags;
 
 	ipl_log(IPL_INFO, "Istep: sbe_config_update: started\n");
 
@@ -420,7 +420,23 @@ static int ipl_sbe_config_update(void)
 
 	// Bit 0 indicates istep IPL (0b1) (Used by SBE, HB – ATTR_ISTEP_MODE)
 	if (istep_mode)
-		boot_flags = 0x80000000;
+		boot_flags.setBit(0);
+	else
+		boot_flags.clearBit(0);
+
+	// Set the Security Disable bit based on the ATTR_DISABLE_SECURITY
+	// attribute. Its "0" by default, i.e. security is always enabled by
+	// default, unless user overrides the value.
+	if (!pdbg_target_get_attribute(root, "ATTR_DISABLE_SECURITY", 1, 1, &disable_security)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_DISABLE_SECURITY] read failed \n");
+		return 1;
+	}
+
+	// Bit 6 – disable security. 0b1 indicates disable the security
+	if (disable_security)
+		boot_flags.setBit(6);
+	else
+		boot_flags.clearBit(6);
 
 	if (!pdbg_target_set_attribute(root, "ATTR_BOOT_FLAGS", 4, 1, &boot_flags)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_BOOT_FLAGS] update failed \n");
