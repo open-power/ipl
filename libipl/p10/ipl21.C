@@ -15,7 +15,7 @@ static void ipl_pre21(void)
 
 static int ipl_host_micro_update(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 1);
 }
 
 static int ipl_host_runtime_setup(void)
@@ -35,17 +35,17 @@ static int ipl_host_start_payload(void)
 
 static int ipl_host_post_start_payload(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 5);
 }
 
 static int ipl_switchbcu(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 6);
 }
 
 static int ipl_completeipl(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(21, 7);
 }
 
 static struct ipl_step ipl21[] = {

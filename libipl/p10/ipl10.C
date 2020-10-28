@@ -25,7 +25,7 @@ static int ipl_host_sbe_update(void)
 
 static int ipl_host_secureboot_lockdown(void)
 {
-	return -1;
+	return ipl_istep_via_hostboot(10, 3);
 }
 
 static int ipl_proc_chiplet_scominit(void)
