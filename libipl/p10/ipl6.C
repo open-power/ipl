@@ -15,17 +15,17 @@ static void ipl_pre6(void)
 
 static int ipl_host_bootloader(void)
 {
-	return ipl_istep_via_hostboot(6, 1);
+	return -1;
 }
 
 static int ipl_host_setup(void)
 {
-	return ipl_istep_via_hostboot(6, 2);
+	return -1;
 }
 
 static int ipl_host_istep_enable(void)
 {
-	return ipl_istep_via_hostboot(6, 3);
+	return -1;
 }
 
 static int ipl_host_init_fsi(void)
