@@ -26,7 +26,17 @@ extern "C" {
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
+#define GUARD_ERROR_TYPE_RECONFIG  0xEB
 
+struct guard_target {
+  	uint8_t path[21];
+	bool set_hwas_state;
+
+	guard_target() {
+	  	memset(&path, 0, sizeof(path));
+		set_hwas_state = false;
+	}
+};
 
 static void ipl_pre0(void)
 {
@@ -95,7 +105,7 @@ static bool set_or_clear_state(struct pdbg_target *target, bool do_set)
 
 static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 {
-	uint8_t *match_path = (uint8_t *)priv;
+  	guard_target* target_info = static_cast<guard_target*>(priv);
 	uint8_t path[21] = { 0 };
 	uint8_t type;
 
@@ -104,7 +114,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		//found
 		return 0;
 
-	if (memcmp(match_path, path, sizeof(path)) != 0)
+	if (memcmp(target_info->path, path, sizeof(path)) != 0)
 		return 0;
 
 	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
@@ -126,9 +136,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 			return 2;
 		}
 
-	} else if (ipl_type() == IPL_TYPE_NORMAL && type != FRU_TYPE_MC) {
+	} else if (ipl_type() == IPL_TYPE_NORMAL) {
 
-		if (!set_or_clear_state(target, false)) {
+		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
 				"Failed to clear functional state of fru type 0x%x\n",
 				type);
@@ -166,7 +176,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 //@Brief Function will get the guard records and will unset the functional
 //state of the guarded resources in HWAS state attribute in device tree.
-static void update_hwas_state(void)
+static void update_hwas_state(bool is_coldboot)
 {
 	openpower::guard::libguard_init(false);
 
@@ -175,23 +185,36 @@ static void update_hwas_state(void)
 		ipl_log(IPL_INFO, "Number of Records = %d\n",records.size());
 
 		for (const auto& elem : records) {
-			uint8_t path[21];
+		  	guard_target targetinfo;
 			int index = 0, i, err;
 
-			memset(path, 0, sizeof(path));
-
-			path[index] = elem.targetId.type_size;
+			targetinfo.path[index] = elem.targetId.type_size;
 			index += 1;
 
 			for (i = 0; i < (0x0F & elem.targetId.type_size); i++) {
 
-				path[index] = elem.targetId.pathElements[i].targetType;
-				path[index+1] = elem.targetId.pathElements[i].instance;
+				targetinfo.path[index] = elem.targetId.pathElements[i].targetType;
+				targetinfo.path[index+1] = elem.targetId.pathElements[i].instance;
 
 				index += sizeof(elem.targetId.pathElements[0]);
 			}
 
-			err = pdbg_target_traverse(NULL, update_hwas_state_callback, path);
+
+			//Check is to remove guard record with type reconfig during
+			//normal/cold boot. During this the GENESIS_BOOT_FILE will
+			//get deleted as a part of DEVTREE initilization.
+			//During warm reboot GENESIS_BOOT_FILE will be present. Hence
+			//all the guard records will be applied.
+			if(is_coldboot && (elem.errType == GUARD_ERROR_TYPE_RECONFIG) &&
+			  (ipl_type() == IPL_TYPE_NORMAL)) {
+			  	openpower::guard::clear(elem.targetId);
+			  	targetinfo.set_hwas_state = true;
+			}
+			else {
+			  	targetinfo.set_hwas_state = false;
+			}
+
+			err = pdbg_target_traverse(NULL, update_hwas_state_callback, &targetinfo);
 			if ((err == 0) || (err == 2))
 				ipl_log(IPL_ERROR,
 					"Failed to set HWAS state for guard"
@@ -243,6 +266,7 @@ static bool update_genesis_hwas_state(void)
 static int ipl_updatehwmodel(void)
 {
 	namespace fs = std::filesystem;
+	bool boot_file_absent = false;
 	constexpr auto GENESIS_BOOT_FILE = "/var/lib/phal/genesisboot";
 	fs::path genesis_boot_file = GENESIS_BOOT_FILE;
 
@@ -262,10 +286,11 @@ static int ipl_updatehwmodel(void)
 				return 1;
 			}
 		}
-		std::ofstream file(GENESIS_BOOT_FILE);
+		boot_file_absent = true;
+	  	std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
-	update_hwas_state();
+	update_hwas_state(boot_file_absent);
 
 	if (!ipl_check_functional_master()){
 		ipl_error_callback(false);
