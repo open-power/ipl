@@ -143,6 +143,23 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 	return false;
 }
 
+bool ipl_is_present(struct pdbg_target *target)
+{
+	uint8_t buf[5];
+
+	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41", 1, buf)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
+
+		if (pdbg_target_status(target) == PDBG_TARGET_ENABLED)
+			return true;
+
+		return false;
+	}
+
+	//Present bit is stored in 4th byte and bit 2 position in HWAS_STATE
+	return (buf[4] & 0x40);
+}
+
 bool ipl_is_functional(struct pdbg_target *target)
 {
 	uint8_t buf[5];

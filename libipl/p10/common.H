@@ -21,6 +21,15 @@ int ipl_istep_via_hostboot(int major, int minor);
 bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds);
 
 /**
+ * @brief Determine whether the target is present or not
+ *
+ * param[in] target pdbg_target
+ *
+ * @return true if the target is present, false otherwise
+ */
+
+bool ipl_is_present(struct pdbg_target *target);
+/**
  * @brief Determine whether the target is functional or not
  *
  * param[in] target pdbg_target

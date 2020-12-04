@@ -39,6 +39,13 @@ void ipl_log(int loglevel, const char *fmt, ...);
 
 void ipl_set_error_callback_func(ipl_error_callback_func_t fn);
 
+/*
+ * @Brief This function will call pre_poweroff hardware procedure
+ * during poweroff of host, on all the available procs.
+ *
+ * return 0 on success and non zero in case of failure
+ */
+int ipl_pre_poweroff(void);
 }
 
 #endif /* __LIBIPL_H__ */

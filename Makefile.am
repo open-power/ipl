@@ -67,7 +67,8 @@ libipl_istep_SOURCES = \
 	libipl/p10/ipl18.C \
 	libipl/p10/ipl19.C \
 	libipl/p10/ipl20.C \
-	libipl/p10/ipl21.C
+	libipl/p10/ipl21.C \
+	libipl/p10/ipl_poweroff.C
 endif
 
 libipl_la_SOURCES = \
