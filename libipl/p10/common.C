@@ -117,14 +117,14 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 	fapi2::ReturnCode fapi_rc;
 	uint32_t loopcount;
 
-	loopcount = wait_time_seconds > 0 ? wait_time_seconds : 20;
+	loopcount = wait_time_seconds > 0 ? wait_time_seconds : 5;
 
 	while (loopcount > 0) {
 	  	fapi_rc = p10_get_sbe_msg_register(proc, sbeReg);
 		if (fapi_rc == fapi2::FAPI2_RC_SUCCESS) {
 			if (sbeReg.sbeBooted) {
-				ipl_log(IPL_INFO, "SBE booted. sbeReg[0x%08x] Wait time: [%d]\n",
-					uint32_t(sbeReg.reg), loopcount);
+				ipl_log(IPL_INFO, "SBE booted. sbeReg[0x%08x]\n",
+					uint32_t(sbeReg.reg));
 				return true;
 			} else {
 				ipl_log(IPL_DEBUG, "SBE boot is in progress. sbeReg[0x%08x]\n",
