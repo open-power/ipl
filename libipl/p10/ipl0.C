@@ -234,11 +234,17 @@ static bool update_genesis_hwas_state(void)
 		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
 	struct pdbg_target *proc, *child;
 
-	pdbg_for_each_class_target("proc", proc) {
-		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED)
-			continue;
+	bool target_enabled = false;
 
-		if (!set_or_clear_state(proc, true)) {
+	pdbg_for_each_class_target("proc", proc) {
+		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED) {
+			target_enabled = false;
+		}
+		else {
+			target_enabled = true;
+		}
+
+		if (!set_or_clear_state(proc, target_enabled)) {
 			ipl_log(IPL_ERROR,
 				"Failed to set HWAS state of proc %d\n",
 				pdbg_target_index(proc));
@@ -250,7 +256,7 @@ static bool update_genesis_hwas_state(void)
 
 		for(const char* data : mProcChild) {
 			pdbg_for_each_target(data, proc, child) {
-				if (!set_or_clear_state(child, true)) {
+				if (!set_or_clear_state(child, target_enabled)) {
 					ipl_log(IPL_ERROR,
 						"Failed to set HWAS state of %s, index %d\n",
 						data, pdbg_target_index(child));
