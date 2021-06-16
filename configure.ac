@@ -1,6 +1,9 @@
-AC_INIT([ipl], [1.0])
+AC_INIT([ipl], [1.1])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
+AC_SUBST(SONAME_CURRENT, 1)
+AC_SUBST(SONAME_REVISION, 0)
+AC_SUBST(SONAME_AGE, 0)
 
 AC_ARG_VAR(CHIP, [Target chip to build respective ipl steps])
 AS_IF([test "x$CHIP" == "x"], [CHIP="p10"])

@@ -80,3 +80,4 @@ libipl_la_SOURCES = \
 libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	$(libipl_istep_CXXFLAGS) \
 	-I$(srcdir)/libipl
+libipl_la_LDFLAGS = -version-info $(SONAME_CURRENT):$(SONAME_REVISION):$(SONAME_AGE)
