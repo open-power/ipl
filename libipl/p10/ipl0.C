@@ -439,6 +439,8 @@ static int ipl_sbe_config_update(void)
 	struct pdbg_target *root, *proc;
 	int rc = 1;
 	uint8_t istep_mode, core_mode, disable_security, attr_override;
+	uint8_t scom_allowed;
+
 	fapi2::buffer<uint32_t> boot_flags;
 
 	ipl_log(IPL_INFO, "Istep: sbe_config_update: started\n");
@@ -478,6 +480,16 @@ static int ipl_sbe_config_update(void)
 		boot_flags.setBit(7);
 	else
 		boot_flags.clearBit(7);
+
+	// bit 11 - Disable denial list based SCOM access. 0b1 indicates disable
+	if (!pdbg_target_get_attribute(root, "ATTR_NO_XSCOM_ENFORCEMENT", 1, 1, &scom_allowed)) {
+		ipl_log(IPL_ERROR, "Attribute [ATTR_NO_XSCOM_ENFORCEMENT] read failed \n");
+		return 1;
+	}
+	if (scom_allowed)
+		boot_flags.setBit(11);
+	else
+		boot_flags.clearBit(11);
 
 	if (!pdbg_target_set_attribute(root, "ATTR_BOOT_FLAGS", 4, 1, &boot_flags)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_BOOT_FLAGS] update failed \n");
