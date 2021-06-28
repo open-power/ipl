@@ -2,6 +2,7 @@ extern "C" {
 #include <stdio.h>
 #include <unistd.h>
 #include <libpdbg.h>
+#include <libpdbg_sbe.h>
 }
 
 #include "libipl.H"

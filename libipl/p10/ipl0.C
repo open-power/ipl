@@ -5,6 +5,7 @@ extern "C" {
 #include <libgen.h>
 
 #include <libpdbg.h>
+#include <libpdbg_sbe.h>
 }
 
 #include "libipl.H"
