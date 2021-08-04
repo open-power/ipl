@@ -60,9 +60,11 @@ int ipl_istep_via_sbe(int major, int minor)
 			pdbg_target_index(proc));
 
 		rc = sbe_istep(pib, major, minor);
-		if (rc)
-			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
+		if (rc) {
+			ipl_log(IPL_ERROR, "Istep %d.%d failed on proc-%d, rc=%d\n",
 				major, minor, pdbg_target_index(proc), rc);
+			ipl_log_sbe_ffdc(pib);
+		}
 
 		ipl_error_callback(rc == 0);
 		break;
@@ -195,4 +197,34 @@ bool ipl_check_functional_master(void)
 	}
 
 	return true;
+}
+
+void ipl_log_sbe_ffdc(struct pdbg_target *pib)
+{
+	uint8_t *ffdc = NULL;
+	uint32_t status = 0;
+	uint32_t ffdc_len = 0;
+	int ret;
+
+	ret = sbe_ffdc_get(pib, &status, &ffdc, &ffdc_len);
+	if (ret != 0) {
+		ipl_log(IPL_ERROR, "%s: sbe_ffdc_get function failed (%d)",
+			pdbg_target_path(pib), ret);
+	} else {
+		uint32_t i;
+
+		ipl_log(IPL_INFO, "%s status:0x%x ffdc_len:0x%x\n",
+			pdbg_target_path(pib), status, ffdc_len);
+		ipl_log(IPL_DEBUG, "SBE FFDC data");
+		for (i = 0; i < ffdc_len; i++) {
+			if (i % 32 == 0)
+				ipl_log(IPL_DEBUG, "\n");
+			ipl_log(IPL_DEBUG, "%02x", ffdc[i]);
+		}
+		ipl_log(IPL_DEBUG, "\nSBE FFDC data\n");
+	}
+
+	// free ffdc data
+	if (ffdc)
+		free(ffdc);
 }

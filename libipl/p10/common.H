@@ -45,4 +45,11 @@ bool ipl_is_functional(struct pdbg_target *target);
  */
 bool ipl_check_functional_master(void);
 
+/**
+ * @brief Fetch and log SBE FFDC data if available
+ *
+ * param[in] pib pdbg_target
+ */
+void ipl_log_sbe_ffdc(struct pdbg_target *pib);
+
 #endif /* __LIBIPL_P10_COMMON_H__ */
