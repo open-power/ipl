@@ -571,6 +571,7 @@ static int ipl_sbe_start(void)
 						ipl_log(IPL_ERROR,
 							"Continue MPIPL failed, ret=%d\n",
 							ret);
+						ipl_log_sbe_ffdc(pib);
 					}
 
 					ipl_error_callback(ret == 0);
