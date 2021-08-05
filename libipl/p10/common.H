@@ -1,12 +1,13 @@
 #ifndef __LIBIPL_P10_COMMON_H__
 #define __LIBIPL_P10_COMMON_H__
 
-extern "C" {
-#include <stdbool.h>
+extern "C"
+{
 #include <libpdbg.h>
+#include <stdbool.h>
 }
 
-bool ipl_is_master_proc(struct pdbg_target *proc);
+bool ipl_is_master_proc(struct pdbg_target* proc);
 int ipl_istep_via_sbe(int major, int minor);
 int ipl_istep_via_hostboot(int major, int minor);
 
@@ -18,7 +19,7 @@ int ipl_istep_via_hostboot(int major, int minor);
  *
  * return true if SBE booted, false otherwise
  */
-bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds);
+bool ipl_sbe_booted(struct pdbg_target* proc, uint32_t wait_time_seconds);
 
 /**
  * @brief Determine whether the target is present or not
@@ -28,7 +29,7 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds);
  * @return true if the target is present, false otherwise
  */
 
-bool ipl_is_present(struct pdbg_target *target);
+bool ipl_is_present(struct pdbg_target* target);
 /**
  * @brief Determine whether the target is functional or not
  *
@@ -36,7 +37,7 @@ bool ipl_is_present(struct pdbg_target *target);
  *
  * @return true if the target is functional, false otherwise
  */
-bool ipl_is_functional(struct pdbg_target *target);
+bool ipl_is_functional(struct pdbg_target* target);
 
 /**
  * @brief Check if functional master processor is available.

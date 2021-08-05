@@ -1,8 +1,8 @@
-extern "C" {
+extern "C"
+{
+#include <libpdbg.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <libpdbg.h>
 }
 
 #include <libekb.H>
@@ -10,14 +10,14 @@ extern "C" {
 
 int main(void)
 {
-	if (!pdbg_targets_init(NULL))
-		exit(1);
+    if (!pdbg_targets_init(NULL))
+        exit(1);
 
-	if (libekb_init())
-		exit(1);
+    if (libekb_init())
+        exit(1);
 
-	if (ipl_init(IPL_AUTOBOOT))
-		exit(1);
+    if (ipl_init(IPL_AUTOBOOT))
+        exit(1);
 
-	return ipl_run_major(0);
+    return ipl_run_major(0);
 }
