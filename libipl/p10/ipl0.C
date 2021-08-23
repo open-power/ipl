@@ -20,6 +20,7 @@ extern "C" {
 
 #include <libguard/guard_interface.hpp>
 #include <libguard/guard_entity.hpp>
+#include <libguard/include/guard_record.hpp>
 #include <filesystem>
 #include <fstream>
 #include <array>
@@ -186,6 +187,12 @@ static void update_hwas_state(bool is_coldboot)
 		ipl_log(IPL_INFO, "Number of Records = %d\n",records.size());
 
 		for (const auto& elem : records) {
+
+			//Not to apply resolved guard records
+		  	if(elem.recordId == GUARD_RESOLVED) {
+				continue;
+			}
+
 		  	guard_target targetinfo;
 			int index = 0, i, err;
 
