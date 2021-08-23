@@ -353,9 +353,9 @@ void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
 	g_ipl_error_callback_fn = fn;
 }
 
-void ipl_error_callback(bool status)
+void ipl_error_callback(bool status, ipl_error_info error)
 {
 	if (!g_ipl_error_callback_fn)
 		return;
-	g_ipl_error_callback_fn(status);
+	g_ipl_error_callback_fn(status, error);
 }

@@ -1,6 +1,9 @@
 #ifndef __LIBIPL_H__
 #define __LIBIPL_H__
 
+#include <stdlib.h>
+#include <string>
+
 #define MAX_ISTEP	21
 
 enum ipl_mode {
@@ -21,8 +24,28 @@ enum ipl_type {
 extern "C" {
 #include <stdarg.h>
 
+//IPL Error types
+enum ipl_error_type {
+	IPL_NO_ERROR = 0,
+	IPL_SBE_CHIPOP_FAIL = 1,
+};
+
+// Error info structure.
+struct ipl_error_info {
+	enum ipl_error_type type;
+	void *private_data;  //additional data
+	const std::string msg; //Error messaage
+	~ipl_error_info(){
+		// freeup the private_data allocated memory
+		if (private_data){
+			free(private_data);
+		}
+	}
+};
+
+
 typedef void (*ipl_log_func_t)(void *private_data, const char *fmt, va_list ap);
-typedef void (*ipl_error_callback_func_t)(bool status);
+typedef void (*ipl_error_callback_func_t)(bool status, ipl_error_info error);
 
 int ipl_init(enum ipl_mode mode);
 int ipl_run_major_minor(int major, int minor);
