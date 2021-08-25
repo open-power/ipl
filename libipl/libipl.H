@@ -1,6 +1,9 @@
 #ifndef __LIBIPL_H__
 #define __LIBIPL_H__
 
+#include <stdlib.h>
+#include <map>
+
 #define MAX_ISTEP	21
 
 enum ipl_mode {
@@ -18,11 +21,50 @@ enum ipl_type {
 #define IPL_INFO    1
 #define IPL_DEBUG   2
 
+//IPL Error types
+enum ipl_error_type {
+	IPL_ERR_NILL = 0,
+	IPL_ERR_HWP,
+	IPL_ERR_SBE_CHIPOP,
+	IPL_ERR_SBE_BOOT,
+	IPL_ERR_PRI_PROC_NON_FUNC,
+	IPL_ERR_FSI_TGT_NOT_FOUND,
+	IPL_ERR_CFAM,
+};
+
+typedef std::map<ipl_error_type, const char*> err_msg_map_type;
+const err_msg_map_type err_msg_map = {
+	{IPL_ERR_NILL, ""},
+	{IPL_ERR_HWP, "HWP execution reported error"},
+	{IPL_ERR_SBE_CHIPOP, "SBE chip-op reported error"},
+	{IPL_ERR_SBE_BOOT, "SBE Boot failure"},
+	{IPL_ERR_PRI_PROC_NON_FUNC, "Primary processor is non functional"},
+	{IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available"},
+	{IPL_ERR_CFAM, "CFAM read/write failure"},
+};
+
+// Error info structure.
+struct ipl_error_info {
+	enum ipl_error_type type;
+	//additional debug/callout data need to be included for cfam failures
+	void *private_data;
+	//specilized constructors
+	ipl_error_info() : type(IPL_ERR_NILL), private_data(NULL)  {}
+	ipl_error_info(ipl_error_type type) : type(type), private_data(NULL) {}
+
+	~ipl_error_info(){
+		// freeup the private_data allocated memory
+		if (private_data){
+			free(private_data);
+		}
+	}
+};
+
 extern "C" {
 #include <stdarg.h>
 
 typedef void (*ipl_log_func_t)(void *private_data, const char *fmt, va_list ap);
-typedef void (*ipl_error_callback_func_t)(bool status);
+typedef void (*ipl_error_callback_func_t)(const ipl_error_info& error);
 
 int ipl_init(enum ipl_mode mode);
 int ipl_run_major_minor(int major, int minor);

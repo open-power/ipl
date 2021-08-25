@@ -25,5 +25,6 @@ void ipl_pre(void);
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void));
 enum ipl_mode ipl_mode(void);
 
-void ipl_error_callback(bool status);
+void ipl_error_callback(const ipl_error_info& error);
+
 #endif /* __IPL_H__ */

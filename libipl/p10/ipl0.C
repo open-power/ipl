@@ -307,7 +307,7 @@ static int ipl_updatehwmodel(void)
 	update_hwas_state(boot_file_absent);
 
 	if (!ipl_check_functional_master()){
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
@@ -344,11 +344,11 @@ static int ipl_set_ref_clock(void)
 			rc++;
 		}
 
-		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
 	}
 
 	if (!ipl_check_functional_master()){
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
@@ -380,11 +380,11 @@ static int ipl_proc_clock_test(void)
 			rc++;
 		}
 
-		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
 	}
 
 	if (!ipl_check_functional_master()){
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
         }
 
@@ -425,12 +425,12 @@ static int ipl_proc_select_boot_prom(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
 		break;
         }
 
 	if (!ipl_check_functional_master()) {
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
@@ -527,12 +527,12 @@ static int ipl_sbe_config_update(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
 		break;
 	}
 
 	if (!ipl_check_functional_master()) {
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
@@ -559,7 +559,7 @@ static int ipl_sbe_start(void)
 			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
 				ret++;
 
-			ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+			ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
 			rc = ret;
 			continue;
 		}
@@ -581,28 +581,30 @@ static int ipl_sbe_start(void)
 						ipl_log_sbe_ffdc(pib);
 					}
 
-					ipl_error_callback(ret == 0);
+					ipl_error_callback((ret == 0) ? IPL_ERR_NILL : IPL_ERR_SBE_CHIPOP);
 					return ret;
 				}
 			} else {
+				ipl_error_type err_type = IPL_ERR_NILL;
+
 				fapirc = p10_start_cbs(proc, true);
 				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
-					if (ipl_sbe_booted(proc, 25)) {
-						rc = 0;
-					} else {
+					if (!ipl_sbe_booted(proc, 1)) {
 						ipl_log(IPL_ERROR, "SBE did not boot\n");
-						fapirc = ~(fapi2::FAPI2_RC_SUCCESS);
+						err_type = IPL_ERR_SBE_BOOT;
 					}
 				}
-
-				ipl_error_callback(fapirc == fapi2::FAPI2_RC_SUCCESS);
+				else {
+					err_type = IPL_ERR_HWP;
+				}
+				ipl_error_callback(err_type);
 				break;
 			}
 		}
 	}
 
 	if (!ipl_check_functional_master()) {
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
@@ -630,14 +632,14 @@ static int ipl_proc_attn_listen(void)
 	}
 
 	if (!proc) {
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
 
 	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
 	fsi = pdbg_target_from_path(NULL, path);
 	if (!fsi) {
-		ipl_error_callback(false);
+		ipl_error_callback(IPL_ERR_FSI_TGT_NOT_FOUND);
 		return 1;
 	}
 
@@ -660,7 +662,7 @@ static int ipl_proc_attn_listen(void)
 		}
 	}
 
-	ipl_error_callback(rc == 0);
+	ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_CFAM);
 	return rc;
 }
 

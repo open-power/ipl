@@ -32,7 +32,7 @@ int ipl_pre_poweroff(void)
 			ipl_log(IPL_ERROR,
 				"p10_pre_poweroff failed for proc index %d\n",
 				pdbg_target_index(proc));
-			ipl_error_callback(false);
+			ipl_error_callback(IPL_ERR_HWP);
 
 			// Count num of failed proc to do pre-poweroff
 			++rc;

@@ -54,7 +54,7 @@ int ipl_istep_via_sbe(int major, int minor)
 		if (!ipl_is_functional(proc)) {
 			ipl_log(IPL_ERROR, "Master processor (%d) is not functional\n",
 				pdbg_target_index(proc));
-			ipl_error_callback(false);
+			ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 			return 1;
 		}
 
@@ -70,7 +70,7 @@ int ipl_istep_via_sbe(int major, int minor)
 			rc = 0;
 		}
 
-		ipl_error_callback(rc == 0);
+		ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_HWP);
 		break;
 	}
 
@@ -96,7 +96,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 		if (!ipl_is_functional(proc)) {
 			ipl_log(IPL_ERROR, "Master processor(%d) is not functional\n",
 				pdbg_target_index(proc));
-			ipl_error_callback(false);
+			ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 			return 1;
 		}
 
@@ -111,7 +111,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 		else
 			rc = 0;
 
-		ipl_error_callback(rc == 0);
+		ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_HWP);
 		break;
 	}
 
