@@ -41,6 +41,8 @@ int ipl_istep_via_sbe(int major, int minor)
 	ipl_log(IPL_INFO, "Istep: SBE %d.%d : started\n", major, minor);
 
 	pdbg_for_each_class_target("pib", pib) {
+		int ret;
+
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
 			continue;
 
@@ -59,11 +61,13 @@ int ipl_istep_via_sbe(int major, int minor)
 		ipl_log(IPL_INFO, "Running sbe_istep on processor %d\n",
 			pdbg_target_index(proc));
 
-		rc = sbe_istep(pib, major, minor);
-		if (rc) {
+		ret = sbe_istep(pib, major, minor);
+		if (ret) {
 			ipl_log(IPL_ERROR, "Istep %d.%d failed on proc-%d, rc=%d\n",
-				major, minor, pdbg_target_index(proc), rc);
+				major, minor, pdbg_target_index(proc), ret);
 			ipl_log_sbe_ffdc(pib);
+		} else {
+			rc = 0;
 		}
 
 		ipl_error_callback(rc == 0);
