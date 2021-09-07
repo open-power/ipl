@@ -7,7 +7,6 @@ AC_SUBST(SONAME_AGE, 0)
 
 AC_ARG_VAR(CHIP, [Target chip to build respective ipl steps])
 AS_IF([test "x$CHIP" == "x"], [CHIP="p10"])
-
 AC_SUBST([CHIP])
 
 AM_CONDITIONAL([BUILD_P9], [test "$CHIP" = "p9"])
@@ -19,6 +18,10 @@ fi
 
 if test "$CHIP" = "p10" ; then
 	AC_DEFINE([IPL_P10], [1], [Define to 1 for P10])
+	AC_ARG_ENABLE([libphal],
+		AS_HELP_STRING([--enable-libphal]
+			[build phal util library]))
+	AM_CONDITIONAL([BUILD_PHAL_API], [test "x$enable_libphal" = "xyes"])
 fi
 
 AC_LANG([C++])

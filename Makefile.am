@@ -7,6 +7,10 @@ bin_PROGRAMS = istep0 ipl
 lib_LTLIBRARIES = libipl.la
 include_HEADERS = libipl/libipl.H
 
+if BUILD_PHAL_API
+lib_LTLIBRARIES += libphal.la
+endif
+
 istep0_SOURCES = istep0.C
 istep0_LDADD = libipl.la
 
@@ -81,3 +85,13 @@ libipl_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	$(libipl_istep_CXXFLAGS) \
 	-I$(srcdir)/libipl
 libipl_la_LDFLAGS = -version-info $(SONAME_CURRENT):$(SONAME_REVISION):$(SONAME_AGE)
+
+if BUILD_PHAL_API
+libphal_la_SOURCES = \
+	libphal/log.C \
+	libphal/log.H
+
+libphal_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
+	-I$(srcdir)/libphal
+libphal_la_LDFLAGS = -version-info $(SONAME_CURRENT):$(SONAME_REVISION):$(SONAME_AGE)
+endif
