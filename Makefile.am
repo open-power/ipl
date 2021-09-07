@@ -89,7 +89,9 @@ libipl_la_LDFLAGS = -version-info $(SONAME_CURRENT):$(SONAME_REVISION):$(SONAME_
 if BUILD_PHAL_API
 libphal_la_SOURCES = \
 	libphal/log.C \
-	libphal/log.H
+	libphal/log.H \
+	libphal/utils_tempfile.C \
+	libphal/utils_tempfile.H
 
 libphal_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	-I$(srcdir)/libphal
