@@ -9,6 +9,7 @@ include_HEADERS = libipl/libipl.H
 
 if BUILD_PHAL_API
 lib_LTLIBRARIES += libphal.la
+include_HEADERS += libphal/phal_exception.H
 endif
 
 istep0_SOURCES = istep0.C
@@ -91,7 +92,8 @@ libphal_la_SOURCES = \
 	libphal/log.C \
 	libphal/log.H \
 	libphal/utils_tempfile.C \
-	libphal/utils_tempfile.H
+	libphal/utils_tempfile.H \
+	libphal/phal_exception.H
 
 libphal_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	-I$(srcdir)/libphal
