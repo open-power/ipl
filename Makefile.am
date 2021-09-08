@@ -93,7 +93,8 @@ libphal_la_SOURCES = \
 	libphal/log.H \
 	libphal/utils_tempfile.C \
 	libphal/utils_tempfile.H \
-	libphal/phal_exception.H
+	libphal/phal_exception.H \
+	libphal/utils_buffer.H
 
 libphal_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	-I$(srcdir)/libphal
