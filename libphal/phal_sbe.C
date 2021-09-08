@@ -1,0 +1,58 @@
+#include "libphal.H"
+#include "log.H"
+#include "phal_exception.H"
+#include "utils_pdbg.H"
+
+extern "C" {
+#include <libpdbg_sbe.h>
+}
+
+namespace openpower::phal
+{
+namespace sbe
+{
+
+using namespace openpower::phal::logging;
+using namespace openpower::phal;
+using namespace openpower::phal::utils::pdbg;
+
+void validateSBEState(struct pdbg_target *proc)
+{
+	// In order to allow SBE operation following conditions should be met
+	// 1. Caller has to make sure processor target should be functional
+	// or dump functional
+	// 2. Processor's SBE state should be marked as BOOTED or CHECK_CFAM
+	// 3. In case the SBE state is marked as CHECK_CFAM then SBE's
+	// PERV_SB_MSG_FSI register must be checked to see if SBE is booted or
+	// NOT.
+	// check if SBE is in HALT state and perform HRESET if in HALT state
+	// halt_state_check
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	// Get the current SBE state
+	enum sbe_state state;
+
+	if (sbe_get_state(pib, &state)) {
+		log(level::ERROR, "Failed to read SBE state information (%s)",
+		    pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	}
+
+	// SBE_STATE_CHECK_CFAM case is already handled by pdbg api
+	if (state == SBE_STATE_BOOTED)
+		return;
+
+	// TODO , check halt state and routine for recover SBE.
+
+	if (state != SBE_STATE_BOOTED) {
+		log(level::INFO,
+		    "SBE (%s) is not ready for chip-op: state(0x%08x)",
+		    pdbg_target_path(proc), state);
+		throw sbeError_t(exception::SBE_CHIPOP_NOT_ALLOWED);
+	}
+}
+
+} // namespace sbe
+} // namespace openpower::phal
