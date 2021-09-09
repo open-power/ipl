@@ -32,5 +32,15 @@ void validateSBEState(struct pdbg_target *pib);
  */
 void captureFFDC(struct pdbg_target *pib);
 
+/**
+ * @brief Execute continue mpipl on the pib
+ *
+ * @param[in] pib target to operate on
+ *
+ * Exceptions: SbeError with failure reason code, File name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void mpiplContinue(struct pdbg_target *pib);
+
 } // namespace sbe
 } // namespace libphal

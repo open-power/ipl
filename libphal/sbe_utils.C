@@ -83,5 +83,17 @@ void captureFFDC(struct pdbg_target *pib)
 			 ffdcFile.getPath().c_str());
 }
 
+void mpiplContinue(struct pdbg_target *pib)
+{
+	// validate SBE state
+	validateSBEState(pib);
+
+	// call pdbg back-end function
+	auto ret = sbe_mpipl_continue(pib);
+	if (ret != 0) {
+		captureFFDC(pib);
+	}
+}
+
 } // namespace sbe
 } // namespace libphal
