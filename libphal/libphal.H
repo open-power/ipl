@@ -21,5 +21,16 @@ namespace sbe
  */
 void validateSBEState(struct pdbg_target *pib);
 
+/**
+ * @brief utility function to capture SBE ffdc data using
+ *        pdbg function sbe_ffdc_get().
+ *        For regular chip-op failure, SBE FFDC response data copied
+ *        into a temporary file.
+ *
+ * Exceptions: SbeError with failure reason code, File name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void captureFFDC(struct pdbg_target *pib);
+
 } // namespace sbe
 } // namespace libphal

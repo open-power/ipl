@@ -49,5 +49,39 @@ void validateSBEState(struct pdbg_target *pib)
 	}
 }
 
+void captureFFDC(struct pdbg_target *pib)
+{
+	// get SBE FFDC info
+	bufPtr_t bufPtr;
+	uint32_t ffdcLen = 0;
+	uint32_t status = 0;
+	if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
+		phalLog(PHAL_ERROR, "sbe_ffdc_get function failed \n");
+		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+	}
+	// TODO Need to remove this once pdbg header file support in place
+	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
+	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
+
+	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
+		phalLog(PHAL_INFO, "SBE chipop timeout reported(%s) \n",
+			pdbg_target_path(pib));
+		throw sbeError_t(exception::SBE_CHIPOP_TIMEOUT);
+	}
+
+	// Handle empty buffer.
+	if (!ffdcLen) {
+		// log message and continue with empty file to support
+		// generic flow.
+		phalLog(PHAL_ERROR, "Empty FFDC returned (%s) \n",
+			pdbg_target_path(pib));
+	}
+
+	// create ffdc file
+	tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
+	throw sbeError_t(exception::SBE_CHIPOP_FAILED, ffdcFile.getFd(),
+			 ffdcFile.getPath().c_str());
+}
+
 } // namespace sbe
 } // namespace libphal

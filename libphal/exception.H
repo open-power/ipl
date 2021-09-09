@@ -13,13 +13,19 @@ enum ERR_TYPE {
 	NONE = 0,
 	SBE_STATE_READ_FAIL,
 	SBE_CHIPOP_NOT_ALLOWED,
+	SBE_FFDC_GET_FAILED,
+	SBE_CHIPOP_FAILED,
+	SBE_CHIPOP_TIMEOUT,
 };
 
 typedef std::map<ERR_TYPE, const char *> errMsgMapType;
 const errMsgMapType errMsgMap = {
     {NONE, ""},
     {SBE_STATE_READ_FAIL, "FAILED to read SBE state"},
-    {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"}};
+    {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"},
+    {SBE_FFDC_GET_FAILED, "SBE FFDC get functionn failed"},
+    {SBE_CHIPOP_FAILED, "SBE chip-op reported error"},
+    {SBE_CHIPOP_TIMEOUT, "SBE chip-op timeout"}};
 
 // libphal specific errors base exception class
 struct LibphalError : public std::exception {
