@@ -43,6 +43,16 @@ void captureFFDC(struct pdbg_target *pib);
 void mpiplContinue(struct pdbg_target *pib);
 
 /**
+ * @brief Execute enter mpipl on the pib
+ *
+ * @param[in] pib target to operate on
+ *
+ * Exceptions: SbeError with failure reason code, File name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void mpiplEnter(struct pdbg_target *pib);
+
+/**
  * @brief Get ti info
  *
  * @param[in] pib pib target to operate on
