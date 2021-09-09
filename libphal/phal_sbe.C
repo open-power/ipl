@@ -1,7 +1,9 @@
 #include "libphal.H"
 #include "log.H"
 #include "phal_exception.H"
+#include "utils_buffer.H"
 #include "utils_pdbg.H"
+#include "utils_tempfile.H"
 
 extern "C" {
 #include <libpdbg_sbe.h>
@@ -52,6 +54,44 @@ void validateSBEState(struct pdbg_target *proc)
 		    pdbg_target_path(proc), state);
 		throw sbeError_t(exception::SBE_CHIPOP_NOT_ALLOWED);
 	}
+}
+
+sbeError_t captureFFDC(struct pdbg_target *proc)
+{
+	// get SBE FFDC info
+	bufPtr_t bufPtr;
+	uint32_t ffdcLen = 0;
+	uint32_t status = 0;
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
+		log(level::ERROR, "sbe_ffdc_get function failed");
+		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+	}
+	// TODO Need to remove this once pdbg header file support in place
+	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
+	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
+
+	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
+		log(level::INFO, "SBE chipop timeout reported(%s)",
+		    pdbg_target_path(proc));
+		return sbeError_t(exception::SBE_CMD_TIMEOUT);
+	}
+
+	// Handle empty buffer.
+	if (!ffdcLen) {
+		// log message and return.
+		log(level::ERROR, "Empty SBE FFDC returned (%s)",
+		    pdbg_target_path(proc));
+		return sbeError_t(exception::SBE_FFDC_NO_DATA);
+	}
+
+	// create ffdc file
+	tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
+	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFile.getFd(),
+			  ffdcFile.getPath().c_str());
 }
 
 } // namespace sbe

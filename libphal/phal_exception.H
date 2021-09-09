@@ -15,6 +15,10 @@ enum ERR_TYPE {
 	PDBG_TARGET_NOT_OPERATIONAL,
 	SBE_STATE_READ_FAIL,
 	SBE_CHIPOP_NOT_ALLOWED,
+	SBE_FFDC_GET_FAILED,
+	SBE_CMD_FAILED,
+	SBE_CMD_TIMEOUT,
+	SBE_FFDC_NO_DATA,
 };
 
 // Error type to message map.
@@ -23,7 +27,11 @@ const errMsgMapType errMsgMap = {
     {NONE, ""},
     {PDBG_TARGET_NOT_OPERATIONAL, "PDBG target not in operational state"},
     {SBE_STATE_READ_FAIL, "FAILED to read SBE state"},
-    {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"}};
+    {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"},
+    {SBE_FFDC_GET_FAILED, "SBE FFDC get functionn failed"},
+    {SBE_CMD_FAILED, "SBE command reported error"},
+    {SBE_CMD_TIMEOUT, "SBE command timeout"},
+    {SBE_FFDC_NO_DATA, "SBE FFDC No failure data"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {
