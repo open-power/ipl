@@ -94,5 +94,22 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 			  ffdcFile.getPath().c_str());
 }
 
+void mpiplContinue(struct pdbg_target *proc)
+{
+	log(level::INFO, "Enter: mpiplContinue(%s)", pdbg_target_path(proc));
+
+	// validate SBE state
+	validateSBEState(proc);
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	// call pdbg back-end function
+	auto ret = sbe_mpipl_continue(pib);
+	if (ret != 0) {
+		throw captureFFDC(proc);
+	}
+}
+
 } // namespace sbe
 } // namespace openpower::phal
