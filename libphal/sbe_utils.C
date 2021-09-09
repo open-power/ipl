@@ -95,5 +95,17 @@ void mpiplContinue(struct pdbg_target *pib)
 	}
 }
 
+void getTiInfo(struct pdbg_target *pib, uint8_t **data, uint32_t *dataLen)
+{
+	// validate SBE state
+	validateSBEState(pib);
+
+	// call pdbg back-end function
+	auto ret = sbe_mpipl_get_ti_info(pib, data, dataLen);
+	if (ret != 0) {
+		captureFFDC(pib);
+	}
+}
+
 } // namespace sbe
 } // namespace libphal

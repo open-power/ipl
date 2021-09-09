@@ -42,5 +42,17 @@ void captureFFDC(struct pdbg_target *pib);
  */
 void mpiplContinue(struct pdbg_target *pib);
 
+/**
+ * @brief Get ti info
+ *
+ * @param[in] pib pib target to operate on
+ * @param[out] data TI information
+ * @param[out] dataLen length of the data
+ *
+ * Exceptions: SbeError with failure reason code, File name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void getTiInfo(struct pdbg_target *pib, uint8_t **data, uint32_t *dataLen);
+
 } // namespace sbe
 } // namespace libphal
