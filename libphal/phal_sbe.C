@@ -111,5 +111,22 @@ void mpiplContinue(struct pdbg_target *proc)
 	}
 }
 
+void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
+{
+	log(level::INFO, "Enter: getTiInfo(%s)", pdbg_target_path(proc));
+
+	// validate SBE state
+	validateSBEState(proc);
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	// call pdbg back-end function
+	auto ret = sbe_mpipl_get_ti_info(pib, data, dataLen);
+	if (ret != 0) {
+		throw captureFFDC(proc);
+	}
+}
+
 } // namespace sbe
 } // namespace openpower::phal
