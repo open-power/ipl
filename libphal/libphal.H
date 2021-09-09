@@ -48,6 +48,16 @@ sbeError_t captureFFDC(struct pdbg_target *proc);
 void mpiplContinue(struct pdbg_target *proc);
 
 /**
+ * @brief Execute enter mpipl on the pib
+ *
+ * @param[in] proc processor target to operate on
+ *
+ * Exceptions: SbeError with failure reason code, File name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void mpiplEnter(struct pdbg_target *proc);
+
+/**
  * @brief Get ti info
  *
  * @param[in] proc processor target to operate on
