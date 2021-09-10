@@ -344,7 +344,7 @@ static int ipl_set_ref_clock(void)
 			rc++;
 		}
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
 	}
 
 	if (!ipl_check_functional_master()){
@@ -380,7 +380,7 @@ static int ipl_proc_clock_test(void)
 			rc++;
 		}
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
 	}
 
 	if (!ipl_check_functional_master()){
@@ -425,7 +425,7 @@ static int ipl_proc_select_boot_prom(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
 		break;
         }
 
@@ -527,7 +527,7 @@ static int ipl_sbe_config_update(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
 		break;
 	}
 
@@ -559,7 +559,7 @@ static int ipl_sbe_start(void)
 			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
 				ret++;
 
-			ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_NILL : IPL_ERR_HWP);
+			ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
 			rc = ret;
 			continue;
 		}
@@ -581,11 +581,11 @@ static int ipl_sbe_start(void)
 						ipl_log_sbe_ffdc(pib);
 					}
 
-					ipl_error_callback((ret == 0) ? IPL_ERR_NILL : IPL_ERR_SBE_CHIPOP);
+					ipl_error_callback((ret == 0) ? IPL_ERR_OK : IPL_ERR_SBE_CHIPOP);
 					return ret;
 				}
 			} else {
-				ipl_error_type err_type = IPL_ERR_NILL;
+				ipl_error_type err_type = IPL_ERR_OK;
 
 				fapirc = p10_start_cbs(proc, true);
 				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
@@ -593,8 +593,7 @@ static int ipl_sbe_start(void)
 						ipl_log(IPL_ERROR, "SBE did not boot\n");
 						err_type = IPL_ERR_SBE_BOOT;
 					}
-				}
-				else {
+				} else {
 					err_type = IPL_ERR_HWP;
 				}
 				ipl_error_callback(err_type);
@@ -662,7 +661,7 @@ static int ipl_proc_attn_listen(void)
 		}
 	}
 
-	ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_CFAM);
+	ipl_error_callback((rc == 0) ? IPL_ERR_OK : IPL_ERR_CFAM);
 	return rc;
 }
 

@@ -70,7 +70,7 @@ int ipl_istep_via_sbe(int major, int minor)
 			rc = 0;
 		}
 
-		ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((rc == 0) ? IPL_ERR_OK : IPL_ERR_HWP);
 		break;
 	}
 
@@ -111,7 +111,7 @@ int ipl_istep_via_hostboot(int major, int minor)
 		else
 			rc = 0;
 
-		ipl_error_callback((rc == 0) ? IPL_ERR_NILL : IPL_ERR_HWP);
+		ipl_error_callback((rc == 0) ? IPL_ERR_OK : IPL_ERR_HWP);
 		break;
 	}
 

@@ -23,7 +23,7 @@ enum ipl_type {
 
 //IPL Error types
 enum ipl_error_type {
-	IPL_ERR_NILL = 0,
+	IPL_ERR_OK = 0,
 	IPL_ERR_HWP,
 	IPL_ERR_SBE_CHIPOP,
 	IPL_ERR_SBE_BOOT,
@@ -34,13 +34,13 @@ enum ipl_error_type {
 
 typedef std::map<ipl_error_type, const char*> err_msg_map_type;
 const err_msg_map_type err_msg_map = {
-	{IPL_ERR_NILL, ""},
-	{IPL_ERR_HWP, "HWP execution reported error"},
-	{IPL_ERR_SBE_CHIPOP, "SBE chip-op reported error"},
-	{IPL_ERR_SBE_BOOT, "SBE Boot failure"},
-	{IPL_ERR_PRI_PROC_NON_FUNC, "Primary processor is non functional"},
-	{IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available"},
-	{IPL_ERR_CFAM, "CFAM read/write failure"},
+	{ IPL_ERR_OK, "" },
+	{ IPL_ERR_HWP, "HWP execution reported error" },
+	{ IPL_ERR_SBE_CHIPOP, "SBE chip-op reported error" },
+	{ IPL_ERR_SBE_BOOT, "SBE Boot failure" },
+	{ IPL_ERR_PRI_PROC_NON_FUNC, "Primary processor is non functional" },
+	{ IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available" },
+	{ IPL_ERR_CFAM, "CFAM read/write failure" },
 };
 
 // Error info structure.
@@ -49,14 +49,13 @@ struct ipl_error_info {
 	//additional debug/callout data need to be included for cfam failures
 	void *private_data;
 	//specilized constructors
-	ipl_error_info() : type(IPL_ERR_NILL), private_data(NULL)  {}
+	ipl_error_info() : type(IPL_ERR_OK), private_data(NULL)  {}
 	ipl_error_info(ipl_error_type type) : type(type), private_data(NULL) {}
 
 	~ipl_error_info(){
 		// freeup the private_data allocated memory
-		if (private_data){
+		if (private_data)
 			free(private_data);
-		}
 	}
 };
 
