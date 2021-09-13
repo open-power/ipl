@@ -589,9 +589,12 @@ static int ipl_sbe_start(void)
 
 				fapirc = p10_start_cbs(proc, true);
 				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
-					if (!ipl_sbe_booted(proc, 1)) {
+					if (!ipl_sbe_booted(proc, 25)) {
 						ipl_log(IPL_ERROR, "SBE did not boot\n");
 						err_type = IPL_ERR_SBE_BOOT;
+					}
+					else {
+						rc = 0;
 					}
 				} else {
 					err_type = IPL_ERR_HWP;
