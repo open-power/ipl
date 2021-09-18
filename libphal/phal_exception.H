@@ -12,16 +12,19 @@ namespace exception
 // Error Type definition
 enum ERR_TYPE {
 	NONE = 0,
+	PDBG_TARGET_NOT_OPERATIONAL,
 };
 
 // Error type to message map.
 typedef std::map<ERR_TYPE, const char *> errMsgMapType;
-const errMsgMapType errMsgMap = {{NONE, ""}};
+const errMsgMapType errMsgMap = {
+    {NONE, ""},
+    {PDBG_TARGET_NOT_OPERATIONAL, "PDBG target not in operational state"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {
 	virtual ERR_TYPE errType() const noexcept = 0;
-};
+}; // namespace exception
 
 // SBE related functions errors base exception class
 // Exception class includes all the required for SBE RAS
