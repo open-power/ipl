@@ -2,7 +2,6 @@ extern "C" {
 #include <stdio.h>
 #include <unistd.h>
 #include <libpdbg.h>
-#include <libpdbg_sbe.h>
 }
 
 #include "libipl.H"
@@ -231,4 +230,60 @@ void ipl_log_sbe_ffdc(struct pdbg_target *pib)
 	// free ffdc data
 	if (ffdc)
 		free(ffdc);
+}
+
+int ipl_set_sbe_state(struct pdbg_target *proc, enum sbe_state state)
+{
+	ipl_log(IPL_INFO, "(%s)SBE state update (%d) \n",
+		pdbg_target_path(proc), state);
+
+	// get PIB target
+	char path[16];
+	sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
+	struct pdbg_target *pib = pdbg_target_from_path(nullptr, path);
+	if (pib == nullptr) {
+		ipl_log(IPL_ERROR, "Failed to get PIB target for(%s)",
+			pdbg_target_path(proc));
+		ipl_error_callback(IPL_ERR_PIB_TGT_NOT_FOUND);
+		return 1;
+	}
+	//PIB already probed as part of ipl init function.
+	//update SBE state
+	if (sbe_set_state(pib, state)) {
+		ipl_log(IPL_ERROR, "Failed to update SBE state information (%s)",
+			pdbg_target_path(proc));
+		ipl_error_callback(IPL_ERR_CFAM);
+		return 1;
+	}
+	return 0;
+}
+
+int ipl_set_sbe_state_all(enum sbe_state state)
+{
+	struct pdbg_target *proc;
+	int ret = 0;
+	pdbg_for_each_class_target("proc", proc) {
+		if (ipl_is_present(proc)) {
+			if (ipl_set_sbe_state(proc, state)) {
+				ret = 1;
+			}
+		}
+	}
+	return ret;
+}
+
+int ipl_set_sbe_state_all_sec(enum sbe_state state)
+{
+	struct pdbg_target *proc;
+	int ret = 0;
+	pdbg_for_each_class_target("proc", proc) {
+		if (ipl_is_master_proc(proc))
+			continue;
+		if (ipl_is_present(proc)) {
+			if (ipl_set_sbe_state(proc, state)) {
+				 ret = 1;
+			}
+		}
+	}
+	return ret;
 }
