@@ -10,11 +10,11 @@ namespace pdbg
 using namespace openpower::phal::logging;
 using namespace openpower::phal;
 
-pdbg_target *getPibTarget(pdbg_target *proc)
+struct pdbg_target *getPibTarget(struct pdbg_target *proc)
 {
 	char path[16];
 	sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
-	pdbg_target *pib = pdbg_target_from_path(nullptr, path);
+	struct pdbg_target *pib = pdbg_target_from_path(nullptr, path);
 	if (pib == nullptr) {
 		log(level::ERROR, "Failed to get PIB target for(%s)",
 		    pdbg_target_path(proc));
@@ -29,11 +29,11 @@ pdbg_target *getPibTarget(pdbg_target *proc)
 	return pib;
 }
 
-pdbg_target *getFsiTarget(pdbg_target *proc)
+struct pdbg_target *getFsiTarget(struct pdbg_target *proc)
 {
 	char path[16];
 	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
-	pdbg_target *fsi = pdbg_target_from_path(nullptr, path);
+	struct pdbg_target *fsi = pdbg_target_from_path(nullptr, path);
 	if (fsi == nullptr) {
 		log(level::ERROR, "Failed to get FSI target for(%s)",
 		    pdbg_target_path(proc));

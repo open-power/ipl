@@ -16,7 +16,7 @@ namespace pdbg
  *
  *  Exceptions: SbeError
  */
-pdbg_target *getPibTarget(pdbg_target *proc);
+struct pdbg_target *getPibTarget(struct pdbg_target *proc);
 
 /**
  *  @brief  Helper function to find FSI target needed for FSI operations
@@ -27,7 +27,7 @@ pdbg_target *getPibTarget(pdbg_target *proc);
  *
  *  Exceptions: SbeError
  */
-pdbg_target *getFsiTarget(pdbg_target *proc);
+struct pdbg_target *getFsiTarget(struct pdbg_target *proc);
 
 } // namespace pdbg
 } // namespace openpower::phal::utils
