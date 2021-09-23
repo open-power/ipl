@@ -306,6 +306,12 @@ static int ipl_updatehwmodel(void)
 
 	update_hwas_state(boot_file_absent);
 
+	if(!boot_file_absent) {
+		// Update SBE state to Not usable in reboot path
+		// Boot error callback is only required for failure
+		ipl_set_sbe_state_all(SBE_STATE_NOT_USABLE);
+	}
+
 	if (!ipl_check_functional_master()){
 		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
@@ -582,18 +588,25 @@ static int ipl_sbe_start(void)
 					}
 
 					ipl_error_callback((ret == 0) ? IPL_ERR_OK : IPL_ERR_SBE_CHIPOP);
-					return ret;
+					rc = ret;
 				}
 			} else {
 				ipl_error_type err_type = IPL_ERR_OK;
 
 				fapirc = p10_start_cbs(proc, true);
 				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
+					// Update Primary processor SBE state to check cfam.
+					// Boot error callback is only required for failure.
+					ipl_set_sbe_state(proc, SBE_STATE_CHECK_CFAM);
+
 					if (!ipl_sbe_booted(proc, 25)) {
 						ipl_log(IPL_ERROR, "SBE did not boot\n");
 						err_type = IPL_ERR_SBE_BOOT;
 					}
 					else {
+						// Update Primary processor SBE state to booted
+						// Boot error callback is only required for failure.
+						ipl_set_sbe_state(proc, SBE_STATE_BOOTED);
 						rc = 0;
 					}
 				} else {
@@ -605,9 +618,15 @@ static int ipl_sbe_start(void)
 		}
 	}
 
-	if (!ipl_check_functional_master()) {
-		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-		return 1;
+	if(!rc) {
+		// Update Secondary processors SBE state to check cfam
+		// Boot error callback is required for failue
+		ipl_set_sbe_state_all_sec(SBE_STATE_CHECK_CFAM);
+
+		if (!ipl_check_functional_master()) {
+			ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+			return 1;
+		}
 	}
 
 	return rc;
