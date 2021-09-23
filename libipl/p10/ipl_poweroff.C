@@ -38,6 +38,9 @@ int ipl_pre_poweroff(void)
 			++rc;
 		}
 	}
+	// Update SBE state to Not usable in pre-poweroff path
+	// Boot error callback is only required for failure handling
+	ipl_set_sbe_state_all(SBE_STATE_NOT_USABLE);
 
 	return rc;
 }
