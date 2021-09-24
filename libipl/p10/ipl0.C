@@ -683,7 +683,7 @@ static int ipl_proc_attn_listen(void)
 		}
 	}
 
-	ipl_error_callback((rc == 0) ? IPL_ERR_OK : IPL_ERR_CFAM);
+	ipl_error_callback((rc == 0) ? IPL_ERR_OK : IPL_ERR_FSI_REG);
 	return rc;
 }
 

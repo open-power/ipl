@@ -252,7 +252,7 @@ int ipl_set_sbe_state(struct pdbg_target *proc, enum sbe_state state)
 	if (sbe_set_state(pib, state)) {
 		ipl_log(IPL_ERROR, "Failed to update SBE state information (%s)",
 			pdbg_target_path(proc));
-		ipl_error_callback(IPL_ERR_CFAM);
+		ipl_error_callback(IPL_ERR_FSI_REG);
 		return 1;
 	}
 	return 0;

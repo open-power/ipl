@@ -29,7 +29,7 @@ enum ipl_error_type {
 	IPL_ERR_SBE_BOOT,
 	IPL_ERR_PRI_PROC_NON_FUNC,
 	IPL_ERR_FSI_TGT_NOT_FOUND,
-	IPL_ERR_CFAM,
+	IPL_ERR_FSI_REG,
 	IPL_ERR_PIB_TGT_NOT_FOUND,
 };
 
@@ -41,7 +41,7 @@ const err_msg_map_type err_msg_map = {
 	{ IPL_ERR_SBE_BOOT, "SBE Boot failure" },
 	{ IPL_ERR_PRI_PROC_NON_FUNC, "Primary processor is non functional" },
 	{ IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available" },
-	{ IPL_ERR_CFAM, "CFAM read/write failure" },
+	{ IPL_ERR_FSI_REG, "FSI register read/write failure" },
 	{ IPL_ERR_PIB_TGT_NOT_FOUND, "PIB target is not available" },
 };
 
