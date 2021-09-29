@@ -6,6 +6,7 @@ extern "C" {
 #include <libpdbg.h>
 }
 
+#include <filesystem>
 namespace openpower::phal
 {
 namespace sbe
@@ -70,4 +71,11 @@ void mpiplEnter(struct pdbg_target *proc);
 void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
 
 } // namespace sbe
+
+namespace dump
+{
+int collectSBEDump(uint32_t id, uint8_t failingUnit,
+		   std::filesystem::path &dumpPath);
+
+} // namespace dump
 } // namespace openpower::phal
