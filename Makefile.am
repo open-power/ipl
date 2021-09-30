@@ -94,6 +94,7 @@ libphal_la_SOURCES = \
 	libphal/log.H \
 	libphal/utils_tempfile.C \
 	libphal/utils_tempfile.H \
+	libphal/phal_exception.C \
 	libphal/phal_exception.H \
 	libphal/utils_buffer.H \
 	libphal/utils_pdbg.C \

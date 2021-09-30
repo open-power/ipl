@@ -60,7 +60,7 @@ class SbeError final : public phalError
 	SbeError &operator=(SbeError &&) = default;
 	SbeError(SbeError &&) = default;
 
-	virtual ~SbeError(){};
+	virtual ~SbeError();
 
 	/* return error type */
 	ERR_TYPE errType() const noexcept override
