@@ -19,6 +19,7 @@ enum ERR_TYPE {
 	SBE_CMD_FAILED,
 	SBE_CMD_TIMEOUT,
 	SBE_FFDC_NO_DATA,
+	PDBG_INIT_FAIL,
 };
 
 // Error type to message map.
@@ -31,7 +32,8 @@ const errMsgMapType errMsgMap = {
     {SBE_FFDC_GET_FAILED, "SBE FFDC get functionn failed"},
     {SBE_CMD_FAILED, "SBE command reported error"},
     {SBE_CMD_TIMEOUT, "SBE command timeout"},
-    {SBE_FFDC_NO_DATA, "SBE FFDC No failure data"}};
+    {SBE_FFDC_NO_DATA, "SBE FFDC No failure data"},
+    {PDBG_INIT_FAIL, "PDBG initialisation failed"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {

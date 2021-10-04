@@ -70,4 +70,22 @@ void mpiplEnter(struct pdbg_target *proc);
 void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
 
 } // namespace sbe
+
+namespace pdbg
+{
+/**
+ * @brief wrapper function to Initialise the pdbg library targeting system
+ *        based on user provided back-end and device tree.
+ * @param[in] pdbgBackend  PDBG back-end type (optional)
+ * @param[in] logLevel PDBG log level (optional)
+ * @param[in] pdbgDtbPath  PDBG_DTB environment variable path (optional)
+ *
+ * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
+ */
+void init(pdbg_backend pdbgBackend = PDBG_BACKEND_SBEFIFO,
+	  const int32_t logLevel = PDBG_ERROR,
+	  std::string pdbgDtbPath =
+	      "/var/lib/phosphor-software-manager/pnor/rw/DEVTREE");
+
+} // namespace pdbg
 } // namespace openpower::phal
