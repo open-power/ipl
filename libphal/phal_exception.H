@@ -20,6 +20,8 @@ enum ERR_TYPE {
 	SBE_CMD_TIMEOUT,
 	SBE_FFDC_NO_DATA,
 	PDBG_INIT_FAIL,
+	HWP_EXECUTION_FAILED,
+	FILE_OPERATION_FAILED,
 };
 
 // Error type to message map.
@@ -33,7 +35,9 @@ const errMsgMapType errMsgMap = {
     {SBE_CMD_FAILED, "SBE command reported error"},
     {SBE_CMD_TIMEOUT, "SBE command timeout"},
     {SBE_FFDC_NO_DATA, "SBE FFDC No failure data"},
-    {PDBG_INIT_FAIL, "PDBG initialisation failed"}};
+    {PDBG_INIT_FAIL, "PDBG initialisation failed"},
+    {HWP_EXECUTION_FAILED, "HWP execution failed"},
+    {FILE_OPERATION_FAILED, "File operation failed"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {
@@ -104,9 +108,43 @@ class SbeError final : public phalError
 	std::string fileName;
 };
 
+// Exception handling for dump specific functions
+class DumpError final : public phalError
+{
+       public:
+	DumpError(ERR_TYPE type) : type(type)
+	{
+	}
+
+	DumpError &operator=(DumpError &&) = default;
+	DumpError(DumpError &&) = default;
+
+	/* return error type */
+	ERR_TYPE errType() const noexcept override
+	{
+		return type;
+	}
+
+	/* return error string */
+	const char *what() const noexcept override
+	{
+		auto msg = "UNSUPPORTED_ERROR_TYPE";
+		auto errMsg = errMsgMap.find(type);
+		if (errMsg != errMsgMap.end()) {
+			msg = errMsg->second;
+		}
+		return msg;
+	}
+
+       private:
+	/* Error type */
+	ERR_TYPE type;
+};
+
 } // namespace exception
 
 using phalError_t = openpower::phal::exception::phalError;
 using sbeError_t = openpower::phal::exception::SbeError;
+using dumpError_t = openpower::phal::exception::DumpError;
 
 } // namespace openpower::phal

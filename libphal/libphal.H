@@ -6,6 +6,8 @@ extern "C" {
 #include <libpdbg.h>
 }
 
+#include <filesystem>
+
 namespace openpower::phal
 {
 namespace sbe
@@ -88,4 +90,19 @@ void init(pdbg_backend pdbgBackend = PDBG_BACKEND_SBEFIFO,
 	      "/var/lib/phosphor-software-manager/pnor/rw/DEVTREE");
 
 } // namespace pdbg
+
+namespace dump
+{
+/**
+ * @brief Execute HWPs to collect SBE dump
+ * @param[in] id Id of the dump
+ * @param[in] failingUnit Id of proc containing failing SBE
+ * @param[in] dumpPath Path to stored the dump files
+ *
+ * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
+ */
+void collectSBEDump(uint32_t id, uint32_t failingUnit,
+		    const std::filesystem::path &dumpPath);
+
+} // namespace dump
 } // namespace openpower::phal

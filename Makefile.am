@@ -101,7 +101,8 @@ libphal_la_SOURCES = \
 	libphal/utils_pdbg.H \
 	libphal/libphal.H \
 	libphal/phal_sbe.C \
-	libphal/phal_pdbg.C
+	libphal/phal_pdbg.C \
+	libphal/phal_dump.C
 
 libphal_la_CXXFLAGS = -Wall -Werror $(EKB_CXXFLAGS) \
 	-I$(srcdir)/libphal
