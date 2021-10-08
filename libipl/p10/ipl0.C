@@ -277,6 +277,55 @@ static bool update_genesis_hwas_state(void)
 	return true;
 }
 
+/**
+ * @brief Wrapper function to execute continue mpipl on the proc
+ *
+ * @param[in] proc proc target to operate on
+ *
+ * return ipl error type enum
+ */
+static ipl_error_type  ipl_sbe_mpipl_continue(struct pdbg_target *proc)
+{
+	enum sbe_state state;
+	char path[16];
+	int ret = 0;
+
+	ipl_log(IPL_INFO, "ipl_sbe_mpipl_continue: Enter(%s)", pdbg_target_path(proc));
+
+	// get PIB target
+	sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
+	struct pdbg_target *pib = pdbg_target_from_path(nullptr, path);
+	if (pib == nullptr) {
+		ipl_log(IPL_ERROR, "Failed to get PIB target for(%s)",
+			pdbg_target_path(proc));
+		return IPL_ERR_PIB_TGT_NOT_FOUND;
+	}
+
+	ret = sbe_get_state(pib, &state);
+	if (ret != 0) {
+		ipl_log(IPL_ERROR, "Failed to read SBE state information (%s)",
+			pdbg_target_path(pib));
+		return IPL_ERR_FSI_REG;
+	}
+
+	// SBE_STATE_CHECK_CFAM case is already handled by pdbg api
+	if (state != SBE_STATE_BOOTED) {
+		ipl_log(IPL_ERROR, "SBE (%s) is not ready for chip-op: state(0x%08x)",
+			pdbg_target_path(pib), state);
+		return IPL_ERR_SBE_CHIPOP;
+	}
+
+	// call pdbg back-end function
+	ret = sbe_mpipl_continue(pib);
+        if(ret != 0) {
+		 ipl_log(IPL_ERROR, "SBE (%s) mpipl continue chip-op failed",
+			pdbg_target_path(pib));
+		return IPL_ERR_SBE_CHIPOP;
+	}
+
+	return IPL_ERR_OK;
+}
+
 static int ipl_updatehwmodel(void)
 {
 	namespace fs = std::filesystem;
@@ -574,22 +623,9 @@ static int ipl_sbe_start(void)
 		// non cronus mode
 		if (ipl_is_master_proc(proc)) {
 			if (ipl_type() == IPL_TYPE_MPIPL) {
-				struct pdbg_target *pib;
-
-				pdbg_for_each_target("pib", proc, pib) {
-					ipl_log(IPL_INFO, "Running sbe_mpipl_continue on processor %d\n",
-						pdbg_target_index(proc));
-					ret = sbe_mpipl_continue(pib);
-					if (ret != 0) {
-						ipl_log(IPL_ERROR,
-							"Continue MPIPL failed, ret=%d\n",
-							ret);
-						ipl_log_sbe_ffdc(pib);
-					}
-
-					ipl_error_callback((ret == 0) ? IPL_ERR_OK : IPL_ERR_SBE_CHIPOP);
-					rc = ret;
-				}
+				ipl_error_type err = ipl_sbe_mpipl_continue(proc);
+				ipl_error_callback(err);
+				rc = err;
 			} else {
 				ipl_error_type err_type = IPL_ERR_OK;
 
