@@ -306,8 +306,8 @@ static int ipl_updatehwmodel(void)
 
 	update_hwas_state(boot_file_absent);
 
-	if(!boot_file_absent) {
-		// Update SBE state to Not usable in reboot path
+	if(!boot_file_absent && (ipl_type() != IPL_TYPE_MPIPL)) {
+		// Update SBE state to Not usable in reboot path(not on MPIPL)
 		// Boot error callback is only required for failure
 		ipl_set_sbe_state_all(SBE_STATE_NOT_USABLE);
 	}
