@@ -99,6 +99,17 @@ void init(pdbg_backend pdbgBackend = PDBG_BACKEND_SBEFIFO,
  */
 bool isTgtPresent(struct pdbg_target *target);
 
+/**
+ * @brief Determine whether the target is functional or not
+ *
+ * param[in] target target to operate on
+ *
+ * @return true if the target is functional, false otherwise
+ *
+ * Exceptions: pdbgError with failure reason code
+ */
+bool isTgtFunctional(struct pdbg_target *target);
+
 } // namespace pdbg
 
 namespace dump

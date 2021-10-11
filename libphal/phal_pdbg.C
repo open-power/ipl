@@ -49,4 +49,15 @@ bool isTgtPresent(struct pdbg_target *target)
 	return hwasState.present;
 }
 
+bool isTgtFunctional(struct pdbg_target *target)
+{
+	ATTR_HWAS_STATE_Type hwasState;
+	if (DT_GET_PROP(ATTR_HWAS_STATE, target, hwasState)) {
+		log(level::ERROR, "Attribute [ATTR_HWAS_STATE] read failed");
+		throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+	}
+
+	return hwasState.functional;
+}
+
 } // namespace openpower::phal::pdbg
