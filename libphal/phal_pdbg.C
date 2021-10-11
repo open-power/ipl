@@ -2,6 +2,8 @@
 #include "log.H"
 #include "phal_exception.H"
 
+#include <attributes_info.H>
+
 namespace openpower::phal::pdbg
 {
 
@@ -34,6 +36,17 @@ void init(pdbg_backend pdbgBackend, const int32_t logLevel,
 
 	// Set PDBG log level
 	pdbg_set_loglevel(logLevel);
+}
+
+bool isTgtPresent(struct pdbg_target *target)
+{
+	ATTR_HWAS_STATE_Type hwasState;
+	if (DT_GET_PROP(ATTR_HWAS_STATE, target, hwasState)) {
+		log(level::ERROR, "Attribute [ATTR_HWAS_STATE] read failed");
+		throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+	}
+
+	return hwasState.present;
 }
 
 } // namespace openpower::phal::pdbg

@@ -22,6 +22,7 @@ enum ERR_TYPE {
 	PDBG_INIT_FAIL,
 	HWP_EXECUTION_FAILED,
 	FILE_OPERATION_FAILED,
+	DEVTREE_ATTR_READ_FAIL,
 };
 
 // Error type to message map.
@@ -37,7 +38,8 @@ const errMsgMapType errMsgMap = {
     {SBE_FFDC_NO_DATA, "SBE FFDC No failure data"},
     {PDBG_INIT_FAIL, "PDBG initialisation failed"},
     {HWP_EXECUTION_FAILED, "HWP execution failed"},
-    {FILE_OPERATION_FAILED, "File operation failed"}};
+    {FILE_OPERATION_FAILED, "File operation failed"},
+    {DEVTREE_ATTR_READ_FAIL, "Device Tree attribute read fail"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {

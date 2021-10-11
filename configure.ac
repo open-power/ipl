@@ -18,10 +18,17 @@ fi
 
 if test "$CHIP" = "p10" ; then
 	AC_DEFINE([IPL_P10], [1], [Define to 1 for P10])
-	AC_ARG_ENABLE([libphal],
-		AS_HELP_STRING([--enable-libphal]
-			[build phal util library]))
-	AM_CONDITIONAL([BUILD_PHAL_API], [test "x$enable_libphal" = "xyes"])
+fi
+
+AC_ARG_ENABLE([libphal],
+	AS_HELP_STRING([--enable-libphal]
+		[build phal util library]))
+AM_CONDITIONAL([BUILD_PHAL_API], [test "x$enable_libphal" = "xyes"])
+
+if test "x$enable_libphal" = "xyes"; then
+	PKG_CHECK_MODULES([LIBDT_API], [libdt-api])
+	LIBS="$LIBS $LIBDT_API_LIBS"
+	CFLAGS="$CFLAGS $LIBDT_API_CFLAGS"
 fi
 
 AC_LANG([C++])

@@ -22,7 +22,7 @@ namespace sbe
  *
  * Exceptions: SbeError
  */
-void validateSBEState(struct pdbg_target *proc);
+void validateSBEState(const struct pdbg_target *proc);
 
 /**
  * @brief utility function to capture SBE ffdc data using
@@ -88,6 +88,16 @@ void init(pdbg_backend pdbgBackend = PDBG_BACKEND_SBEFIFO,
 	  const int32_t logLevel = PDBG_ERROR,
 	  std::string pdbgDtbPath =
 	      "/var/lib/phosphor-software-manager/pnor/rw/DEVTREE");
+/**
+ * @brief Determine whether the target is present or not
+ *
+ * param[in] target target to operate on
+ *
+ * @return true if the target is present, false otherwise
+ *
+ * Exceptions: pdbgError with failure reason code
+ */
+bool isTgtPresent(struct pdbg_target *target);
 
 } // namespace pdbg
 
@@ -103,6 +113,5 @@ namespace dump
  */
 void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		    const std::filesystem::path &dumpPath);
-
 } // namespace dump
 } // namespace openpower::phal
