@@ -121,6 +121,15 @@ bool isTgtFunctional(struct pdbg_target *target);
  */
 bool isPrimaryProc(struct pdbg_target *proc);
 
+/**
+ *  @brief Get primary processor pdbg target
+ *
+ *  @return primary processor pdbg target.
+ *
+ *  Exceptions: pdbgError with failure reason code
+ */
+struct pdbg_target *getPrimaryProc();
+
 } // namespace pdbg
 
 namespace dump

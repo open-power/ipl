@@ -77,4 +77,22 @@ bool isPrimaryProc(struct pdbg_target *proc)
 	}
 }
 
+struct pdbg_target *getPrimaryProc()
+{
+	struct pdbg_target *procTarget;
+	pdbg_for_each_class_target("proc", procTarget)
+	{
+		if (isPrimaryProc(procTarget)) {
+			return procTarget;
+		}
+		procTarget = nullptr;
+	}
+	// check valid primary processor is available
+	if (procTarget == nullptr) {
+		log(level::ERROR, "fail to get primary processor");
+		throw pdbgError_t(exception::DEVTREE_PRI_PROC_NOT_FOUND);
+	}
+	return procTarget;
+}
+
 } // namespace openpower::phal::pdbg
