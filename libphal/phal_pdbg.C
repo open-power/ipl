@@ -60,4 +60,21 @@ bool isTgtFunctional(struct pdbg_target *target)
 	return hwasState.functional;
 }
 
+bool isPrimaryProc(struct pdbg_target *proc)
+{
+	ATTR_PROC_MASTER_TYPE_Type type;
+
+	// Get processor type (Primary or Secondary)
+	if (DT_GET_PROP(ATTR_PROC_MASTER_TYPE, proc, type)) {
+		log(level::ERROR,
+		    "Attribute [ATTR_PROC_MASTER_TYPE] get failed");
+		throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+	}
+	if (type == ENUM_ATTR_PROC_MASTER_TYPE_ACTING_MASTER) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 } // namespace openpower::phal::pdbg

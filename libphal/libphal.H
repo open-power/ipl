@@ -110,6 +110,17 @@ bool isTgtPresent(struct pdbg_target *target);
  */
 bool isTgtFunctional(struct pdbg_target *target);
 
+/**
+ *  @brief  Check if primary processor or not
+ *
+ *  param[in] proc processor target to operate on
+ *
+ *  @return True/False
+ *
+ *  Exceptions: pdbgError with failure reason code
+ */
+bool isPrimaryProc(struct pdbg_target *proc);
+
 } // namespace pdbg
 
 namespace dump
