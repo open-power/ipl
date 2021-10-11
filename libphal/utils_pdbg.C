@@ -18,13 +18,13 @@ struct pdbg_target *getPibTarget(struct pdbg_target *proc)
 	if (pib == nullptr) {
 		log(level::ERROR, "Failed to get PIB target for(%s)",
 		    pdbg_target_path(proc));
-		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
 	// Probe the target
 	if (pdbg_target_probe(pib) != PDBG_TARGET_ENABLED) {
 		log(level::ERROR, "PIB(%s) probe: fail to enable",
 		    pdbg_target_path(pib));
-		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
 	return pib;
 }
@@ -37,13 +37,13 @@ struct pdbg_target *getFsiTarget(struct pdbg_target *proc)
 	if (fsi == nullptr) {
 		log(level::ERROR, "Failed to get FSI target for(%s)",
 		    pdbg_target_path(proc));
-		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
 	// Probe the target
 	if (pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED) {
 		log(level::ERROR, "FSI(%s) probe: fail to enable",
 		    pdbg_target_path(fsi));
-		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
 	return fsi;
 }

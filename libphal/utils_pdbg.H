@@ -14,7 +14,7 @@ namespace pdbg
  *
  *  @return Valid pointer to PIB target on success
  *
- *  Exceptions: SbeError
+ *  Exceptions: PdbgError
  */
 struct pdbg_target *getPibTarget(struct pdbg_target *proc);
 
@@ -25,7 +25,7 @@ struct pdbg_target *getPibTarget(struct pdbg_target *proc);
  *
  *  @return Valid pointer to FSI target on success
  *
- *  Exceptions: SbeError
+ *  Exceptions: PdbgError
  */
 struct pdbg_target *getFsiTarget(struct pdbg_target *proc);
 

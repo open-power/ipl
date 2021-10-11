@@ -141,10 +141,49 @@ class DumpError final : public phalError
 	ERR_TYPE type;
 };
 
+// PDBG related functions errors base exception class
+// Exception class includes all the informations required
+// advanced error handling for api users.
+// Library users should watch this exception during PDBG
+// namespace specific api calls to get details of the
+// function errors
+class PdbgError final : public phalError
+{
+       public:
+	PdbgError(ERR_TYPE type) : type(type){};
+	PdbgError() : type(NONE){};
+
+	PdbgError &operator=(PdbgError &&) = default;
+	PdbgError(PdbgError &&) = default;
+
+	virtual ~PdbgError(){};
+
+	/* return error type */
+	ERR_TYPE errType() const noexcept override
+	{
+		return type;
+	}
+
+	/* return error string */
+	const char *what() const noexcept override
+	{
+		auto msg = "UNSUPPORTED_ERROR_TYPE";
+		auto errMsg = errMsgMap.find(type);
+		if (errMsg != errMsgMap.end()) {
+			msg = errMsg->second;
+		}
+		return msg;
+	}
+
+       private:
+	/* Error type */
+	ERR_TYPE type;
+};
 } // namespace exception
 
 using phalError_t = openpower::phal::exception::phalError;
 using sbeError_t = openpower::phal::exception::SbeError;
 using dumpError_t = openpower::phal::exception::DumpError;
+using pdbgError_t = openpower::phal::exception::PdbgError;
 
 } // namespace openpower::phal
