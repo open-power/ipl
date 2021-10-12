@@ -63,6 +63,20 @@ void setState(struct pdbg_target *proc, enum sbe_state state)
 	}
 }
 
+enum sbe_state getState(struct pdbg_target *proc)
+{
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+	enum sbe_state state = SBE_STATE_NOT_USABLE; // default value
+
+	if (sbe_get_state(pib, &state)) {
+		log(level::ERROR, "Failed to get SBE state information (%s)",
+		    pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	}
+	return state;
+}
+
 sbeError_t captureFFDC(struct pdbg_target *proc)
 {
 	// get SBE FFDC info
