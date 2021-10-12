@@ -60,6 +60,20 @@ enum sbe_state getState(struct pdbg_target *proc);
 bool isPrimaryIplDone();
 
 /**
+ * @brief utility function to check SBE Dump collection is allowed
+ *        on requested processor.
+ *        SBE Dump is not allowed in SBE_STATE_DEBUG_MODE. This mode
+ *        indicates another dump collection is already in progress.
+ *
+ * @param[in] proc processor target to operate on
+ *
+ * @return  true if dump is allowed.
+ *
+ * Exceptions: SbeError
+ */
+bool isDumpAllowed(struct pdbg_target *proc);
+
+/**
  * @brief utility function to capture SBE ffdc data using
  *        pdbg function sbe_ffdc_get().
  *

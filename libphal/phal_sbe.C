@@ -102,6 +102,18 @@ bool isPrimaryIplDone()
 	return done;
 }
 
+bool isDumpAllowed(struct pdbg_target *proc)
+{
+	// get SBE state
+	enum sbe_state state = getState(proc);
+	bool allowed = true;
+
+	if (state == SBE_STATE_DEBUG_MODE) {
+		allowed = false;
+	}
+	return allowed;
+}
+
 sbeError_t captureFFDC(struct pdbg_target *proc)
 {
 	// get SBE FFDC info
