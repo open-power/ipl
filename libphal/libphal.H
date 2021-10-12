@@ -218,6 +218,15 @@ uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr);
  */
 void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val);
 
+/**
+ * @brief Check SBE vital attention is active
+ *
+ * @param[in] proc processor target to operate on
+ *
+ * @return true/false base on vital attention status
+ */
+bool isSbeVitalAttnActive(struct pdbg_target *proc);
+
 } // namespace pdbg
 
 namespace dump
