@@ -111,4 +111,15 @@ uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr)
 	return val;
 }
 
+void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val)
+{
+	// Get fsi target.
+	struct pdbg_target *fsi = getFsiTarget(proc);
+
+	if (fsi_write(fsi, addr, val)) {
+		log(level::ERROR, "putCFAM(0x%X) update on %s failed", addr,
+		    pdbg_target_path(fsi));
+		throw pdbgError_t(exception::PDBG_FSI_WRITE_FAIL);
+	}
+}
 } // namespace openpower::phal::pdbg

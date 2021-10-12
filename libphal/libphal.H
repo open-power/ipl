@@ -142,6 +142,16 @@ struct pdbg_target *getPrimaryProc();
  */
 uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr);
 
+/**
+ * @brief update a CFAM FSI register
+ * @param[in] proc processor target to operate on
+ * @param[in] addr the CFAM address offset
+ * @param[in] val the write data
+ *
+ * Exceptions: pdbgError with failure reason code
+ */
+void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val);
+
 } // namespace pdbg
 
 namespace dump

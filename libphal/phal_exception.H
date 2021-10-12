@@ -25,6 +25,7 @@ enum ERR_TYPE {
 	DEVTREE_ATTR_READ_FAIL,
 	DEVTREE_PRI_PROC_NOT_FOUND,
 	PDBG_FSI_READ_FAIL,
+	PDBG_FSI_WRITE_FAIL,
 };
 
 // Error type to message map.
@@ -43,7 +44,8 @@ const errMsgMapType errMsgMap = {
     {FILE_OPERATION_FAILED, "File operation failed"},
     {DEVTREE_ATTR_READ_FAIL, "Device Tree attribute read fail"},
     {DEVTREE_PRI_PROC_NOT_FOUND, "Device Tree primary processor not found"},
-    {PDBG_FSI_READ_FAIL, "FSI read failed"}};
+    {PDBG_FSI_READ_FAIL, "FSI read failed"},
+    {PDBG_FSI_WRITE_FAIL, "FSI write failed"}};
 
 // phal specific errors base exception class
 struct phalError : public std::exception {
