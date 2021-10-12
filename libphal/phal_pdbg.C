@@ -122,4 +122,34 @@ void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val)
 		throw pdbgError_t(exception::PDBG_FSI_WRITE_FAIL);
 	}
 }
+
+bool isSbeVitalAttnActive(struct pdbg_target *proc)
+{
+	bool validAttn = false;
+	uint32_t isrVal = 0xFFFFFFFF;  // Invalid isr value
+	uint32_t isrMask = 0xFFFFFFFF; // Invalid isr mask
+	constexpr uint32_t SBE_ATTN = 0x00000002;
+
+	// get active attentions on processor
+	isrVal = getCFAM(proc, 0x1007);
+	if (isrVal == 0xFFFFFFFF) {
+		log(level::ERROR, "Error: cfam read 0x1007 INVALID");
+		throw pdbgError_t(exception::PDBG_FSI_READ_FAIL);
+	}
+	// get interrupt enabled special attentions mask
+	isrMask = getCFAM(proc, 0x100D);
+	if (isrMask == 0xFFFFFFFF) {
+		log(level::ERROR, "Error: cfam read 0x1007 INVALID");
+		throw pdbgError_t(exception::PDBG_FSI_READ_FAIL);
+	}
+	log(level::INFO, "ISR(%s):Value:0x%X Mask:0x%X", pdbg_target_path(proc),
+	    isrVal, isrMask);
+
+	// check attention active and not masked
+	if ((isrVal & SBE_ATTN) && (isrMask & SBE_ATTN)) {
+		//  attention active and not masked
+		validAttn = true;
+	}
+	return validAttn;
+} // namespace openpower::phal::pdbg
 } // namespace openpower::phal::pdbg
