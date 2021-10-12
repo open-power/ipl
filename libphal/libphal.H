@@ -120,6 +120,24 @@ void mpiplEnter(struct pdbg_target *proc);
  */
 void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
 
+/**
+ * @brief Wrapper function sbe get dump chipop.
+ *
+ * The dump data must be freed by caller. It is allocated using malloc() and
+ * must be freed using free().
+ *
+ * @param[in] proc  proc target to operate on
+ * @param[in] type Type of dump
+ * @param[in] clock Clock on or off
+ * @param[in] faCollect Fast Array collection (0 off, 1 on)
+ * @param[out] data Dump information
+ * @param[out] dataLen length of the data
+ *
+ * Exceptions: SbeError with failure reason code
+ */
+void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
+	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen);
+
 } // namespace sbe
 
 namespace pdbg

@@ -203,5 +203,23 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
 	}
 }
 
+void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
+	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
+{
+	log(level::INFO, "Enter: getDump(%d) on %s", type,
+	    pdbg_target_path(proc));
+
+	// validate SBE state
+	validateSBEState(proc);
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	// call pdbg back-end function
+	if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
+		throw captureFFDC(proc);
+	}
+}
+
 } // namespace sbe
 } // namespace openpower::phal
