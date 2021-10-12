@@ -13,6 +13,7 @@ namespace sbe
 using namespace openpower::phal::logging;
 using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
+using namespace openpower::phal::pdbg;
 
 void validateSBEState(struct pdbg_target *proc)
 {
@@ -75,6 +76,30 @@ enum sbe_state getState(struct pdbg_target *proc)
 		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
 	}
 	return state;
+}
+
+bool isPrimaryIplDone()
+{
+	struct pdbg_target *proc, *pib;
+	try {
+		// get primary processor target
+		proc = getPrimaryProc();
+
+		// get pib target associated to primary processor
+		pib = getPibTarget(proc);
+	} catch (const pdbgError_t &e) {
+		// throw sbeError type exception with same error
+		throw sbeError_t(e.errType());
+	}
+
+	bool done = false;
+
+	if (sbe_is_ipl_done(pib, &done)) {
+		log(level::ERROR, "Failed: sbe_is_ipl_done (%s)",
+		    pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	}
+	return done;
 }
 
 sbeError_t captureFFDC(struct pdbg_target *proc)

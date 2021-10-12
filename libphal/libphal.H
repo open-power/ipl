@@ -51,6 +51,15 @@ void setState(struct pdbg_target *proc, enum sbe_state state);
 enum sbe_state getState(struct pdbg_target *proc);
 
 /**
+ * @brief utility function to check Primary processor SBE IPL completed or not
+ *
+ * @return true for primary processor SBE IPL completed
+ *
+ * Exceptions: SbeError
+ */
+bool isPrimaryIplDone();
+
+/**
  * @brief utility function to capture SBE ffdc data using
  *        pdbg function sbe_ffdc_get().
  *
