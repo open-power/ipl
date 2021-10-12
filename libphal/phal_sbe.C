@@ -5,10 +5,6 @@
 #include "utils_pdbg.H"
 #include "utils_tempfile.H"
 
-extern "C" {
-#include <libpdbg_sbe.h>
-}
-
 namespace openpower::phal
 {
 namespace sbe
@@ -53,6 +49,17 @@ void validateSBEState(struct pdbg_target *proc)
 		    "SBE (%s) is not ready for chip-op: state(0x%08x)",
 		    pdbg_target_path(proc), state);
 		throw sbeError_t(exception::SBE_CHIPOP_NOT_ALLOWED);
+	}
+}
+void setState(struct pdbg_target *proc, enum sbe_state state)
+{
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+	if (sbe_set_state(pib, state)) {
+		log(level::ERROR,
+		    "Failed to set SBE state(%d) information (%s)", state,
+		    pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_STATE_WRITE_FAIL);
 	}
 }
 

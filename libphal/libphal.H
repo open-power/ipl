@@ -26,6 +26,18 @@ namespace sbe
 void validateSBEState(const struct pdbg_target *proc);
 
 /**
+ * @brief utility function to set SBE State
+ *
+ * Note: Caller has to make sure processor is functional
+ *
+ * @param[in] proc processor target to operate on
+ * @param[in] state sbe state
+ *
+ * Exceptions: SbeError
+ */
+void setState(struct pdbg_target *proc, enum sbe_state state);
+
+/**
  * @brief utility function to capture SBE ffdc data using
  *        pdbg function sbe_ffdc_get().
  *
