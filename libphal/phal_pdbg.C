@@ -1,6 +1,7 @@
 #include "libphal.H"
 #include "log.H"
 #include "phal_exception.H"
+#include "utils_pdbg.H"
 
 #include <attributes_info.H>
 
@@ -8,6 +9,7 @@ namespace openpower::phal::pdbg
 {
 
 using namespace openpower::phal::logging;
+using namespace openpower::phal::utils::pdbg;
 
 void init(pdbg_backend pdbgBackend, const int32_t logLevel,
 	  std::string pdbgDtbPath)
@@ -93,6 +95,20 @@ struct pdbg_target *getPrimaryProc()
 		throw pdbgError_t(exception::DEVTREE_PRI_PROC_NOT_FOUND);
 	}
 	return procTarget;
+}
+
+uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr)
+{
+	// Get fsi target.
+	struct pdbg_target *fsi = getFsiTarget(proc);
+
+	uint32_t val;
+	if (fsi_read(fsi, addr, &val)) {
+		log(level::ERROR, "CFAM(0x%X) on %s failed", addr,
+		    pdbg_target_path(fsi));
+		throw pdbgError_t(exception::PDBG_FSI_READ_FAIL);
+	}
+	return val;
 }
 
 } // namespace openpower::phal::pdbg

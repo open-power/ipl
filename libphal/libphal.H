@@ -4,6 +4,7 @@
 
 extern "C" {
 #include <libpdbg.h>
+#include <libpdbg_sbe.h>
 }
 
 #include <filesystem>
@@ -129,6 +130,17 @@ bool isPrimaryProc(struct pdbg_target *proc);
  *  Exceptions: pdbgError with failure reason code
  */
 struct pdbg_target *getPrimaryProc();
+
+/**
+ * @brief Read a CFAM FSI register
+ * @param[in] proc processor target to operate on
+ * @param[in] addr the CFAM address offset
+ *
+ * @return the CFAM register data.
+ *
+ * Exceptions: pdbgError with failure reason code
+ */
+uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr);
 
 } // namespace pdbg
 
