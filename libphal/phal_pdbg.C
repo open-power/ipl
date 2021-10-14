@@ -12,7 +12,7 @@ using namespace openpower::phal::logging;
 using namespace openpower::phal::utils::pdbg;
 
 void init(pdbg_backend pdbgBackend, const int32_t logLevel,
-	  std::string pdbgDtbPath)
+	  const std::string pdbgDtbPath)
 {
 	log(level::INFO, "PDBG Initilization started");
 

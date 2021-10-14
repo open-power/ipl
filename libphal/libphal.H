@@ -153,7 +153,7 @@ namespace pdbg
  */
 void init(pdbg_backend pdbgBackend = PDBG_BACKEND_SBEFIFO,
 	  const int32_t logLevel = PDBG_ERROR,
-	  std::string pdbgDtbPath =
+	  const std::string pdbgDtbPath =
 	      "/var/lib/phosphor-software-manager/pnor/rw/DEVTREE");
 /**
  * @brief Determine whether the target is present or not
