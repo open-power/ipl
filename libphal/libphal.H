@@ -23,7 +23,7 @@ namespace sbe
  *
  * Exceptions: SbeError
  */
-void validateSBEState(const struct pdbg_target *proc);
+void validateSBEState(struct pdbg_target *proc);
 
 /**
  * @brief utility function to set SBE State
