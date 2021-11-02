@@ -13,6 +13,7 @@ namespace exception
 enum ERR_TYPE {
 	NONE = 0,
 	PDBG_TARGET_NOT_OPERATIONAL,
+	PDBG_TARGET_NOT_FOUND,
 	SBE_STATE_READ_FAIL,
 	SBE_STATE_WRITE_FAIL,
 	SBE_CHIPOP_NOT_ALLOWED,
@@ -24,6 +25,7 @@ enum ERR_TYPE {
 	HWP_EXECUTION_FAILED,
 	FILE_OPERATION_FAILED,
 	DEVTREE_ATTR_READ_FAIL,
+	DEVTREE_ATTR_WRITE_FAIL,
 	DEVTREE_PRI_PROC_NOT_FOUND,
 	PDBG_FSI_READ_FAIL,
 	PDBG_FSI_WRITE_FAIL,
@@ -34,6 +36,7 @@ typedef std::map<ERR_TYPE, const char *> errMsgMapType;
 const errMsgMapType errMsgMap = {
     {NONE, ""},
     {PDBG_TARGET_NOT_OPERATIONAL, "PDBG target not in operational state"},
+    {PDBG_TARGET_NOT_FOUND, "PDBG target not found"},
     {SBE_STATE_READ_FAIL, "FAILED to read SBE state"},
     {SBE_STATE_READ_FAIL, "FAILED to write SBE state"},
     {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"},
@@ -45,6 +48,7 @@ const errMsgMapType errMsgMap = {
     {HWP_EXECUTION_FAILED, "HWP execution failed"},
     {FILE_OPERATION_FAILED, "File operation failed"},
     {DEVTREE_ATTR_READ_FAIL, "Device Tree attribute read fail"},
+    {DEVTREE_ATTR_WRITE_FAIL, "Device Tree attribute write fail"},
     {DEVTREE_PRI_PROC_NOT_FOUND, "Device Tree primary processor not found"},
     {PDBG_FSI_READ_FAIL, "FSI read failed"},
     {PDBG_FSI_WRITE_FAIL, "FSI write failed"}};

@@ -97,6 +97,39 @@ struct pdbg_target *getPrimaryProc()
 	return procTarget;
 }
 
+void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
+		    const uint32_t logId)
+{
+	struct pdbg_target *target = getTgtFromBinPath(physBinPath);
+	if (target == nullptr) {
+		log(level::ERROR, "deconfigureTgt: Failed to get Target");
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_FOUND);
+	}
+
+	ATTR_HWAS_STATE_Type hwasState;
+	if (DT_GET_PROP(ATTR_HWAS_STATE, target, hwasState)) {
+		log(level::ERROR, "Could not read(%s) HWAS_STATE attribute",
+		    pdbg_target_path(target));
+		throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+	}
+
+	if (!hwasState.present) {
+		log(level::ERROR,
+		    "deconfigureTgt: Skipping Target((%s)) is not "
+		    "present",
+		    pdbg_target_path(target));
+		return;
+	}
+	// Update HWAS_STATE attribute with deconfig/EID information
+	hwasState.functional = 0;
+	hwasState.deconfiguredByEid = logId;
+	if (DT_SET_PROP(ATTR_HWAS_STATE, target, hwasState)) {
+		log(level::ERROR, "Could not write(%s) HWAS_STATE attribute",
+		    pdbg_target_path(target));
+		throw pdbgError_t(exception::DEVTREE_ATTR_WRITE_FAIL);
+	}
+}
+
 uint32_t getCFAM(struct pdbg_target *proc, const uint32_t addr)
 {
 	// Get fsi target.

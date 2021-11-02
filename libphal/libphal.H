@@ -7,7 +7,10 @@ extern "C" {
 #include <libpdbg_sbe.h>
 }
 
+#include <attributes_info.H>
+
 #include <filesystem>
+#include <vector>
 
 namespace openpower::phal
 {
@@ -196,6 +199,20 @@ bool isPrimaryProc(struct pdbg_target *proc);
  *  Exceptions: pdbgError with failure reason code
  */
 struct pdbg_target *getPrimaryProc();
+
+/**
+ * @brief Deconfigures a Target.
+ *
+ * This will Deconfigure the Target (set state to non-functional,
+ * do any Deconfigure actions and create a Deconfigure Record).
+ *
+ * @param[in] physBinPath PHYS_BIN_PATH value
+ * @param[in] logId  Error log ID to store in Deconfigure Record.
+ *
+ *  Exceptions: pdbgError with failure reason code
+ */
+void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
+		    const uint32_t logId);
 
 /**
  * @brief Read a CFAM FSI register
