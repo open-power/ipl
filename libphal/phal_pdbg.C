@@ -5,6 +5,8 @@
 
 #include <attributes_info.H>
 
+#include <cstring>
+
 namespace openpower::phal::pdbg
 {
 
@@ -127,6 +129,76 @@ void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
 		log(level::ERROR, "Could not write(%s) HWAS_STATE attribute",
 		    pdbg_target_path(target));
 		throw pdbgError_t(exception::DEVTREE_ATTR_WRITE_FAIL);
+	}
+}
+
+void getLocationCode(struct pdbg_target *target,
+		     ATTR_LOCATION_CODE_Type &locationCode)
+{
+	// check target is valid.
+	if (target == nullptr) {
+		log(level::ERROR, "getLocationCode: Invalid pdbg Target");
+		throw pdbgError_t(exception::PDBG_TARGET_INVALID);
+	}
+
+	// If the target supports ATTR_LOCATION_CODE, return same.
+	if (!DT_GET_PROP(ATTR_LOCATION_CODE, target, locationCode)) {
+		return;
+	}
+
+	std::string tgtPath{pdbg_target_path(target)};
+	std::string tgtClass{pdbg_target_class_name(target)};
+
+	struct pdbg_target *parentFruTarget = nullptr;
+	if ((tgtClass == "ocmb") || (tgtClass == "mem_port")) {
+		/**
+		 * Note: The assumption is, dimm is parent fru for "ocmb" and
+		 * "mem_port" and each "ocmb" or "mem_port" will have one
+		 * "dimm" so if something is changed then need to fix
+		 * this logic.
+		 * In phal cec device tree dimm is placed under
+		 * ocmb->mem_port based on dimm pervasive path.
+		 */
+		auto dimmCount = 0;
+		struct pdbg_target *lastDimmTgt = nullptr;
+		pdbg_for_each_target("dimm", target, lastDimmTgt)
+		{
+			parentFruTarget = lastDimmTgt;
+			++dimmCount;
+		}
+
+		if (dimmCount == 0) {
+			log(level::ERROR,
+			    "Failed to get the parent dimm target for (%s)",
+			    tgtPath.c_str());
+			throw pdbgError_t(exception::PDBG_TARGET_NOT_FOUND);
+		} else if (dimmCount > 1) {
+			log(level::ERROR,
+			    "More [%d] dimm targets are present for (%s)",
+			    dimmCount, tgtPath.c_str());
+			throw pdbgError_t(exception::PDBG_TARGET_NOT_FOUND);
+		}
+	} else {
+		/**
+		 * Note:  All FRU parts (units - both(chiplet and  non-chiplet))
+		 * are modelled under the respective processor in cec device
+		 * tree so, if something changed then, need to revisit the
+		 * logic which is used to get the FRU details of FRU unit.
+		 */
+		parentFruTarget = pdbg_target_parent("proc", target);
+		if (parentFruTarget == nullptr) {
+			log(level::ERROR,
+			    "Failed to get the parent processor target for "
+			    "(%s)",
+			    "target for (%s)", tgtPath.c_str());
+			throw pdbgError_t(
+			    exception::PDBG_TARGET_PARENT_NOT_FOUND);
+		}
+	}
+	if (DT_GET_PROP(ATTR_LOCATION_CODE, parentFruTarget, locationCode)) {
+		log(level::ERROR, "Failed to get ATTR_LOCATION_CODE for (%s)",
+		    tgtPath.c_str());
+		throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
 	}
 }
 

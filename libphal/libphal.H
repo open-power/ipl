@@ -215,6 +215,23 @@ void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
 		    const uint32_t logId);
 
 /**
+ * @brief get Loaction code
+ *
+ * Function to get location code attribute from devtree or
+ * or from parent target.
+ * Incase user provided target doesn't support location code
+ * attribute used special algorithm to get parent's location code.
+ * Refer implementation code  comment's for details related to
+ * the algorithm used.
+ *
+ * param[in] target target to operate on
+ * @param[out] ATTR_LOCATION_CODE_Type Location code value
+ *
+ * Exceptions: pdbgError with failure reason code
+ */
+void getLocationCode(struct pdbg_target *proc,
+		     ATTR_LOCATION_CODE_Type &locationCode);
+/**
  * @brief Read a CFAM FSI register
  * @param[in] proc processor target to operate on
  * @param[in] addr the CFAM address offset
