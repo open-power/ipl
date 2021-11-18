@@ -89,7 +89,7 @@ struct DumpPIBMSRegVal {
 struct DumpPPERegValue {
 	uint16_t number;     // Register number
 	uint32_t value;	     // Extracted value
-	uint8_t reserved[8]; // Unused for padding
+	char* name;          // Name of the register(Unused)
 
 	DumpPPERegValue(uint16_t num, uint32_t val)
 	{
