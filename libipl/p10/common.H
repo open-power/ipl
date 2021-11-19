@@ -91,7 +91,6 @@ int ipl_set_sbe_state_all(enum sbe_state state);
  */
 int ipl_set_sbe_state_all_sec(enum sbe_state state);
 
-
 /*
  * @brief Process HWP/PLAT error to add callout/deconfig and callback
  * details
@@ -101,4 +100,17 @@ int ipl_set_sbe_state_all_sec(enum sbe_state state);
  */
 void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 	struct pdbg_target *target, bool deconfig=true);
+
+/**
+ * @brief Process PLAT clock error to add callout/deconfig and callback
+ *
+ * On clock failure, planar need to be called out. Also, it has to
+ * include ffdc data provided by caller.
+ *
+ * @param[in] ffdcs_data list of internal ffdc values
+ * @param[in] clk_pos    position of failed clock
+ */
+void ipl_plat_clock_error_handler(
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
+	uint8_t clk_pos);
 #endif /* __LIBIPL_P10_COMMON_H__ */

@@ -297,7 +297,7 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 {
 	if(fapirc == fapi2::FAPI2_RC_SUCCESS) {
 		ipl_error_callback(IPL_ERR_OK);
-	} 
+	}
 	else if(fapirc.getCreator() == fapi2::ReturnCode::CREATOR_PLAT) {
 		CDG_Target cdgTarget;
 		cdgTarget.callout_priority =
@@ -323,7 +323,7 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 			uint32_t rc = fapirc;
 			ffdc.hwp_errorinfo.rc = std::to_string(rc);
 			ffdc.hwp_errorinfo.rc_desc = "Error in executing platform function";
-			
+
 			ProcedureCallout proc_callout;
 			proc_callout.proc_callout =
 				fapi2::plat_ProcedureCallout_tostring(
@@ -343,3 +343,28 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 	}
 }
 
+void ipl_plat_clock_error_handler(
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
+	uint8_t clk_pos)
+{
+	FFDC ffdc;
+	ffdc.ffdc_type = FFDC_TYPE_HWP;
+	ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_CLK);
+	ffdc.hwp_errorinfo.rc_desc = "Error in executing clock initialisation";
+
+	ffdc.hwp_errorinfo.ffdcs_data.insert(ffdc.hwp_errorinfo.ffdcs_data.end(),
+		ffdcs_data.begin(), ffdcs_data.end());
+
+	HWCallout hwcallout_data;
+	hwcallout_data.hwid = fapi2::plat_HwCalloutEnum_tostring(
+			fapi2::HwCallouts::PROC_REF_CLOCK);
+	hwcallout_data.callout_priority =
+		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
+	hwcallout_data.isPlanarCallout = true;
+	hwcallout_data.clkPos = clk_pos;
+	// No need for entity path, since no need of this to callout the planar
+
+	ffdc.hwp_errorinfo.hwcallouts.push_back(hwcallout_data);
+
+	ipl_error_callback(ipl_error_info{IPL_ERR_CLK, &ffdc});
+}
