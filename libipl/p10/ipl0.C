@@ -24,11 +24,24 @@ extern "C" {
 #include <filesystem>
 #include <fstream>
 #include <array>
+#include <chrono>
+#include <thread>
 
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
 #define GUARD_ERROR_TYPE_RECONFIG  0xEB
+
+#define OSC_CTL_OFFSET      0x06
+#define OSC_RESET_CMD       0x04
+#define OSC_RESET_CMD_LEN   0x01
+
+#define OSC_STAT_OFFSET     0x07
+#define OSC_STAT_REG_LEN    0x01
+#define OSC_STAT_ERR_MASK   0x80
+
+#define CLOCK_RESTART_DELAY_IN_MS    100
+#define NUM_CLOCK_FOR_REDUNDANT_MODE 2
 
 struct guard_target {
   	uint8_t path[21];
@@ -374,15 +387,102 @@ static int ipl_alignment_check(void)
 	return -1;
 }
 
+static int initialize_and_check_clock_chip(uint8_t& clock_count)
+{
+	struct pdbg_target *clock_target;
+	enum pdbg_target_status status;
+	uint8_t data;
+	int i2c_rc = 0;
+	int rc = 0;
+
+	// initialize output variable.
+	clock_count = 0;
+	
+	ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register\n");
+	pdbg_for_each_class_target("oscrefclk", clock_target) {
+		// clock count has to be incremented even if it failed to initiallize
+		clock_count++;
+
+		status = pdbg_target_probe(clock_target);
+		if(status != PDBG_TARGET_ENABLED){
+			ipl_log(IPL_ERROR, "pdbg_target_probe is failed for clock '%s', with status = %d\n",
+				pdbg_target_path(clock_target), status);
+
+			rc++;
+			return rc;
+		}
+
+		// Resetting the clock chip, so that it will recalibrate input oscillator
+		// signal and identifies bad oscillators.
+		data = OSC_RESET_CMD;
+		i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
+		if(i2c_rc){
+			ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
+				pdbg_target_path(clock_target), rc);
+
+			ipl_error_callback(IPL_ERR_CLK_FAILED);
+			rc++;
+			continue;
+		}
+		else{
+			ipl_log(IPL_DEBUG, "soft reset command is successfull for clock '%s'\n",
+				pdbg_target_path(clock_target));
+		}
+
+		// wait for clock to restart
+		std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_RESTART_DELAY_IN_MS));
+
+		// Read clock status register to check whether it reports calibration error.
+		// Bit-0 will be set if there is a calibration error.
+		i2c_rc = i2c_read(clock_target, 0, OSC_STAT_OFFSET, OSC_STAT_REG_LEN, &data);
+		if(i2c_rc){
+			ipl_log(IPL_ERROR, "status register read is failed for clock '%s', with rc = %d\n",
+				pdbg_target_path(clock_target), rc);
+
+			ipl_error_callback(IPL_ERR_CLK_FAILED);
+			rc++;
+			continue;
+		}
+		else{
+			ipl_log(IPL_DEBUG, "status register value for clock '%s' is 0x%2X\n",
+				pdbg_target_path(clock_target), data);
+
+			if(data & OSC_STAT_ERR_MASK){
+				ipl_log(IPL_ERROR, "Calibration is failed for clock '%s', status=0x%2X",
+					pdbg_target_path(clock_target), data);
+
+				ipl_error_callback(IPL_ERR_CLK_FAILED);
+				rc++;
+				continue;
+			}
+		}
+	}
+	return rc;
+}
+
 static int ipl_set_ref_clock(void)
 {
 	struct pdbg_target *proc;
 	int rc = 0;
+	uint8_t clock_count = 0;
 
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
 	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
+
+	if(initialize_and_check_clock_chip(clock_count)){
+		ipl_log(IPL_ERROR, "Clock initialization failed\n");
+		return 1;
+	}
+
+	if(clock_count != 1 && clock_count != 2){
+		ipl_log(IPL_ERROR, "Invalid number (%d) of clock target found\n",
+							clock_count);
+
+		ipl_error_callback(IPL_ERR_CLK_FAILED);
+		return 1;
+	}
 
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
@@ -390,12 +490,27 @@ static int ipl_set_ref_clock(void)
 		if (!ipl_is_functional(proc))
 			continue;
 
+		// Check if system have clocks to enable redundant mode,
+		// If yes set attribute to enable redundant mode.
+		// Default value of attribute will be for non-redundant mode
+		if(clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE){
+			fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
+				fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
+			if(!pdbg_target_set_attribute(
+					proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1, &clock_select)){
+
+				ipl_log(IPL_ERROR, "Attribute CP_REFCLOCK_SELECT update failed"
+					" for proc %d \n", pdbg_target_index(proc));
+				return 1;
+			}
+		}
+
 		ipl_log(IPL_INFO, "Running p10_setup_ref_clock HWP on processor %d\n",
 			pdbg_target_index(proc));
 		fapirc = p10_setup_ref_clock(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
 			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %d, rc=%d\n",
-                                pdbg_target_index(proc), fapirc);
+				pdbg_target_index(proc), fapirc);
 			rc++;
 		}
 
