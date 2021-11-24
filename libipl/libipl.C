@@ -12,8 +12,12 @@ extern "C" {
 #include <config.h>
 }
 
+#include <attributes_info.H>
+#include "libekb.H"
 #include "libipl.H"
 #include "libipl_internal.H"
+#include "plat_utils.H"
+#include "ekb/hwpf/fapi2/include/target_types.H"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
 static enum ipl_mode g_ipl_mode = IPL_HOSTBOOT;
@@ -358,4 +362,30 @@ void ipl_error_callback(const ipl_error_info& error)
 	if (!g_ipl_error_callback_fn)
 		return;
 	g_ipl_error_callback_fn(error);
+}
+
+void ipl_plat_clock_error_handler(
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
+	uint8_t clk_pos)
+{
+	FFDC *ffdc = new FFDC();
+	ffdc->ffdc_type = FFDC_TYPE_HWP;
+	ffdc->hwp_errorinfo.rc = std::to_string(fapi2::FAPI2_RC_PLAT_ERR_SEE_DATA);
+	ffdc->hwp_errorinfo.rc_desc = "Error in executing platform function";
+
+	ffdc->hwp_errorinfo.ffdcs_data.insert(ffdc->hwp_errorinfo.ffdcs_data.end(),
+		ffdcs_data.begin(), ffdcs_data.end());
+
+	HWCallout hwcallout_data;
+	hwcallout_data.hwid = fapi2::plat_HwCalloutEnum_tostring(
+			fapi2::HwCallouts::PROC_REF_CLOCK);
+	hwcallout_data.callout_priority =
+		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
+	hwcallout_data.isPlanarCallout = true;
+	hwcallout_data.clkPos = clk_pos;
+	// No need for entity path, since no need of this to callout the planar
+
+	ffdc->hwp_errorinfo.hwcallouts.push_back(hwcallout_data);
+
+	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, ffdc});
 }

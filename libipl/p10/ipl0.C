@@ -392,25 +392,33 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 	struct pdbg_target *clock_target;
 	enum pdbg_target_status status;
 	uint8_t data;
-	int i2c_rc = 0;
 	int rc = 0;
+	int i2c_rc = 0;
+	std::vector<std::pair<std::string, std::string>> ffdcs;
+	uint8_t clk_pos = 0;
 
 	// initialize output variable.
 	clock_count = 0;
-	
-	ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register\n");
+
 	pdbg_for_each_class_target("oscrefclk", clock_target) {
 		// clock count has to be incremented even if it failed to initiallize
 		clock_count++;
+		ffdcs.clear();
 
 		status = pdbg_target_probe(clock_target);
 		if(status != PDBG_TARGET_ENABLED){
 			ipl_log(IPL_ERROR, "pdbg_target_probe is failed for clock '%s', with status = %d\n",
 				pdbg_target_path(clock_target), status);
 
+			// No error callback, since this should be a software
+			// error and no planar callout should be made.
 			rc++;
 			return rc;
 		}
+
+		clk_pos = pdbg_target_index(clock_target);
+		ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register"
+					" for clock-%d\n", clk_pos);
 
 		// Resetting the clock chip, so that it will recalibrate input oscillator
 		// signal and identifies bad oscillators.
@@ -418,9 +426,11 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 		i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
 		if(i2c_rc){
 			ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
-				pdbg_target_path(clock_target), rc);
+				pdbg_target_path(clock_target), i2c_rc);
 
-			ipl_error_callback(IPL_ERR_CLK_FAILED);
+			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "SOFT_RESET"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
 			rc++;
 			continue;
 		}
@@ -434,12 +444,15 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 
 		// Read clock status register to check whether it reports calibration error.
 		// Bit-0 will be set if there is a calibration error.
+
 		i2c_rc = i2c_read(clock_target, 0, OSC_STAT_OFFSET, OSC_STAT_REG_LEN, &data);
 		if(i2c_rc){
 			ipl_log(IPL_ERROR, "status register read is failed for clock '%s', with rc = %d\n",
-				pdbg_target_path(clock_target), rc);
+				pdbg_target_path(clock_target), i2c_rc);
 
-			ipl_error_callback(IPL_ERR_CLK_FAILED);
+			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "STATUS_READ"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
 			rc++;
 			continue;
 		}
@@ -451,7 +464,9 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 				ipl_log(IPL_ERROR, "Calibration is failed for clock '%s', status=0x%2X",
 					pdbg_target_path(clock_target), data);
 
-				ipl_error_callback(IPL_ERR_CLK_FAILED);
+				ffdcs.push_back(std::make_pair("CLOCK_STATUS", std::to_string(data)));
+				ffdcs.push_back(std::make_pair("FAIL_TYPE", "CALIB_ERR"));
+				ipl_plat_clock_error_handler(ffdcs, clk_pos);
 				rc++;
 				continue;
 			}
@@ -480,7 +495,8 @@ static int ipl_set_ref_clock(void)
 		ipl_log(IPL_ERROR, "Invalid number (%d) of clock target found\n",
 							clock_count);
 
-		ipl_error_callback(IPL_ERR_CLK_FAILED);
+		// no error callback, since this should be a software
+		// error and no planar callout should be made.
 		return 1;
 	}
 

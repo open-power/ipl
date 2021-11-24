@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <map>
+#include <vector>
+#include <string>
 
 #define MAX_ISTEP	21
 
@@ -31,7 +33,7 @@ enum ipl_error_type {
 	IPL_ERR_FSI_TGT_NOT_FOUND,
 	IPL_ERR_FSI_REG,
 	IPL_ERR_PIB_TGT_NOT_FOUND,
-	IPL_ERR_CLK_FAILED,
+	IPL_ERR_PLAT,
 };
 
 typedef std::map<ipl_error_type, const char*> err_msg_map_type;
@@ -44,7 +46,7 @@ const err_msg_map_type err_msg_map = {
 	{ IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available" },
 	{ IPL_ERR_FSI_REG, "FSI register read/write failure" },
 	{ IPL_ERR_PIB_TGT_NOT_FOUND, "PIB target is not available" },
-	{ IPL_ERR_CLK_FAILED, "Clock hw initialization is failed" },
+	{ IPL_ERR_PLAT, "PLAT execution reported error" },
 };
 
 // Error info structure.
@@ -55,6 +57,8 @@ struct ipl_error_info {
 	//specilized constructors
 	ipl_error_info() : type(IPL_ERR_OK), private_data(NULL)  {}
 	ipl_error_info(ipl_error_type type) : type(type), private_data(NULL) {}
+	ipl_error_info(ipl_error_type type, void* private_data) : type(type),
+		private_data(private_data) {}
 
 	~ipl_error_info(){
 		// freeup the private_data allocated memory
@@ -83,6 +87,16 @@ void ipl_set_loglevel(int loglevel);
 void ipl_log(int loglevel, const char *fmt, ...);
 
 void ipl_set_error_callback_func(ipl_error_callback_func_t fn);
+
+/*
+ * @Brief Process PLAT error to add callout/deconfig and callback
+ * details
+ * @param ffdcs_data list of internal ffdc values
+ * @param clk_pos    position of failed clock
+ */
+void ipl_plat_clock_error_handler(
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
+	uint8_t clk_pos);
 
 /*
  * @Brief This function will call pre_poweroff hardware procedure
