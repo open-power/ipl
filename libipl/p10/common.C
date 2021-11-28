@@ -7,6 +7,10 @@ extern "C" {
 #include "libipl.H"
 #include "libipl_internal.H"
 #include "common.H"
+#include "plat_utils.H"
+#include <attributes_info.H>
+#include <libekb.H>
+#include <error_info_defs.H>
 
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <ekb/chips/p10/procedures/hwp/istep/p10_do_fw_hb_istep.H>
@@ -287,3 +291,55 @@ int ipl_set_sbe_state_all_sec(enum sbe_state state)
 	}
 	return ret;
 }
+
+void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
+		struct pdbg_target *target, bool deconfig)
+{
+	if(fapirc == fapi2::FAPI2_RC_SUCCESS) {
+		ipl_error_callback(IPL_ERR_OK);
+	} 
+	else if(fapirc.getCreator() == fapi2::ReturnCode::CREATOR_PLAT) {
+		CDG_Target cdgTarget;
+		cdgTarget.callout_priority =
+		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::MEDIUM);
+
+		ATTR_PHYS_BIN_PATH_Type physBinPath;
+		uint32_t binPathElemCount = dtAttr::fapi2::ATTR_PHYS_BIN_PATH_ElementCount;
+		if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH",
+			std::stoi(dtAttr::fapi2::ATTR_PHYS_BIN_PATH_Spec),
+				binPathElemCount, physBinPath)) {
+			ipl_log(IPL_ERROR, "Failed to read ATTR_PHYS_BIN_PATH for target %s\n",
+				pdbg_target_path(target));
+			ipl_error_callback(IPL_ERR_ATTR_READ_FAIL);
+		}
+		else {
+			std::copy(physBinPath, physBinPath+binPathElemCount,
+			std::back_inserter(cdgTarget.target_entity_path));
+			cdgTarget.deconfigure = deconfig;
+
+			FFDC ffdc;
+			ffdc.hwp_errorinfo.cdg_targets.push_back(cdgTarget);
+			ffdc.ffdc_type = FFDC_TYPE_HWP;
+			uint32_t rc = fapirc;
+			ffdc.hwp_errorinfo.rc = std::to_string(rc);
+			ffdc.hwp_errorinfo.rc_desc = "Error in executing platform function";
+			
+			ProcedureCallout proc_callout;
+			proc_callout.proc_callout =
+				fapi2::plat_ProcedureCallout_tostring(
+					fapi2::ProcedureCallouts::ProcedureCallout::BUS_CALLOUT);
+			proc_callout.callout_priority =
+				fapi2::plat_CalloutPriority_tostring(
+					fapi2::CalloutPriorities::CalloutPriority::MEDIUM);
+			ffdc.hwp_errorinfo.procedures_callout.push_back(proc_callout);
+			ipl_error_callback({IPL_ERR_PLAT, &ffdc});
+		}
+	}
+	else if(fapirc.getCreator() == fapi2::ReturnCode::CREATOR_HWP) {
+		ipl_error_callback(IPL_ERR_HWP);
+	}
+	else {
+		ipl_log(IPL_ERROR, "Unknown fapi error 0x%08X, ignoring\n", fapirc);
+	}
+}
+

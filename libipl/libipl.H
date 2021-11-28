@@ -31,6 +31,8 @@ enum ipl_error_type {
 	IPL_ERR_FSI_TGT_NOT_FOUND,
 	IPL_ERR_FSI_REG,
 	IPL_ERR_PIB_TGT_NOT_FOUND,
+	IPL_ERR_PLAT,
+	IPL_ERR_ATTR_READ_FAIL
 };
 
 typedef std::map<ipl_error_type, const char*> err_msg_map_type;
@@ -43,22 +45,21 @@ const err_msg_map_type err_msg_map = {
 	{ IPL_ERR_FSI_TGT_NOT_FOUND, "FSI target is not available" },
 	{ IPL_ERR_FSI_REG, "FSI register read/write failure" },
 	{ IPL_ERR_PIB_TGT_NOT_FOUND, "PIB target is not available" },
+	{ IPL_ERR_PLAT, "PLAT execution reported error" },
+	{ IPL_ERR_ATTR_READ_FAIL, "Device tree attribute read failure" },
 };
 
 // Error info structure.
 struct ipl_error_info {
 	enum ipl_error_type type;
-	//additional debug/callout data need to be included for cfam failures
+	// caller need to clear the memory allocated
 	void *private_data;
 	//specilized constructors
 	ipl_error_info() : type(IPL_ERR_OK), private_data(NULL)  {}
 	ipl_error_info(ipl_error_type type) : type(type), private_data(NULL) {}
-
-	~ipl_error_info(){
-		// freeup the private_data allocated memory
-		if (private_data)
-			free(private_data);
-	}
+	ipl_error_info(ipl_error_type type, void* private_data) : type(type),
+		private_data(private_data) {}
+	~ipl_error_info(){}
 };
 
 extern "C" {

@@ -394,12 +394,12 @@ static int ipl_set_ref_clock(void)
 			pdbg_target_index(proc));
 		fapirc = p10_setup_ref_clock(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %d, rc=%d\n",
-                                pdbg_target_index(proc), fapirc);
+			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %s, rc=%d \n",
+				pdbg_target_path(proc), fapirc);
 			rc++;
 		}
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
+		ipl_process_fapi_error(fapirc, proc);
 	}
 
 	if (!ipl_check_functional_master()){
@@ -435,13 +435,13 @@ static int ipl_proc_clock_test(void)
 			rc++;
 		}
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
+		ipl_process_fapi_error(fapirc, proc);
 	}
 
 	if (!ipl_check_functional_master()){
 		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
-        }
+    }
 
 	return rc;
 }
@@ -480,9 +480,9 @@ static int ipl_proc_select_boot_prom(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
+		ipl_process_fapi_error(fapirc, proc);
 		break;
-        }
+    }
 
 	if (!ipl_check_functional_master()) {
 		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
@@ -582,7 +582,7 @@ static int ipl_sbe_config_update(void)
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
 			rc = 0;
 
-		ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
+		ipl_process_fapi_error(fapirc, proc);
 		break;
 	}
 
@@ -614,7 +614,7 @@ static int ipl_sbe_start(void)
 			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
 				ret++;
 
-			ipl_error_callback((fapirc == fapi2::FAPI2_RC_SUCCESS) ? IPL_ERR_OK : IPL_ERR_HWP);
+			ipl_process_fapi_error(fapirc, proc);
 			rc = ret;
 			continue;
 		}
