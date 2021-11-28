@@ -7,6 +7,8 @@ extern "C" {
 #include <libpdbg_sbe.h>
 }
 
+#include <ekb/hwpf/fapi2/include/return_code.H>
+
 bool ipl_is_master_proc(struct pdbg_target *proc);
 int ipl_istep_via_sbe(int major, int minor);
 int ipl_istep_via_hostboot(int major, int minor);
@@ -89,4 +91,14 @@ int ipl_set_sbe_state_all(enum sbe_state state);
  */
 int ipl_set_sbe_state_all_sec(enum sbe_state state);
 
+
+/*
+ * @brief Process HWP/PLAT error to add callout/deconfig and callback
+ * details
+ * @param fapirc[in] - FAPI return code
+ * @param target[in] - target pointer
+ * @param deconfig[in] - true deconfig the target
+ */
+void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
+	struct pdbg_target *target, bool deconfig=true);
 #endif /* __LIBIPL_P10_COMMON_H__ */
