@@ -81,10 +81,16 @@ void ipl_set_type(enum ipl_type type);
 enum ipl_type ipl_type(void);
 
 void ipl_set_logfunc(ipl_log_func_t fn, void *private_data);
+ipl_log_func_t ipl_log_func(void);
+void* ipl_log_func_priv_data(void);
+
 void ipl_set_loglevel(int loglevel);
+int ipl_log_level(void);
+
 void ipl_log(int loglevel, const char *fmt, ...);
 
 void ipl_set_error_callback_func(ipl_error_callback_func_t fn);
+ipl_error_callback_func_t ipl_error_callback_fn(void);
 
 /*
  * @Brief This function will call pre_poweroff hardware procedure

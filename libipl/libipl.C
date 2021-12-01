@@ -17,18 +17,7 @@ extern "C" {
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
 
-static ipl_error_callback_func_t g_ipl_error_callback_fn;
-
-static ipl_log_func_t g_ipl_log_fn;
-static void * g_ipl_log_priv;
-static int g_ipl_log_level = IPL_ERROR;
-
 static bool g_ipl_test_mode = false;
-
-static void ipl_log_default(void *priv, const char *fmt, va_list ap)
-{
-	vfprintf(stdout, fmt, ap);
-}
 
 void ipl_pre(void)
 {
@@ -85,9 +74,6 @@ int ipl_init(enum ipl_mode mode)
 	char *tmp;
 
 	ipl_set_mode(mode);
-
-	if (!g_ipl_log_fn)
-		ipl_set_logfunc(ipl_log_default, NULL);
 
 	if (!pdbg_target_root()) {
 		ipl_log(IPL_ERROR, "libpdbg not initialized\n");
@@ -253,48 +239,4 @@ void ipl_list(int major)
 
 	for (i=0; idata->steps[i].major != -1; i++)
 		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
-}
-
-void ipl_set_logfunc(ipl_log_func_t fn, void *private_data)
-{
-	g_ipl_log_fn = fn;
-	g_ipl_log_priv = private_data;
-}
-
-void ipl_set_loglevel(int loglevel)
-{
-	if (loglevel < IPL_ERROR)
-		loglevel = IPL_ERROR;
-
-	if (loglevel > IPL_DEBUG)
-		loglevel = IPL_DEBUG;
-
-	g_ipl_log_level = loglevel;
-}
-
-void ipl_log(int loglevel, const char *fmt, ...)
-{
-	va_list ap;
-
-	if (!g_ipl_log_fn)
-		return;
-
-	if (loglevel > g_ipl_log_level)
-		return;
-
-	va_start(ap, fmt);
-	g_ipl_log_fn(g_ipl_log_priv, fmt, ap);
-	va_end(ap);
-}
-
-void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
-{
-	g_ipl_error_callback_fn = fn;
-}
-
-void ipl_error_callback(const ipl_error_info& error)
-{
-	if (!g_ipl_error_callback_fn)
-		return;
-	g_ipl_error_callback_fn(error);
 }

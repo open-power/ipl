@@ -83,3 +83,68 @@ enum ipl_type ipl_type(void)
 {
 	return g_ipl_settings.type;
 }
+
+void ipl_set_logfunc(ipl_log_func_t fn, void *private_data)
+{
+	g_ipl_settings.log_func = fn;
+	g_ipl_settings.log_func_priv_data = private_data;
+}
+
+ipl_log_func_t ipl_log_func(void)
+{
+	return g_ipl_settings.log_func;
+}
+
+void *ipl_log_func_priv_data(void)
+{
+	return g_ipl_settings.log_func_priv_data;
+}
+
+void ipl_set_loglevel(int loglevel)
+{
+	if (loglevel < IPL_ERROR)
+		loglevel = IPL_ERROR;
+
+	if (loglevel > IPL_DEBUG)
+		loglevel = IPL_DEBUG;
+
+	g_ipl_settings.log_level = loglevel;
+}
+
+int ipl_log_level(void)
+{
+	return g_ipl_settings.log_level;
+}
+
+void ipl_log(int loglevel, const char *fmt, ...)
+{
+	va_list ap;
+
+	if (!ipl_log_func())
+		return;
+
+	if (loglevel > ipl_log_level())
+		return;
+
+	va_start(ap, fmt);
+	(*ipl_log_func())(ipl_log_func_priv_data(), fmt, ap);
+	va_end(ap);
+}
+
+void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
+{
+	g_ipl_settings.error_callback_fn = fn;
+}
+
+ipl_error_callback_func_t ipl_error_callback_fn(void)
+{
+	return g_ipl_settings.error_callback_fn;
+}
+
+void ipl_error_callback(const ipl_error_info& error)
+{
+	if (!g_ipl_settings.error_callback_fn)
+		return;
+
+	g_ipl_settings.error_callback_fn(error);
+}
