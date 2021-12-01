@@ -17,8 +17,6 @@ extern "C" {
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
 
-static ipl_error_callback_func_t g_ipl_error_callback_fn;
-
 static bool g_ipl_test_mode = false;
 
 void ipl_pre(void)
@@ -258,14 +256,9 @@ void ipl_log(int loglevel, const char *fmt, ...)
 	va_end(ap);
 }
 
-void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
-{
-	g_ipl_error_callback_fn = fn;
-}
-
 void ipl_error_callback(const ipl_error_info& error)
 {
-	if (!g_ipl_error_callback_fn)
+	if (!ipl_error_callback_fn())
 		return;
-	g_ipl_error_callback_fn(error);
+	(*ipl_error_callback_fn())(error);
 }

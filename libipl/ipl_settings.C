@@ -129,3 +129,13 @@ int ipl_log_level(void)
 {
     return g_ipl_settings.log_level;
 }
+
+void ipl_set_error_callback_func(ipl_error_callback_func_t fn)
+{
+    g_ipl_settings.error_callback_fn = fn;
+}
+
+ipl_error_callback_func_t ipl_error_callback_fn(void)
+{
+    return g_ipl_settings.error_callback_fn;
+}
