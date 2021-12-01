@@ -91,6 +91,9 @@ ipl_error_callback_func_t ipl_error_callback_fn(void);
 
 void ipl_log(int loglevel, const char *fmt, ...);
 
+void ipl_ignore_guard(void);
+bool ipl_apply_guard(void);
+
 /*
  * @Brief This function will call pre_poweroff hardware procedure
  * during poweroff of host, on all the available procs.
