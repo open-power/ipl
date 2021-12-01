@@ -80,6 +80,7 @@ endif
 libipl_la_SOURCES = \
 	$(libipl_istep_SOURCES) \
 	libipl/libipl.C \
+	libipl/ipl_settings.C \
 	libipl/libipl_internal.H \
 	libipl/libipl.H
 
