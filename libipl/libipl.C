@@ -16,7 +16,6 @@ extern "C" {
 #include "libipl_internal.H"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
-static enum ipl_mode g_ipl_mode = IPL_HOSTBOOT;
 static enum ipl_type g_ipl_type = IPL_TYPE_NORMAL;
 
 static ipl_error_callback_func_t g_ipl_error_callback_fn;
@@ -81,8 +80,6 @@ static int ipl_init_p10(void)
 	return 0;
 }
 #endif /* IPL_P10 */
-
-static void ipl_set_mode(enum ipl_mode mode);
 
 int ipl_init(enum ipl_mode mode)
 {
@@ -257,34 +254,6 @@ void ipl_list(int major)
 
 	for (i=0; idata->steps[i].major != -1; i++)
 		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
-}
-
-static void ipl_set_mode(enum ipl_mode mode)
-{
-	switch (mode) {
-	case IPL_AUTOBOOT:
-		ipl_log(IPL_INFO, "IPL mode set to AUTOBOOT\n");
-		break;
-
-	case IPL_HOSTBOOT:
-		ipl_log(IPL_INFO, "IPL mode set to HOSTBOOT\n");
-		break;
-
-	case IPL_CRONUS:
-		ipl_log(IPL_INFO, "IPL mode set to CRONUS\n");
-		break;
-
-	default:
-		ipl_log(IPL_ERROR, "Invalid IPL mode\n");
-		assert(0);
-	}
-
-	g_ipl_mode = mode;
-}
-
-enum ipl_mode ipl_mode(void)
-{
-	return g_ipl_mode;
 }
 
 void ipl_set_type(enum ipl_type type)
