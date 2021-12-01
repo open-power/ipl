@@ -16,7 +16,6 @@ extern "C" {
 #include "libipl_internal.H"
 
 static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
-static enum ipl_type g_ipl_type = IPL_TYPE_NORMAL;
 
 static ipl_error_callback_func_t g_ipl_error_callback_fn;
 
@@ -254,35 +253,6 @@ void ipl_list(int major)
 
 	for (i=0; idata->steps[i].major != -1; i++)
 		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
-}
-
-void ipl_set_type(enum ipl_type type)
-{
-	switch (type) {
-	case IPL_TYPE_NORMAL:
-		ipl_log(IPL_INFO, "IPL type NORMAL\n");
-		break;
-
-	case IPL_TYPE_MPIPL:
-		if (ipl_mode() != IPL_AUTOBOOT) {
-			ipl_log(IPL_ERROR, "IPL type MPIPL can only be set in AUTOBOOOT mode, ignoring\n");
-			return;
-		}
-
-		ipl_log(IPL_INFO, "IPL type MPIPL\n");
-		break;
-
-	default:
-		ipl_log(IPL_ERROR, "Invalid IPL type\n");
-		assert(0);
-	}
-
-	g_ipl_type = type;
-}
-
-enum ipl_type ipl_type(void)
-{
-	return g_ipl_type;
 }
 
 void ipl_set_logfunc(ipl_log_func_t fn, void *private_data)

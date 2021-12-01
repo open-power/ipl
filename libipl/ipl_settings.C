@@ -53,3 +53,33 @@ enum ipl_mode ipl_mode(void)
 {
 	return g_ipl_settings.mode;
 }
+
+void ipl_set_type(enum ipl_type type)
+{
+	switch (type) {
+	case IPL_TYPE_NORMAL:
+		ipl_log(IPL_INFO, "IPL type NORMAL\n");
+		break;
+
+	case IPL_TYPE_MPIPL:
+		if (ipl_mode() != IPL_AUTOBOOT) {
+			ipl_log(IPL_ERROR,
+				"MPIPL can only be set in AUTOBOOOT mode, ignoring\n");
+			return;
+		}
+
+		ipl_log(IPL_INFO, "IPL type MPIPL\n");
+		break;
+
+	default:
+		ipl_log(IPL_ERROR, "Invalid IPL type\n");
+		assert(0);
+	}
+
+	g_ipl_settings.type = type;
+}
+
+enum ipl_type ipl_type(void)
+{
+	return g_ipl_settings.type;
+}
