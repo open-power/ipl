@@ -141,6 +141,16 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
 void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen);
 
+/**
+ * @brief Execute stop all instructions on processor.
+ *
+ * @param[in] proc processor target to operate on
+ *
+ * Exceptions: SbeError with failure reason code, file name and fd.
+ *             std::runtime_error - for file operation failure.
+ */
+void threadStopProc(struct pdbg_target *proc);
+
 } // namespace sbe
 
 namespace pdbg

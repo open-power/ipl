@@ -42,5 +42,14 @@ struct pdbg_target *getFsiTarget(struct pdbg_target *proc);
  **/
 struct pdbg_target *getTgtFromBinPath(const ATTR_PHYS_BIN_PATH_Type &binPath);
 
+/**
+ *  @brief  Helper function to validate the input target is processor type
+ *
+ *  @param[in]  tgt - target to check
+ *
+ *  Exceptions: PdbgError for non processor or invalid targets
+ */
+void validateProcTgt(struct pdbg_target *tgt);
+
 } // namespace pdbg
 } // namespace openpower::phal::utils

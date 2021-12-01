@@ -128,5 +128,21 @@ struct pdbg_target *getTgtFromBinPath(const ATTR_PHYS_BIN_PATH_Type &binPath)
 	return targetInfo.target;
 }
 
+void validateProcTgt(struct pdbg_target *tgt)
+{
+	const char *tgtClass = pdbg_target_class_name(tgt);
+	if (!tgtClass) {
+		log(level::ERROR,
+		    "validateProcTgt: pdbg_target_class_name returns "
+		    "empty class name");
+		throw pdbgError_t(exception::PDBG_TARGET_INVALID);
+	}
+	if (strcmp("proc", tgtClass)) {
+		log(level::ERROR,
+		    "validateProcTgt: Target is not processor type");
+		throw pdbgError_t(exception::PDBG_TARGET_INVALID);
+	}
+}
+
 } // namespace pdbg
 } // namespace openpower::phal::utils

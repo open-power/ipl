@@ -40,7 +40,7 @@ const errMsgMapType errMsgMap = {
     {PDBG_TARGET_NOT_OPERATIONAL, "PDBG target not in operational state"},
     {PDBG_TARGET_NOT_FOUND, "PDBG target not found"},
     {PDBG_TARGET_PARENT_NOT_FOUND, "PDBG parent target not found"},
-    {PDBG_TARGET_NOT_FOUND, "PDBG target is invalid"},
+    {PDBG_TARGET_INVALID, "PDBG target is invalid"},
     {SBE_STATE_READ_FAIL, "FAILED to read SBE state"},
     {SBE_STATE_READ_FAIL, "FAILED to write SBE state"},
     {SBE_CHIPOP_NOT_ALLOWED, "SBE chip-op not allowed"},

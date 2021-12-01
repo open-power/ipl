@@ -221,5 +221,24 @@ void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
 	}
 }
 
+void threadStopProc(struct pdbg_target *proc)
+{
+	validateProcTgt(proc);
+
+	log(level::INFO, "Enter: threadStopProc(%s)", pdbg_target_path(proc));
+
+	// validate SBE state
+	validateSBEState(proc);
+
+	// get PIB target
+	struct pdbg_target *pib = getPibTarget(proc);
+
+	// call pdbg back-end function
+	auto ret = thread_stop_proc(pib);
+	if (ret != 0) {
+		throw captureFFDC(proc);
+	}
+}
+
 } // namespace sbe
 } // namespace openpower::phal
