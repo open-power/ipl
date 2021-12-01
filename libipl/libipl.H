@@ -76,6 +76,9 @@ void ipl_list(int major);
 void ipl_set_type(enum ipl_type type);
 enum ipl_type ipl_type(void);
 
+void ipl_set_mode(enum ipl_mode mode);
+enum ipl_mode ipl_mode(void);
+
 void ipl_set_logfunc(ipl_log_func_t fn, void *private_data);
 void ipl_set_loglevel(int loglevel);
 void ipl_log(int loglevel, const char *fmt, ...);
