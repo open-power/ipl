@@ -80,7 +80,12 @@ void ipl_set_mode(enum ipl_mode mode);
 enum ipl_mode ipl_mode(void);
 
 void ipl_set_logfunc(ipl_log_func_t fn, void *private_data);
+ipl_log_func_t ipl_log_func(void);
+void* ipl_log_func_priv_data(void);
+
 void ipl_set_loglevel(int loglevel);
+int ipl_log_level(void);
+
 void ipl_log(int loglevel, const char *fmt, ...);
 
 void ipl_set_error_callback_func(ipl_error_callback_func_t fn);

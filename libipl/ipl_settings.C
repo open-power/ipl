@@ -97,3 +97,35 @@ enum ipl_type ipl_type(void)
 {
     return g_ipl_settings.type;
 }
+
+void ipl_set_logfunc(ipl_log_func_t fn, void *private_data)
+{
+    g_ipl_settings.log_func = fn;
+    g_ipl_settings.log_func_priv_data = private_data;
+}
+
+ipl_log_func_t ipl_log_func(void)
+{
+    return g_ipl_settings.log_func;
+}
+
+void* ipl_log_func_priv_data(void)
+{
+    return g_ipl_settings.log_func_priv_data;
+}
+
+void ipl_set_loglevel(int loglevel)
+{
+    if (loglevel < IPL_ERROR)
+        loglevel = IPL_ERROR;
+
+    if (loglevel > IPL_DEBUG)
+        loglevel = IPL_DEBUG;
+
+    g_ipl_settings.log_level = loglevel;
+}
+
+int ipl_log_level(void)
+{
+    return g_ipl_settings.log_level;
+}
