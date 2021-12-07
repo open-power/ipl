@@ -368,3 +368,26 @@ void ipl_plat_clock_error_handler(
 
 	ipl_error_callback(ipl_error_info{IPL_ERR_CLK, &ffdc});
 }
+
+void ipl_plat_procedure_error_handler(
+	const ipl_error_type& err_type,
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data)
+{
+	FFDC ffdc;
+	ffdc.ffdc_type = FFDC_TYPE_HWP;
+	ffdc.hwp_errorinfo.rc = std::to_string(fapi2::FAPI2_RC_PLAT_ERR_SEE_DATA);
+	ffdc.hwp_errorinfo.rc_desc = "Error in executing platform function";
+
+	ffdc.hwp_errorinfo.ffdcs_data.insert(
+		ffdc.hwp_errorinfo.ffdcs_data.end(),
+		ffdcs_data.begin(), ffdcs_data.end());
+
+	ProcedureCallout procedurecallout_data;
+	procedurecallout_data.proc_callout = fapi2::plat_ProcedureCallout_tostring(
+			fapi2::ProcedureCallouts::ProcedureCallout::CODE);
+	procedurecallout_data.callout_priority =
+		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
+	ffdc.hwp_errorinfo.procedures_callout.push_back(procedurecallout_data);
+
+	ipl_error_callback(ipl_error_info{err_type, &ffdc});
+}

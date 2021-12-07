@@ -105,7 +105,7 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
  * @brief Process PLAT clock error to add callout/deconfig and callback
  *
  * On clock failure, planar need to be called out. Also, it has to
- * include ffdc data provided by caller.
+ * include ffdc data provided by caller. And then call ipl_error_callback()
  *
  * @param[in] ffdcs_data list of internal ffdc values
  * @param[in] clk_pos    position of failed clock
@@ -113,4 +113,18 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 void ipl_plat_clock_error_handler(
 	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
 	uint8_t clk_pos);
+
+/**
+ * @brief Process PLAT software error to add procedure callout and call callback
+ *
+ * On software errors, BMC0001 procedure need to be called out. Also, it has to
+ * include ffdc data provided by caller. And then call ipl_error_callback()
+ *
+ * @param[in] err_type   type of error happened
+ * @param[in] ffdcs_data list of internal ffdc values
+ */
+void ipl_plat_procedure_error_handler(
+	const ipl_error_type& err_type,
+	const std::vector<std::pair<std::string, std::string>>& ffdcs_data = {});
+
 #endif /* __LIBIPL_P10_COMMON_H__ */
