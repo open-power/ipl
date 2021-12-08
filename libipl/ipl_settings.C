@@ -12,6 +12,8 @@ struct ipl_settings {
 	void *log_func_priv_data;
 
 	ipl_error_callback_func_t error_callback_fn;
+
+	bool apply_guard;
 };
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
@@ -24,6 +26,7 @@ static ipl_settings g_ipl_settings = {
 	.type = IPL_TYPE_NORMAL,
 	.log_level = IPL_ERROR,
 	.log_func = ipl_log_default,
+	.apply_guard = true,
 };
 
 void ipl_set_mode(enum ipl_mode mode)
@@ -147,4 +150,14 @@ void ipl_error_callback(const ipl_error_info& error)
 		return;
 
 	g_ipl_settings.error_callback_fn(error);
+}
+
+void ipl_disable_guard(void)
+{
+	g_ipl_settings.apply_guard = false;
+}
+
+bool ipl_guard(void)
+{
+	return g_ipl_settings.apply_guard;
 }
