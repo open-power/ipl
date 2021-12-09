@@ -287,6 +287,16 @@ void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
 	log(level::INFO, "Enter: getDump(%d) on %s", type,
 	    pdbg_target_path(proc));
 
+	// Validate input target is processor target.
+	validateProcTgt(proc);
+
+	if (!isTgtPresent(proc)) {
+		log(level::ERROR, "getDump(%s) Target is not present",
+		    pdbg_target_path(proc));
+	}
+	// SBE halt state need recovery before dump chip-ops
+	sbeHaltStateRecovery(proc);
+
 	// validate SBE state
 	validateSBEState(proc);
 
