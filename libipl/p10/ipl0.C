@@ -241,13 +241,17 @@ static void update_hwas_state(bool is_coldboot)
 // and of available procs in the system. For few children of master proc
 // functional and present state will be set in device tree during genesis
 // boot.
+// It will also update functional state oscrefclk target.
 static bool update_genesis_hwas_state(void)
 {
 	std::array<const char*, 8> mProcChild =
 		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
-	struct pdbg_target *proc, *child;
+	struct pdbg_target *proc, *child, *clock_target;
 
 	bool target_enabled = false;
+	enum pdbg_target_status status;
+	uint8_t clk_pos = 0;
+	std::vector<std::pair<std::string, std::string>> ffdcs;
 
 	pdbg_for_each_class_target("proc", proc) {
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED) {
@@ -276,6 +280,37 @@ static bool update_genesis_hwas_state(void)
 					return false;
 				}
 			}
+		}
+	}
+
+	pdbg_for_each_class_target("oscrefclk", clock_target) {
+		if(!pdbg_target_get_attribute(
+			clock_target, "ATTR_POSITION", 2, 1, &clk_pos)) {
+
+			ipl_log(IPL_ERROR, "Attribute ATTR_POSITION read failed"
+				" for clock '%s' \n", pdbg_target_path(clock_target));
+			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_READ_FAIL);
+			// IPL need to be failed if this step is failed for any clock,
+			// since this clock cannot be marked as functional
+			return false;
+		}
+
+		status = pdbg_target_probe(clock_target);
+		if(status != PDBG_TARGET_ENABLED) {
+			ipl_log(IPL_ERROR, "clock '%s' is not operational, pdbg status = %d\n",
+				pdbg_target_path(clock_target), status);
+
+			ffdcs.push_back(std::make_pair("PDBG_STATUS", std::to_string(status)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "CHIP_NOT_OPERATIONAL"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
+			// IPL need to be failed if any clock is not operational
+			return false;
+		}
+		if (!set_or_clear_state(clock_target, true)) {
+			ipl_log(IPL_ERROR,
+				"Failed to set HWAS state of oscrefclk, %s\n",
+				pdbg_target_path(clock_target));
+			return false;
 		}
 	}
 
