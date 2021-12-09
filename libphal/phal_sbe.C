@@ -268,6 +268,16 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
 {
 	log(level::INFO, "Enter: getTiInfo(%s)", pdbg_target_path(proc));
 
+	// Validate input target is processor target.
+	validateProcTgt(proc);
+
+	if (!isTgtPresent(proc)) {
+		log(level::ERROR, "getTiInfo(%s) Target is not present",
+		    pdbg_target_path(proc));
+	}
+	// SBE halt state need recovery before dump chip-ops
+	sbeHaltStateRecovery(proc);
+
 	// validate SBE state
 	validateSBEState(proc);
 
