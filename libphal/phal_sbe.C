@@ -5,6 +5,11 @@
 #include "utils_pdbg.H"
 #include "utils_tempfile.H"
 
+#include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
+#include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
+#include <ekb/hwpf/fapi2/include/return_code_defs.H>
+#include <unistd.h>
+
 namespace openpower::phal
 {
 namespace sbe
@@ -15,6 +20,84 @@ using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
 
+/**
+ * @brief helper function to perform HRESET on secondary processor
+ *        if sbe is in HALT state.
+ * @param[in] proc processor target to operate on
+ *
+ * Exceptions: SbeError/PdbgError with failure reason code
+ */
+void sbeHaltStateRecovery(struct pdbg_target *proc)
+{
+	// Skip for primary processor.
+	if (isPrimaryProc(proc)) {
+		return;
+	}
+	// Required to probe processor associated fsi to run hardware procedures
+	char path[16];
+	struct pdbg_target *fsi;
+	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
+	fsi = pdbg_target_from_path(NULL, path);
+	if (fsi == nullptr) {
+		log(level::ERROR, "Failed to get fsi target on (%s)",
+		    pdbg_target_path(proc));
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+
+	if (pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED) {
+		log(level::ERROR, "fsi(%s) probe: fail to enable",
+		    pdbg_target_path(fsi));
+		throw pdbgError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+
+	// get SBE current state based on sbe message register
+	sbeMsgReg_t sbeReg;
+	fapi2::ReturnCode fapiRC;
+	fapiRC = p10_get_sbe_msg_register(proc, sbeReg);
+	if (fapiRC != fapi2::FAPI2_RC_SUCCESS) {
+		log(level::ERROR,
+		    "Failed: checking SBE state in Halt (%s) fapiRC=%x",
+		    pdbg_target_path(proc), fapiRC);
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	}
+
+	// Check SBE state is in halt
+	if (sbeReg.currState != SBE_STATE_HALT) {
+		// No special actions required
+		return;
+	}
+
+	log(level::INFO, "SBE(%s) HRESET Requested", pdbg_target_path(proc));
+
+	// update SBE state to CHECK_CFAM.
+	setState(proc, SBE_STATE_CHECK_CFAM);
+
+	// SBE is in Halt state, call p10_sbe_reset hwp and re-check state
+	fapiRC = p10_sbe_hreset(proc, true);
+	if (fapiRC != fapi2::FAPI2_RC_SUCCESS) {
+		log(level::ERROR, "failed hreset hwp(%s), fapiRC=%x",
+		    pdbg_target_path(proc), fapiRC);
+		throw sbeError_t(exception::HWP_EXECUTION_FAILED);
+	}
+
+	// wait for 5 seconds for the change in SBE state
+	sleep(5);
+
+	// Check sbe current state using message register
+	fapiRC = p10_get_sbe_msg_register(proc, sbeReg);
+	if (fapiRC != fapi2::FAPI2_RC_SUCCESS) {
+		log(level::ERROR,
+		    "Failed: Checking SBE state procedure (%s) fapiRC=%x",
+		    pdbg_target_path(proc), fapiRC);
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	}
+	if (sbeReg.currState == SBE_STATE_RUNTIME) {
+		log(level::INFO, "SBE (%s), recoverd from halt state",
+		    pdbg_target_path(proc));
+		setState(proc, SBE_STATE_BOOTED);
+	}
+}
+
 void validateSBEState(struct pdbg_target *proc)
 {
 	// In order to allow SBE operation following conditions should be met
@@ -24,8 +107,6 @@ void validateSBEState(struct pdbg_target *proc)
 	// 3. In case the SBE state is marked as CHECK_CFAM then SBE's
 	// PERV_SB_MSG_FSI register must be checked to see if SBE is booted or
 	// NOT.
-	// check if SBE is in HALT state and perform HRESET if in HALT state
-	// halt_state_check
 
 	// get PIB target
 	struct pdbg_target *pib = getPibTarget(proc);
@@ -40,12 +121,9 @@ void validateSBEState(struct pdbg_target *proc)
 	}
 
 	// SBE_STATE_CHECK_CFAM case is already handled by pdbg api
-	if (state == SBE_STATE_BOOTED)
+	if (state == SBE_STATE_BOOTED) {
 		return;
-
-	// TODO , check halt state and routine for recover SBE.
-
-	if (state != SBE_STATE_BOOTED) {
+	} else {
 		log(level::INFO,
 		    "SBE (%s) is not ready for chip-op: state(0x%08x)",
 		    pdbg_target_path(proc), state);
