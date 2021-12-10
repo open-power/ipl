@@ -193,21 +193,28 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 //state of the guarded resources in HWAS state attribute in device tree.
 static void update_hwas_state(bool is_coldboot)
 {
-	if (!ipl_guard()) {
-		ipl_log(IPL_INFO, "Disabled to apply the guard records");
-		return;
-	}
-
 	openpower::guard::libguard_init(false);
 
 	auto records = openpower::guard::getAll();
 	if (records.size()) {
 		ipl_log(IPL_INFO, "Number of Records = %d\n",records.size());
 
+
+		if (!ipl_guard()) {
+			// Don't return, we should handle reconfig type guard records
+			// even if guard setting is disabled.
+			ipl_log(IPL_INFO, "Disabled to apply the guard records");
+		}
+
 		for (const auto& elem : records) {
 
-			//Not to apply resolved guard records
-		  	if(elem.recordId == GUARD_RESOLVED) {
+			if(!ipl_guard() && (elem.errType != GUARD_ERROR_TYPE_RECONFIG)) {
+				// Disabled to apply the guard records so should not allow
+				// the records to apply except reconfig type guard records.
+				continue;
+			}
+			else if(elem.recordId == GUARD_RESOLVED) {
+				// No need to apply the resolved guard records.
 				continue;
 			}
 
