@@ -24,11 +24,24 @@ extern "C" {
 #include <filesystem>
 #include <fstream>
 #include <array>
+#include <chrono>
+#include <thread>
 
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
 #define GUARD_ERROR_TYPE_RECONFIG  0xEB
+
+#define OSC_CTL_OFFSET      0x06
+#define OSC_RESET_CMD       0x04
+#define OSC_RESET_CMD_LEN   0x01
+
+#define OSC_STAT_OFFSET     0x07
+#define OSC_STAT_REG_LEN    0x01
+#define OSC_STAT_ERR_MASK   0x80
+
+#define CLOCK_RESTART_DELAY_IN_MS    100
+#define NUM_CLOCK_FOR_REDUNDANT_MODE 2
 
 struct guard_target {
   	uint8_t path[21];
@@ -414,21 +427,162 @@ static int ipl_alignment_check(void)
 	return -1;
 }
 
+/**
+ * @brief Initialise the clock chip and then check the status of all clocks
+ *
+ * For all clocks available, do a soft reset, and then check the status register
+ * to check whether it encounter a calibration failure or not.
+ *
+ * @param[out] clock_count    number of clocks available in the system
+ *
+ * @return 0 on success, 1 on failure
+ */
+static int initialize_and_check_clock_chip(uint8_t& clock_count)
+{
+	struct pdbg_target *clock_target;
+	enum pdbg_target_status status;
+	uint8_t data;
+	int rc = 0;
+	int i2c_rc = 0;
+	std::vector<std::pair<std::string, std::string>> ffdcs;
+	uint8_t clk_pos = 0;
+
+	// initialize output variable.
+	clock_count = 0;
+
+	pdbg_for_each_class_target("oscrefclk", clock_target) {
+		if (!ipl_is_functional(clock_target))
+			continue;
+
+		// clock count has to be incremented even if it failed to initiallize
+		clock_count++;
+		ffdcs.clear();
+
+		if(!pdbg_target_get_attribute(
+			clock_target, "ATTR_POSITION", 2, 1, &clk_pos)) {
+
+			ipl_log(IPL_ERROR, "Attribute ATTR_POSITION read failed"
+				" for clock '%s' \n", pdbg_target_path(clock_target));
+			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_READ_FAIL);
+			rc++;
+			continue;
+		}
+
+		status = pdbg_target_probe(clock_target);
+		if(status != PDBG_TARGET_ENABLED) {
+			ipl_log(IPL_ERROR, "clock '%s' is not operational, pdbg status = %d\n",
+				pdbg_target_path(clock_target), status);
+
+			ffdcs.push_back(std::make_pair("PDBG_STATUS", std::to_string(status)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "CHIP_NOT_OPERATIONAL"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
+			rc++;
+			continue;
+		}
+		ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register"
+					" for clock-%d\n", clk_pos);
+
+		// Resetting the clock chip, so that it will recalibrate input oscillator
+		// signal and identifies bad oscillators.
+		data = OSC_RESET_CMD;
+		i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
+		if(i2c_rc) {
+			ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
+				pdbg_target_path(clock_target), i2c_rc);
+
+			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "SOFT_RESET"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
+			rc++;
+			continue;
+		}
+		else{
+			ipl_log(IPL_DEBUG, "soft reset command is successfull for clock '%s'\n",
+				pdbg_target_path(clock_target));
+		}
+
+		// wait for clock to restart
+		std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_RESTART_DELAY_IN_MS));
+
+		// Read clock status register to check whether it reports calibration error.
+		// Bit-0 will be set if there is a calibration error.
+
+		i2c_rc = i2c_read(clock_target, 0, OSC_STAT_OFFSET, OSC_STAT_REG_LEN, &data);
+		if(i2c_rc) {
+			ipl_log(IPL_ERROR, "status register read is failed for clock '%s', with rc = %d\n",
+				pdbg_target_path(clock_target), i2c_rc);
+
+			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE", "STATUS_READ"));
+			ipl_plat_clock_error_handler(ffdcs, clk_pos);
+			rc++;
+			continue;
+		}
+		else{
+			ipl_log(IPL_DEBUG, "status register value for clock '%s' is 0x%2X\n",
+				pdbg_target_path(clock_target), data);
+
+			if(data & OSC_STAT_ERR_MASK) {
+				ipl_log(IPL_ERROR, "Calibration is failed for clock '%s', status=0x%2X",
+					pdbg_target_path(clock_target), data);
+
+				ffdcs.push_back(std::make_pair("CLOCK_STATUS", std::to_string(data)));
+				ffdcs.push_back(std::make_pair("FAIL_TYPE", "CALIB_ERR"));
+				ipl_plat_clock_error_handler(ffdcs, clk_pos);
+				rc++;
+				continue;
+			}
+		}
+	}
+	return rc;
+}
+
 static int ipl_set_ref_clock(void)
 {
 	struct pdbg_target *proc;
 	int rc = 0;
+	uint8_t clock_count = 0;
 
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
 	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
 
+	if(initialize_and_check_clock_chip(clock_count)) {
+		ipl_log(IPL_ERROR, "Clock initialization failed\n");
+		return 1;
+	}
+
+	if(clock_count != 1 && clock_count != 2) {
+		ipl_log(IPL_ERROR, "Invalid number (%d) of clock target found\n",
+							clock_count);
+
+		ipl_plat_procedure_error_handler(IPL_ERR_INVALID_NUM_CLOCK);
+		return 1;
+	}
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
 		if (!ipl_is_functional(proc))
 			continue;
+
+		// Check if system have clocks to enable redundant mode,
+		// If yes set attribute to enable redundant mode.
+		// Default value of attribute will be for non-redundant mode
+		if(clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
+			fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
+				fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
+			if(!pdbg_target_set_attribute(
+					proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1, &clock_select)) {
+
+				ipl_log(IPL_ERROR, "Attribute CP_REFCLOCK_SELECT update failed"
+					" for proc %d \n", pdbg_target_index(proc));
+				ipl_plat_procedure_error_handler(IPL_ERR_ATTR_WRITE);
+				rc++;
+				continue;
+			}
+		}
 
 		ipl_log(IPL_INFO, "Running p10_setup_ref_clock HWP on processor %d\n",
 			pdbg_target_index(proc));
