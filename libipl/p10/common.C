@@ -343,6 +343,37 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 	}
 }
 
+/**
+ * @brief get the error message corresponding to the ipl_error_type given
+ *
+ * Return the error message, if it existing for given error_type. If its not
+ * available try with backup error_type. If that is also not available, return
+ * default error message.
+ *
+ * @param[in] err_type error type
+ * @param[in] bkp_err_type backup error type
+ *
+ * @return Error message corresponding to err_type
+ */
+static std::string ipl_get_err_msg(
+	const ipl_error_type& err_type,
+	const ipl_error_type& bkp_err_type)
+{
+	std::string ret_msg = "Undefined error";
+
+	auto err_msg_it = err_msg_map.find(err_type);
+	if(err_msg_it != err_msg_map.end()) {
+		ret_msg = err_msg_it->second;
+	}
+	else {
+		auto err_msg_it = err_msg_map.find(bkp_err_type);
+		if(err_msg_it != err_msg_map.end()) {
+			ret_msg = err_msg_it->second;
+		}
+	}
+	return ret_msg;
+}
+
 void ipl_plat_clock_error_handler(
 	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
 	uint8_t clk_pos)
@@ -350,7 +381,7 @@ void ipl_plat_clock_error_handler(
 	FFDC ffdc;
 	ffdc.ffdc_type = FFDC_TYPE_HWP;
 	ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_CLK);
-	ffdc.hwp_errorinfo.rc_desc = "Error in executing clock initialisation";
+	ffdc.hwp_errorinfo.rc_desc = ipl_get_err_msg(IPL_ERR_CLK, IPL_ERR_PLAT);
 
 	ffdc.hwp_errorinfo.ffdcs_data.insert(ffdc.hwp_errorinfo.ffdcs_data.end(),
 		ffdcs_data.begin(), ffdcs_data.end());
@@ -366,7 +397,10 @@ void ipl_plat_clock_error_handler(
 
 	ffdc.hwp_errorinfo.hwcallouts.push_back(hwcallout_data);
 
-	ipl_error_callback(ipl_error_info{IPL_ERR_CLK, &ffdc});
+	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific error and
+	// the exact error code and description are included in the FFDC.RC and
+	// FFDC.RC_DESC members.
+	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, &ffdc});
 }
 
 void ipl_plat_procedure_error_handler(
@@ -375,8 +409,8 @@ void ipl_plat_procedure_error_handler(
 {
 	FFDC ffdc;
 	ffdc.ffdc_type = FFDC_TYPE_HWP;
-	ffdc.hwp_errorinfo.rc = std::to_string(fapi2::FAPI2_RC_PLAT_ERR_SEE_DATA);
-	ffdc.hwp_errorinfo.rc_desc = "Error in executing platform function";
+	ffdc.hwp_errorinfo.rc = std::to_string(err_type);
+	ffdc.hwp_errorinfo.rc_desc = ipl_get_err_msg(err_type, IPL_ERR_PLAT);
 
 	ffdc.hwp_errorinfo.ffdcs_data.insert(
 		ffdc.hwp_errorinfo.ffdcs_data.end(),
@@ -389,5 +423,8 @@ void ipl_plat_procedure_error_handler(
 		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
 	ffdc.hwp_errorinfo.procedures_callout.push_back(procedurecallout_data);
 
-	ipl_error_callback(ipl_error_info{err_type, &ffdc});
+	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific error and
+	// the exact error code and description are included in the FFDC.RC and
+	// FFDC.RC_DESC members.
+	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, &ffdc});
 }
