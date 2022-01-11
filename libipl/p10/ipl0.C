@@ -450,6 +450,34 @@ static int ipl_alignment_check(void)
 }
 
 /**
+ * @brief Check whether clock reset has to be skipped or not
+ *
+ * Will look whether file '/tmp/skip_clock_reset' exist or not. If exist
+ * this function will return true, indicating clock reset has to be skipped
+ *
+ *
+ * @return true if clock reset has to be skipped, false if clock reset has to be
+ * 		performed
+ */
+static bool skip_clock_reset()
+{
+	int ret;
+	struct stat statbuf;
+
+	// If /tmp/skip_clock_reset file exists, skip clock soft reset
+	ret = stat("/tmp/skip_clock_reset", &statbuf);
+	if (ret == -1)
+		return false;
+
+	if (S_ISREG(statbuf.st_mode)) {
+		ipl_log(IPL_INFO, "Skipping clock reset\n");
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * @brief Initialise the clock chip and then check the status of all clocks
  *
  * For all clocks available, do a soft reset, and then check the status register
@@ -468,9 +496,15 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 	int i2c_rc = 0;
 	std::vector<std::pair<std::string, std::string>> ffdcs;
 	uint8_t clk_pos = 0;
+	bool skip_reset = false;
 
 	// initialize output variable.
 	clock_count = 0;
+
+	// Clock reset will revert all i2c write done, which may have written
+	// to test firmware for different error scenario, in lab environment.
+	// So test team can use this method to skip clock reset while testing.
+	skip_reset = skip_clock_reset();
 
 	pdbg_for_each_class_target("oscrefclk", clock_target) {
 		if (!ipl_is_functional(clock_target))
@@ -504,27 +538,29 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 		ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register"
 					" for clock-%d\n", clk_pos);
 
-		// Resetting the clock chip, so that it will recalibrate input oscillator
-		// signal and identifies bad oscillators.
-		data = OSC_RESET_CMD;
-		i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
-		if(i2c_rc) {
-			ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
-				pdbg_target_path(clock_target), i2c_rc);
+		if(!skip_reset) {
+			// Resetting the clock chip, so that it will recalibrate input oscillator
+			// signal and identifies bad oscillators.
+			data = OSC_RESET_CMD;
+			i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
+			if(i2c_rc) {
+				ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
+					pdbg_target_path(clock_target), i2c_rc);
 
-			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
-			ffdcs.push_back(std::make_pair("FAIL_TYPE", "SOFT_RESET"));
-			ipl_plat_clock_error_handler(ffdcs, clk_pos);
-			rc++;
-			continue;
-		}
-		else{
-			ipl_log(IPL_DEBUG, "soft reset command is successfull for clock '%s'\n",
-				pdbg_target_path(clock_target));
-		}
+				ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+				ffdcs.push_back(std::make_pair("FAIL_TYPE", "SOFT_RESET"));
+				ipl_plat_clock_error_handler(ffdcs, clk_pos);
+				rc++;
+				continue;
+			}
+			else{
+				ipl_log(IPL_DEBUG, "soft reset command is successfull for clock '%s'\n",
+					pdbg_target_path(clock_target));
+			}
 
-		// wait for clock to restart
-		std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_RESTART_DELAY_IN_MS));
+			// wait for clock to restart
+			std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_RESTART_DELAY_IN_MS));
+		}
 
 		// Read clock status register to check whether it reports calibration error.
 		// Bit-0 will be set if there is a calibration error.
