@@ -43,6 +43,10 @@ extern "C" {
 #define CLOCK_RESTART_DELAY_IN_MS    100
 #define NUM_CLOCK_FOR_REDUNDANT_MODE 2
 
+#define GUARD_CONTINUE_TGT_TRAVERSAL 0
+#define GUARD_TGT_FOUND 1
+#define GUARD_TGT_NOT_FOUND 2
+
 struct guard_target {
   	uint8_t path[21];
 	bool set_hwas_state;
@@ -127,17 +131,17 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
 		//Returning 0 for continue traversal, as the requested target is not
 		//found
-		return 0;
+		return GUARD_CONTINUE_TGT_TRAVERSAL;
 
 	if (memcmp(target_info->path, path, sizeof(path)) != 0)
-		return 0;
+		return GUARD_CONTINUE_TGT_TRAVERSAL;
 
 	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
 			pdbg_target_path(target));
 		//ATTR_TYPE attribute not found for the target, hence this is an
 		//error case, so need to stop
-		return 2;
+		return GUARD_TGT_NOT_FOUND;
 	}
 
 	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
@@ -148,7 +152,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 				pdbg_target_index(target));
 			//Unable to clear the functional state of HWAS attribute of the
 			//target, so we need to stop
-			return 2;
+			return GUARD_TGT_NOT_FOUND;
 		}
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL) {
@@ -159,7 +163,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 				type);
 			//Unable to clear the functional state of HWAS attribute of the
 			//target, so we need to stop
-			return 2;
+			return GUARD_TGT_NOT_FOUND;
 		}
 
 		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
@@ -173,7 +177,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 						pdbg_target_index(core));
 					// Unable to clear the functional state of HWAS
 					// attribute of the target, so we need to stop
-					return 2;
+					return GUARD_TGT_NOT_FOUND;
 				}
 			}
 		}
@@ -186,7 +190,7 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	}
 
 	//Requested target found
-	return 1;
+	return GUARD_TGT_FOUND;
 }
 
 //@Brief Function will get the guard records and will unset the functional
@@ -248,7 +252,7 @@ static void update_hwas_state(bool is_coldboot)
 			}
 
 			err = pdbg_target_traverse(NULL, update_hwas_state_callback, &targetinfo);
-			if ((err == 0) || (err == 2))
+			if ((err == GUARD_CONTINUE_TGT_TRAVERSAL) || (err == GUARD_TGT_NOT_FOUND))
 				ipl_log(IPL_ERROR,
 					"Failed to set HWAS state for guard"
 					" record[ID: %d]\n",
