@@ -27,6 +27,7 @@ extern "C" {
 #include <chrono>
 #include <thread>
 
+#define TGT_TYPE_PROC   0x05
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
@@ -46,6 +47,7 @@ extern "C" {
 #define GUARD_CONTINUE_TGT_TRAVERSAL 0
 #define GUARD_TGT_FOUND 1
 #define GUARD_TGT_NOT_FOUND 2
+#define GUARD_PRIMARY_PROC_NOT_APPLIED 3
 
 struct guard_target {
   	uint8_t path[21];
@@ -156,6 +158,15 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		}
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL) {
+
+		if (type == TGT_TYPE_PROC) {
+			if (ipl_is_master_proc(target)) {
+				ipl_log(IPL_INFO,
+					"Primary processor is guarded "
+					"so, skipping to apply");
+				return GUARD_PRIMARY_PROC_NOT_APPLIED;
+			}
+		}
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
