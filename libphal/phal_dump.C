@@ -132,6 +132,42 @@ struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
 }
 
 /**
+ * @brief Function will write reason code and recovery action in a file
+ * @param[in] dumpPath Path of the file
+ * @param[in] reasonCode Reason code of sbe failure
+ * @param[in] recoveryAction Reovery action code for sbe failure
+ *
+ * Throws FILE_OPERATION_FAILED in the case of error
+ *
+ */
+void writeSbeData(const std::filesystem::path& dumpPath, uint32_t reasonCode,
+                  uint32_t recoveryAction)
+{
+	//Writing data to file
+	std::string dumpFilename = "sbe_data_file";
+	std::string additionalPath = "additional_data";
+	std::filesystem::path dirPath = dumpPath / additionalPath;
+	std::filesystem::path basePath = dirPath / dumpFilename;
+	try{
+		std::filesystem::create_directories(dirPath);
+		std::ofstream sbefile (basePath);
+		if (sbefile.is_open())
+		{
+			sbefile << "sbe-reason-code: " << std::hex << "0x" << reasonCode << std::endl;
+			sbefile << "sbe-recovery-action: " << std::hex << "0x" << recoveryAction << std::endl;
+			sbefile.close();
+		}
+	}
+	catch(const std::exception& oe)
+	{
+		log(level::ERROR,
+			"Failed to write sbe contents in path:%s errno:%d error message:%s",
+			basePath.string().c_str(), errno, oe.what());
+		throw dumpError_t(exception::FILE_OPERATION_FAILED);
+	}
+}
+
+/**
  * @brief Initialize the PDBG and SBE to start collection
  * @param[in] failingUnit Position of the proc containing the failed SBE
  *
@@ -139,7 +175,7 @@ struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
  *             PDBG_TARGET_NOT_OPERATIONAL for invalid failing unit
  *             HWP_EXECUTION_FAILED if the extract rc procedure is failing
  */
-struct pdbg_target* preCollection(const uint32_t failingUnit)
+struct pdbg_target* preCollection(const uint32_t failingUnit, const std::filesystem::path& dumpPath)
 {
 	// Initialize PDBG with KERNEL backend
 	pdbg::init(PDBG_BACKEND_KERNEL);
@@ -192,6 +228,9 @@ struct pdbg_target* preCollection(const uint32_t failingUnit)
 	    "p10_extract_sbe_rc for proc=%s returned rc=0x%08X and SBE "
 	    "Recovery Action=0x%08X",
 	    pdbg_target_path(proc), fapiRc, recovAction);
+
+	writeSbeData(dumpPath, fapiRc, recovAction);
+
 	return proc;
 }
 
@@ -243,7 +282,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	    ss.str() + ".0_" + std::to_string(failingUnit) + "_SbeData_p10_";
 
 	// Execute pre-collection and get proc corresponding to failing unit
-	struct pdbg_target* proc = preCollection(failingUnit);
+	struct pdbg_target* proc = preCollection(failingUnit, dumpPath);
 
 	// Get pib for the proc
 	struct pdbg_target* pib = getPibTarget(proc);
