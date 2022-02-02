@@ -149,11 +149,11 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
 
-		if (!set_or_clear_state(target, false)) {
+		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
-				"Failed to clear functional state of core, index=0x%x\n",
+				"Failed to update functional state of core, index=0x%x\n",
 				pdbg_target_index(target));
-			//Unable to clear the functional state of HWAS attribute of the
+			//Unable to update the functional state of HWAS attribute of the
 			//target, so we need to stop
 			return GUARD_TGT_NOT_FOUND;
 		}
@@ -171,9 +171,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
-				"Failed to clear functional state of fru type 0x%x\n",
+				"Failed to update functional state of fru type 0x%x\n",
 				type);
-			//Unable to clear the functional state of HWAS attribute of the
+			//Unable to update the functional state of HWAS attribute of the
 			//target, so we need to stop
 			return GUARD_TGT_NOT_FOUND;
 		}
@@ -182,12 +182,12 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 			struct pdbg_target *core;
 
 			pdbg_for_each_target("core", target, core) {
-				if (!set_or_clear_state(core, false)) {
+				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
 					ipl_log(IPL_ERROR,
-						"Failed to clear functional state"
+						"Failed to update functional state"
 						" of core with index 0x%x\n",
 						pdbg_target_index(core));
-					// Unable to clear the functional state of HWAS
+					// Unable to update the functional state of HWAS
 					// attribute of the target, so we need to stop
 					return GUARD_TGT_NOT_FOUND;
 				}
