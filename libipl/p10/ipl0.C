@@ -147,15 +147,32 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		return GUARD_TGT_NOT_FOUND;
 	}
 
-	if (ipl_type() == IPL_TYPE_MPIPL && type == FRU_TYPE_CORE) {
+	if (ipl_type() == IPL_TYPE_MPIPL && (type == FRU_TYPE_CORE ||
+	    type == FRU_TYPE_FC)) {
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
-				"Failed to update functional state of core, index=0x%x\n",
-				pdbg_target_index(target));
+				"Failed to update functional state of target 0x%x, "
+				"index=0x%x\n", type, pdbg_target_index(target));
 			//Unable to update the functional state of HWAS attribute of the
 			//target, so we need to stop
 			return GUARD_TGT_NOT_FOUND;
+		}
+
+		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
+			struct pdbg_target *core;
+
+			pdbg_for_each_target("core", target, core) {
+				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
+					ipl_log(IPL_ERROR,
+						"Failed to update functional state"
+						" of core with index 0x%x\n",
+						pdbg_target_index(core));
+					// Unable to update the functional state of HWAS
+					// attribute of the target, so we need to stop
+					return GUARD_TGT_NOT_FOUND;
+				}
+			}
 		}
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL) {
