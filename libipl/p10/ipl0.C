@@ -32,6 +32,7 @@ extern "C" {
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
 #define GUARD_ERROR_TYPE_RECONFIG  0xEB
+#define GUARD_ERROR_TYPE_STICKY    0xEC
 
 #define OSC_CTL_OFFSET      0x06
 #define OSC_RESET_CMD       0x04
@@ -223,9 +224,11 @@ static void update_hwas_state(bool is_coldboot)
 
 		for (const auto& elem : records) {
 
-			if(!ipl_guard() && (elem.errType != GUARD_ERROR_TYPE_RECONFIG)) {
+			if(!ipl_guard() && (elem.errType != GUARD_ERROR_TYPE_RECONFIG ||
+			   elem.errType != GUARD_ERROR_TYPE_STICKY)) {
 				// Disabled to apply the guard records so should not allow
-				// the records to apply except reconfig type guard records.
+				// the records to apply except reconfig and sticky type
+				// guard records.
 				continue;
 			}
 			else if(elem.recordId == GUARD_RESOLVED) {
@@ -248,12 +251,13 @@ static void update_hwas_state(bool is_coldboot)
 			}
 
 
-			//Check is to remove guard record with type reconfig during
+			//Check is to remove guard record with type reconfig or sticky during
 			//normal/cold boot. During this the GENESIS_BOOT_FILE will
 			//get deleted as a part of DEVTREE initilization.
 			//During warm reboot GENESIS_BOOT_FILE will be present. Hence
 			//all the guard records will be applied.
-			if(is_coldboot && (elem.errType == GUARD_ERROR_TYPE_RECONFIG) &&
+			if(is_coldboot && (elem.errType == GUARD_ERROR_TYPE_RECONFIG ||
+			   elem.errType == GUARD_ERROR_TYPE_STICKY) &&
 			  (ipl_type() == IPL_TYPE_NORMAL)) {
 			  	openpower::guard::clear(elem.targetId);
 			  	targetinfo.set_hwas_state = true;
