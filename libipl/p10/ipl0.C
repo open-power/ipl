@@ -259,7 +259,7 @@ static void update_hwas_state(bool is_coldboot)
 			if(is_coldboot && (elem.errType == GUARD_ERROR_TYPE_RECONFIG ||
 			   elem.errType == GUARD_ERROR_TYPE_STICKY) &&
 			  (ipl_type() == IPL_TYPE_NORMAL)) {
-			  	openpower::guard::clear(elem.targetId);
+			  	openpower::guard::clear(elem.recordId);
 			  	targetinfo.set_hwas_state = true;
 			}
 			else {
