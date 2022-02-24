@@ -130,6 +130,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
   	guard_target* target_info = static_cast<guard_target*>(priv);
 	uint8_t path[21] = { 0 };
 	uint8_t type;
+	char tgtPhysDevPath[64];
+	std::string guard_action(target_info->set_hwas_state ? "Clearing" :
+	                                                       "Applying");
 
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
 		//Returning 0 for continue traversal, as the requested target is not
@@ -138,6 +141,13 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	if (memcmp(target_info->path, path, sizeof(path)) != 0)
 		return GUARD_CONTINUE_TGT_TRAVERSAL;
+
+	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_DEV_PATH", 1, 64,
+	     tgtPhysDevPath)) {
+		ipl_log(IPL_ERROR, "Failed to read ATTR_PHYS_DEV_PATH for %s\n",
+		        pdbg_target_path(target));
+		return GUARD_TGT_NOT_FOUND;
+	}
 
 	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
@@ -150,6 +160,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	if (ipl_type() == IPL_TYPE_MPIPL && (type == FRU_TYPE_CORE ||
 	    type == FRU_TYPE_FC)) {
 
+		ipl_log(IPL_INFO, "%s guard record for %s\n", guard_action.c_str(),
+		        tgtPhysDevPath);
+
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
 				"Failed to update functional state of target 0x%x, "
@@ -161,6 +174,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
 			struct pdbg_target *core;
+
+			ipl_log(IPL_INFO, "%s guard record for associated Core since %s guared\n",
+			        guard_action.c_str(), tgtPhysDevPath);
 
 			pdbg_for_each_target("core", target, core) {
 				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
@@ -180,11 +196,14 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		if (type == TGT_TYPE_PROC) {
 			if (ipl_is_master_proc(target)) {
 				ipl_log(IPL_INFO,
-					"Primary processor is guarded "
-					"so, skipping to apply");
+					"Primary processor [%s] is guarded "
+					"so, skipping to apply", tgtPhysDevPath);
 				return GUARD_PRIMARY_PROC_NOT_APPLIED;
 			}
 		}
+
+		ipl_log(IPL_INFO, "%s guard record for %s\n", guard_action.c_str(),
+		        tgtPhysDevPath);
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
@@ -197,6 +216,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
 			struct pdbg_target *core;
+
+			ipl_log(IPL_INFO, "%s guard record for associated Core since %s guared\n",
+			        guard_action.c_str(), tgtPhysDevPath);
 
 			pdbg_for_each_target("core", target, core) {
 				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
@@ -212,10 +234,8 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 		}
 
 	} else {
-		ipl_log(IPL_DEBUG,
-			"Skipping to clear functional state for"
-			" fru type 0x%x in ipl mode %d\n",
-			type, ipl_type());
+		ipl_log(IPL_INFO,
+			"Skip, %s guard record for %s\n", guard_action.c_str(), tgtPhysDevPath);
 	}
 
 	//Requested target found
