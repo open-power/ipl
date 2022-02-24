@@ -242,10 +242,45 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	return GUARD_TGT_FOUND;
 }
 
-//@Brief Function will get the guard records and will unset the functional
-//state of the guarded resources in HWAS state attribute in device tree.
-static void update_hwas_state(bool is_coldboot)
+/**
+ * @brief Allow guard actions in the below cases to support resource recovery.
+ *
+ * - If the current boot is MPIPL.
+ *
+ * - If the BOOTTIME_GUARD_INDICATOR file (that will be created by the BMC
+ *   in the PowerOn or TI or Checkstop or Watchdog timeout path) is exist
+ *   in the current boot.
+ */
+static bool guard_action_allowed()
 {
+    if (ipl_type() == IPL_TYPE_MPIPL) {
+        return true;
+    }
+
+    namespace fs = std::filesystem;
+    constexpr auto BOOTTIME_GUARD_INDICATOR = "/tmp/phal/boottime_guard_indicator";
+    fs::path boottime_guard_indicator(BOOTTIME_GUARD_INDICATOR);
+
+    if (fs::exists(boottime_guard_indicator)) {
+        // Remove indicator since that will be created by the BMC
+        // based on the different boot path.
+        fs::remove(boottime_guard_indicator);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//@Brief Function will get the guard records and will update the functional
+//state of the guarded resources in HWAS state attribute in device tree based
+//on the guard actions in the different boots.
+static void process_guard_records()
+{
+	if (!guard_action_allowed()) {
+		ipl_log(IPL_INFO, "No guard actions in the current boot");
+		return;
+	}
+
 	openpower::guard::libguard_init(false);
 
 	auto records = openpower::guard::getAll();
@@ -287,15 +322,11 @@ static void update_hwas_state(bool is_coldboot)
 				index += sizeof(elem.targetId.pathElements[0]);
 			}
 
-
-			//Check is to remove guard record with type reconfig or sticky during
-			//normal/cold boot. During this the GENESIS_BOOT_FILE will
-			//get deleted as a part of DEVTREE initilization.
-			//During warm reboot GENESIS_BOOT_FILE will be present. Hence
-			//all the guard records will be applied.
-			if(is_coldboot && (elem.errType == GUARD_ERROR_TYPE_RECONFIG ||
-			   elem.errType == GUARD_ERROR_TYPE_STICKY) &&
-			  (ipl_type() == IPL_TYPE_NORMAL)) {
+			// Clear ephemeral type (reconfig and sticky) guard records
+			// in the normal ipl.
+			if((ipl_type() == IPL_TYPE_NORMAL) &&
+			   (elem.errType == GUARD_ERROR_TYPE_RECONFIG ||
+			    elem.errType == GUARD_ERROR_TYPE_STICKY)) {
 			  	openpower::guard::clear(elem.recordId);
 			  	targetinfo.set_hwas_state = true;
 			}
@@ -469,7 +500,7 @@ static int ipl_updatehwmodel(void)
 	  	std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
-	update_hwas_state(boot_file_absent);
+	process_guard_records();
 
 	if(!boot_file_absent && (ipl_type() != IPL_TYPE_MPIPL)) {
 		// Update SBE state to Not usable in reboot path(not on MPIPL)
