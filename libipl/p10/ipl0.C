@@ -344,6 +344,54 @@ static void process_guard_records()
 	}
 }
 
+/*
+ * @Brief Function will check if the FCO state is set for hardware units
+ * consumed by sbe or not. If FCO override bit is set for such hardware
+ * units, need to mark present and functional state as set in devicetree
+ * during the boot.
+ *
+ */
+static void apply_fco_override(void)
+{
+	std::array<const char*, 8> mProcChild =
+		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
+
+	struct pdbg_target *proc, *child;
+	uint8_t buf[5];
+
+	pdbg_for_each_class_target("proc", proc) {
+		if(!ipl_is_master_proc(proc))
+			continue;
+
+		for(const char* data : mProcChild) {
+			pdbg_for_each_target(data, proc, child) {
+
+				if (!pdbg_target_get_attribute_packed(child,
+							"ATTR_HWAS_STATE",
+							"41", 1, buf)) {
+					ipl_error_callback(IPL_ERR_ATTR_READ_FAIL);
+					continue;
+				}
+
+				//0-1 bits reserved
+				//2nd bit Functional override
+				//3rd bit spec deconfig
+				//4th bit Dump capable
+				//5th bit Functional
+				//6th bit Present
+				//7th bit Deconfig
+				//Checking the FCO bit is set or not. If it's set means
+				//functional and present state of target should be set.
+				if(buf[4] & 0x04) {
+					if (!set_or_clear_state(child, true)) {
+						ipl_error_callback(IPL_ERR_ATTR_WRITE);
+					}
+				}
+			}
+		}
+	}
+}
+
 //@Brief Function will set the functional and present state of master proc
 // and of available procs in the system. For few children of master proc
 // functional and present state will be set in device tree during genesis
