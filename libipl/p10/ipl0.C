@@ -50,6 +50,8 @@ extern "C" {
 #define GUARD_TGT_NOT_FOUND 2
 #define GUARD_PRIMARY_PROC_NOT_APPLIED 3
 
+constexpr auto BOOTTIME_GUARD_INDICATOR = "/tmp/phal/boottime_guard_indicator";
+
 struct guard_target {
   	uint8_t path[21];
 	bool set_hwas_state;
@@ -258,7 +260,6 @@ static bool guard_action_allowed()
     }
 
     namespace fs = std::filesystem;
-    constexpr auto BOOTTIME_GUARD_INDICATOR = "/tmp/phal/boottime_guard_indicator";
     fs::path boottime_guard_indicator(BOOTTIME_GUARD_INDICATOR);
 
     if (fs::exists(boottime_guard_indicator)) {
@@ -355,7 +356,6 @@ static void apply_fco_override(void)
 {
 	std::array<const char*, 8> mProcChild =
 		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
-
 	struct pdbg_target *proc, *child;
 	uint8_t buf[5];
 
@@ -547,6 +547,9 @@ static int ipl_updatehwmodel(void)
 		boot_file_absent = true;
 	  	std::ofstream file(GENESIS_BOOT_FILE);
 	}
+
+	if((ipl_type() == IPL_TYPE_MPIPL) || (!fs::exists(BOOTTIME_GUARD_INDICATOR)))
+		apply_fco_override();
 
 	process_guard_records();
 
