@@ -810,11 +810,6 @@ static int ipl_proc_clock_test(void)
 		ipl_process_fapi_error(fapirc, proc);
 	}
 
-	if (!ipl_check_functional_master()){
-		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-		return 1;
-    }
-
 	return rc;
 }
 
