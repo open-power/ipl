@@ -420,6 +420,7 @@ static bool update_genesis_hwas_state(void)
 			ipl_log(IPL_ERROR,
 				"Failed to set HWAS state of proc %d\n",
 				pdbg_target_index(proc));
+			ipl_error_callback(IPL_ERR_ATTR_WRITE);
 			return false;
 		}
 
@@ -432,6 +433,7 @@ static bool update_genesis_hwas_state(void)
 					ipl_log(IPL_ERROR,
 						"Failed to set HWAS state of %s, index %d\n",
 						data, pdbg_target_index(child));
+					ipl_error_callback(IPL_ERR_ATTR_WRITE);
 					return false;
 				}
 			}
