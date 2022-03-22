@@ -835,6 +835,12 @@ static int ipl_proc_select_boot_prom(void)
 
 	ipl_log(IPL_INFO, "Istep: proc_select_boot_prom: started\n");
 
+	// Check the availabilty of primary processor.
+	if (!ipl_check_functional_master()) {
+                ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+                return 1;
+        }
+
 	pdbg_for_each_class_target("proc", proc) {
 		fapi2::ReturnCode fapirc;
 
@@ -849,11 +855,6 @@ static int ipl_proc_select_boot_prom(void)
 
 		ipl_process_fapi_error(fapirc, proc);
 		break;
-    }
-
-	if (!ipl_check_functional_master()) {
-		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-		return 1;
 	}
 
 	return rc;
