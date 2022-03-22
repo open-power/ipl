@@ -875,6 +875,12 @@ static int ipl_sbe_config_update(void)
 
 	ipl_log(IPL_INFO, "Istep: sbe_config_update: started\n");
 
+	// Check the availabilty of primary processor.
+	if (!ipl_check_functional_master()) {
+                ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+                return 1;
+        }
+
 	root = pdbg_target_root();
 	if (!pdbg_target_get_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_ISTEP_MODE] read failed \n");
@@ -951,11 +957,6 @@ static int ipl_sbe_config_update(void)
 
 		ipl_process_fapi_error(fapirc, proc);
 		break;
-	}
-
-	if (!ipl_check_functional_master()) {
-		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-		return 1;
 	}
 
 	return rc;
