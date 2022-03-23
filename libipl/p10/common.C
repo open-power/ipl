@@ -149,7 +149,19 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 		loopcount--;
 		sleep(1);
 	}
-
+	// Get SBE debug data.
+	uint32_t val = 0xFFFFFFFF;
+	char path[16];
+	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
+	struct pdbg_target *fsi = pdbg_target_from_path(NULL, path);
+	if (fsi) {
+		if (fsi_read(fsi, 0x1007, &val)) {
+			ipl_log(IPL_ERROR, "CFAM(0x1007) on %s failed",
+				pdbg_target_path(fsi));
+		}
+	}
+	ipl_log(IPL_ERROR, "SBE Debug Data: 0x2809[0x%08x]  0x1007[0x%08x] \n",
+		uint32_t(sbeReg.reg), val);
 	return false;
 }
 
