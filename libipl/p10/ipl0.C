@@ -902,6 +902,10 @@ static int ipl_sbe_config_update(void)
 		return 1;
 	}
 
+	// Bit 4 and 5 Enable SBE FFDC collection.
+	boot_flags.setBit(4);
+	boot_flags.setBit(5);
+
 	// Bit 6 – disable security. 0b1 indicates disable the security
 	if (disable_security)
 		boot_flags.setBit(6);
