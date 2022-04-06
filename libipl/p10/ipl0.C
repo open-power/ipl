@@ -135,6 +135,9 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	char tgtPhysDevPath[64];
 	std::string guard_action(target_info->set_hwas_state ? "Clearing" :
 	                                                       "Applying");
+	std::string
+		guardTypeStr(openpower::guard::
+			guardReasonToStr(target_info->guardType));
 
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
 		//Returning 0 for continue traversal, as the requested target is not
@@ -162,8 +165,8 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 	if (ipl_type() == IPL_TYPE_MPIPL && (type == FRU_TYPE_CORE ||
 	    type == FRU_TYPE_FC)) {
 
-		ipl_log(IPL_INFO, "%s guard record for %s\n", guard_action.c_str(),
-		        tgtPhysDevPath);
+		ipl_log(IPL_INFO, "%s guard record for %s. Type: %s\n",
+		        guard_action.c_str(), tgtPhysDevPath, guardTypeStr.c_str());
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
@@ -200,14 +203,15 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 				if (ipl_is_master_proc(target)) {
 					ipl_log(IPL_INFO,
 						"Primary processor [%s] is guarded "
-						"so, skipping to apply", tgtPhysDevPath);
+						"so, skipping to apply. Type: %s\n",
+						tgtPhysDevPath, guardTypeStr.c_str());
 					return GUARD_PRIMARY_PROC_NOT_APPLIED;
 				}
 			}
 		}
 
-		ipl_log(IPL_INFO, "%s guard record for %s\n", guard_action.c_str(),
-		        tgtPhysDevPath);
+		ipl_log(IPL_INFO, "%s guard record for %s. Type: %s\n",
+		        guard_action.c_str(), tgtPhysDevPath, guardTypeStr.c_str());
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
@@ -239,7 +243,8 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	} else {
 		ipl_log(IPL_INFO,
-			"Skip, %s guard record for %s\n", guard_action.c_str(), tgtPhysDevPath);
+			"Skip, %s guard record for %s. Type: %s\n",
+			guard_action.c_str(), tgtPhysDevPath);
 	}
 
 	//Requested target found
