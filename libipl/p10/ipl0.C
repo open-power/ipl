@@ -53,10 +53,12 @@ constexpr auto BOOTTIME_GUARD_INDICATOR = "/tmp/phal/boottime_guard_indicator";
 struct guard_target {
   	uint8_t path[21];
 	bool set_hwas_state;
+	uint8_t guardType;
 
 	guard_target() {
 	  	memset(&path, 0, sizeof(path));
 		set_hwas_state = false;
+		guardType = 0; // GARD_NULL
 	}
 };
 
@@ -193,12 +195,14 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL) {
 
-		if (type == TGT_TYPE_PROC) {
-			if (ipl_is_master_proc(target)) {
-				ipl_log(IPL_INFO,
-					"Primary processor [%s] is guarded "
-					"so, skipping to apply", tgtPhysDevPath);
-				return GUARD_PRIMARY_PROC_NOT_APPLIED;
+		if (!openpower::guard::isEphemeralType(target_info->guardType)) {
+			if (type == TGT_TYPE_PROC) {
+				if (ipl_is_master_proc(target)) {
+					ipl_log(IPL_INFO,
+						"Primary processor [%s] is guarded "
+						"so, skipping to apply", tgtPhysDevPath);
+					return GUARD_PRIMARY_PROC_NOT_APPLIED;
+				}
 			}
 		}
 
@@ -307,6 +311,7 @@ static void process_guard_records()
 			}
 
 		  	guard_target targetinfo;
+			targetinfo.guardType = elem.errType;
 			int index = 0, i, err;
 
 			targetinfo.path[index] = elem.targetId.type_size;
