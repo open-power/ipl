@@ -31,8 +31,6 @@ extern "C" {
 #define FRU_TYPE_CORE   0x07
 #define FRU_TYPE_MC     0x44
 #define FRU_TYPE_FC     0x53
-#define GUARD_ERROR_TYPE_RECONFIG  0xEB
-#define GUARD_ERROR_TYPE_STICKY    0xEC
 
 #define OSC_CTL_OFFSET      0x06
 #define OSC_RESET_CMD       0x04
@@ -297,11 +295,10 @@ static void process_guard_records()
 
 		for (const auto& elem : records) {
 
-			if(!ipl_guard() && (elem.errType != GUARD_ERROR_TYPE_RECONFIG ||
-			   elem.errType != GUARD_ERROR_TYPE_STICKY)) {
+			if(!ipl_guard() &&
+			   !openpower::guard::isEphemeralType(elem.errType)) {
 				// Disabled to apply the guard records so should not allow
-				// the records to apply except reconfig and sticky type
-				// guard records.
+				// the records to apply except ephemeral type guard records.
 				continue;
 			}
 			else if(elem.recordId == GUARD_RESOLVED) {
@@ -323,11 +320,9 @@ static void process_guard_records()
 				index += sizeof(elem.targetId.pathElements[0]);
 			}
 
-			// Clear ephemeral type (reconfig and sticky) guard records
-			// in the normal ipl.
+			// Clear ephemeral type guard records in the normal ipl.
 			if((ipl_type() == IPL_TYPE_NORMAL) &&
-			   (elem.errType == GUARD_ERROR_TYPE_RECONFIG ||
-			    elem.errType == GUARD_ERROR_TYPE_STICKY)) {
+			    openpower::guard::isEphemeralType(elem.errType)) {
 			  	openpower::guard::clear(elem.recordId);
 			  	targetinfo.set_hwas_state = true;
 			}
