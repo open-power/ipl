@@ -108,6 +108,14 @@ void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
 		throw pdbgError_t(exception::PDBG_TARGET_NOT_FOUND);
 	}
 
+	if (isPrimaryProc(target)) {
+		log(level::WARNING,
+		    "deconfigureTgt: Skipping primary proc((%s)) deconfig by "
+		    "policy",
+		    pdbg_target_path(target));
+		return;
+	}
+
 	ATTR_HWAS_STATE_Type hwasState;
 	if (DT_GET_PROP(ATTR_HWAS_STATE, target, hwasState)) {
 		log(level::ERROR, "Could not read(%s) HWAS_STATE attribute",
