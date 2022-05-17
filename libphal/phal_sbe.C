@@ -325,6 +325,9 @@ void threadStopProc(struct pdbg_target *proc)
 
 	log(level::INFO, "Enter: threadStopProc(%s)", pdbg_target_path(proc));
 
+	// SBE halt state need recovery before thread stop all chip-ops
+	sbeHaltStateRecovery(proc);
+
 	// validate SBE state
 	validateSBEState(proc);
 
