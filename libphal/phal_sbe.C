@@ -21,6 +21,28 @@ using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
 
 /**
+ * @brief helper function to log SBE debug data
+ *
+ * @param[in] proc processor target to operate on
+ */
+void logSbeDebugData(struct pdbg_target *proc)
+{
+	std::array<const uint32_t, 5> cfamAddr = {0x2986, 0x2809, 0x282A,
+						  0x2829, 0x1007};
+	for (const uint32_t addr : cfamAddr) {
+		try {
+			uint32_t val = 0xFFFFFFFF; // Invalid value
+			val = getCFAM(proc, addr);
+			if (val != 0xFFFFFFFF) {
+				log(level::INFO, "%s CFAM(0x%X) : 0x%X",
+				    pdbg_target_path(proc), addr, val);
+			}
+		} catch (...) {
+		}
+	}
+}
+
+/**
  * @brief helper function to perform HRESET on secondary processor
  *        if sbe is in HALT state.
  * @param[in] proc processor target to operate on
@@ -95,6 +117,10 @@ void sbeHaltStateRecovery(struct pdbg_target *proc)
 		log(level::INFO, "SBE (%s), recoverd from halt state",
 		    pdbg_target_path(proc));
 		setState(proc, SBE_STATE_BOOTED);
+	} else {
+		log(level::ERROR, "SBE (%s), Fail to recover from halt state",
+		    pdbg_target_path(proc));
+		logSbeDebugData(proc);
 	}
 }
 
@@ -199,6 +225,9 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	uint32_t ffdcLen = 0;
 	uint32_t status = 0;
 
+	// Log SBE debug data.
+	logSbeDebugData(proc);
+
 	// get PIB target
 	struct pdbg_target *pib = getPibTarget(proc);
 
@@ -211,7 +240,7 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
 
 	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
-		log(level::INFO, "SBE chipop timeout reported(%s)",
+		log(level::ERROR, "SBE chipop timeout reported(%s)",
 		    pdbg_target_path(proc));
 		return sbeError_t(exception::SBE_CMD_TIMEOUT);
 	}
