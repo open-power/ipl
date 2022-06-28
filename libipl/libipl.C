@@ -15,7 +15,7 @@ extern "C" {
 #include "libipl.H"
 #include "libipl_internal.H"
 
-static struct ipl_step_data ipl_steps[MAX_ISTEP+1];
+static struct ipl_step_data ipl_steps[MAX_ISTEP + 1];
 
 static bool g_ipl_test_mode = false;
 
@@ -23,7 +23,8 @@ void ipl_pre(void)
 {
 	struct pdbg_target *proc;
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		struct pdbg_target *fsi, *pib;
 		char path[16];
 
@@ -60,8 +61,10 @@ static int ipl_init_p10(void)
 		istep_mode = 0;
 
 	root = pdbg_target_root();
-	if (!pdbg_target_set_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_ISTEP_MODE] update failed\n");
+	if (!pdbg_target_set_attribute(root, "ATTR_ISTEP_MODE", 1, 1,
+				       &istep_mode)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_ISTEP_MODE] update failed\n");
 		return 1;
 	}
 
@@ -118,7 +121,7 @@ static struct ipl_step *ipl_find_minor(struct ipl_step *steps, int minor)
 {
 	int i;
 
-	for (i=0; steps[i].minor != -1; i++) {
+	for (i = 0; steps[i].minor != -1; i++) {
 		if (steps[i].minor == minor)
 			return &steps[i];
 	}
@@ -171,7 +174,7 @@ int ipl_run_major(int major)
 
 	ipl_execute_pre(idata);
 
-	for (i=0; idata->steps[i].major != -1; i++) {
+	for (i = 0; idata->steps[i].major != -1; i++) {
 		rc = ipl_execute_istep(&idata->steps[i]);
 		if (rc != 0 && rc != -1)
 			break;
@@ -187,7 +190,7 @@ static struct ipl_step *ipl_find_step(struct ipl_step *steps, const char *name)
 {
 	int i;
 
-	for (i=0; steps[i].major != -1; i++) {
+	for (i = 0; steps[i].major != -1; i++) {
 		if (!strcmp(steps[i].name, name))
 			return &steps[i];
 	}
@@ -202,7 +205,7 @@ int ipl_run_step(const char *name)
 	int i;
 	int rc = 0;
 
-	for (i=0; i<=MAX_ISTEP; i++) {
+	for (i = 0; i <= MAX_ISTEP; i++) {
 		idata = &ipl_steps[i];
 		step = ipl_find_step(idata->steps, name);
 		if (step)
@@ -237,6 +240,7 @@ void ipl_list(int major)
 	idata = &ipl_steps[major];
 	assert(idata->steps);
 
-	for (i=0; idata->steps[i].major != -1; i++)
-		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor, idata->steps[i].name);
+	for (i = 0; idata->steps[i].major != -1; i++)
+		printf("\t%d.%d\t%s\n", major, idata->steps[i].minor,
+		       idata->steps[i].name);
 }

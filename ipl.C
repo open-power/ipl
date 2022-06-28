@@ -23,7 +23,7 @@ static bool isstring(const char *arg)
 	if (!arg || arg[0] == '\0' || !isalpha(arg[0]))
 		return false;
 
-	for (i=1; i<strlen(arg); i++) {
+	for (i = 1; i < strlen(arg); i++) {
 		if (!isalnum(arg[i]) && arg[i] != '_')
 			return false;
 	}
@@ -74,7 +74,7 @@ static bool run_istep(const char *arg, int *rc)
 			return false;
 		}
 
-		for (i=begin; i<=end; i++) {
+		for (i = begin; i <= end; i++) {
 			printf("Running istep %d\n", i);
 			*rc = ipl_run_major(i);
 			if (*rc)
@@ -103,7 +103,7 @@ static bool run_istep(const char *arg, int *rc)
 	}
 
 	errno = 0;
-	minor = strtol(ptr1+1, &ptr2, 10);
+	minor = strtol(ptr1 + 1, &ptr2, 10);
 	if (errno) {
 		fprintf(stderr, "Invalid istep number %s\n", arg);
 		return false;
@@ -121,7 +121,9 @@ static bool run_istep(const char *arg, int *rc)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: ipl [options] [<istep..<istep>] <istep> [<istep>...]\n");
+	fprintf(
+	    stderr,
+	    "Usage: ipl [options] [<istep..<istep>] <istep> [<istep>...]\n");
 	fprintf(stderr, "   Options:\n");
 	fprintf(stderr, "      -b kernel  for kernel backend\n");
 	fprintf(stderr, "      -b sbefifo  for sbefifo backend (default)\n");
@@ -129,7 +131,7 @@ static void usage(void)
 	fprintf(stderr, "      -D <0-5>  set log level\n");
 }
 
-int main(int argc, char * const *argv)
+int main(int argc, char *const *argv)
 {
 	const char *device = NULL;
 	enum pdbg_backend backend = PDBG_BACKEND_SBEFIFO;
@@ -148,7 +150,8 @@ int main(int argc, char * const *argv)
 			else if (!strcmp(optarg, "sbefifo"))
 				backend = PDBG_BACKEND_SBEFIFO;
 			else {
-				fprintf(stderr, "Invalid backend '%s'\n", optarg);
+				fprintf(stderr, "Invalid backend '%s'\n",
+					optarg);
 				exit(1);
 			}
 
@@ -199,7 +202,7 @@ int main(int argc, char * const *argv)
 	if (ipl_init(IPL_HOSTBOOT))
 		exit(1);
 
-	for (i=optind; i<argc; i++) {
+	for (i = optind; i < argc; i++) {
 		rc = 0;
 		if (!run_istep(argv[i], &rc))
 			return -1;

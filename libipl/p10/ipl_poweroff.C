@@ -17,7 +17,8 @@ int ipl_pre_poweroff(void)
 
 	ipl_pre();
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapi_rc;
 
 		if (!ipl_is_present(proc))

@@ -27,20 +27,20 @@ extern "C" {
 #include <chrono>
 #include <thread>
 
-#define TGT_TYPE_PROC   0x05
-#define FRU_TYPE_CORE   0x07
-#define FRU_TYPE_MC     0x44
-#define FRU_TYPE_FC     0x53
+#define TGT_TYPE_PROC 0x05
+#define FRU_TYPE_CORE 0x07
+#define FRU_TYPE_MC 0x44
+#define FRU_TYPE_FC 0x53
 
-#define OSC_CTL_OFFSET      0x06
-#define OSC_RESET_CMD       0x04
-#define OSC_RESET_CMD_LEN   0x01
+#define OSC_CTL_OFFSET 0x06
+#define OSC_RESET_CMD 0x04
+#define OSC_RESET_CMD_LEN 0x01
 
-#define OSC_STAT_OFFSET     0x07
-#define OSC_STAT_REG_LEN    0x01
-#define OSC_STAT_ERR_MASK   0x80
+#define OSC_STAT_OFFSET 0x07
+#define OSC_STAT_REG_LEN 0x01
+#define OSC_STAT_ERR_MASK 0x80
 
-#define CLOCK_RESTART_DELAY_IN_MS    100
+#define CLOCK_RESTART_DELAY_IN_MS 100
 #define NUM_CLOCK_FOR_REDUNDANT_MODE 2
 
 #define GUARD_CONTINUE_TGT_TRAVERSAL 0
@@ -51,12 +51,13 @@ extern "C" {
 constexpr auto BOOTTIME_GUARD_INDICATOR = "/tmp/phal/boottime_guard_indicator";
 
 struct guard_target {
-  	uint8_t path[21];
+	uint8_t path[21];
 	bool set_hwas_state;
 	uint8_t guardType;
 
-	guard_target() {
-	  	memset(&path, 0, sizeof(path));
+	guard_target()
+	{
+		memset(&path, 0, sizeof(path));
 		set_hwas_state = false;
 		guardType = 0; // GARD_NULL
 	}
@@ -106,91 +107,99 @@ static bool set_or_clear_state(struct pdbg_target *target, bool do_set)
 	uint8_t flag_present = 0x40;
 	uint8_t flag_functional = 0x20;
 
-	if (!pdbg_target_get_attribute_packed(target,
-					      "ATTR_HWAS_STATE",
-					      "41", 1, buf)) {
+	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41",
+					      1, buf)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
 		return false;
 	}
 
-	if(do_set)
+	if (do_set)
 		buf[4] |= (flag_present | flag_functional);
 	else
 		buf[4] &= (uint8_t)(~flag_functional);
 
-	if (!pdbg_target_set_attribute_packed(target,
-					      "ATTR_HWAS_STATE",
-					      "41", 1, buf)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] write failed\n");
+	if (!pdbg_target_set_attribute_packed(target, "ATTR_HWAS_STATE", "41",
+					      1, buf)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_HWAS_STATE] write failed\n");
 		return false;
 	}
 	return true;
 }
 
-static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
+static int update_hwas_state_callback(struct pdbg_target *target, void *priv)
 {
-  	guard_target* target_info = static_cast<guard_target*>(priv);
-	uint8_t path[21] = { 0 };
+	guard_target *target_info = static_cast<guard_target *>(priv);
+	uint8_t path[21] = {0};
 	uint8_t type;
 	char tgtPhysDevPath[64];
-	std::string guard_action(target_info->set_hwas_state ? "Clearing" :
-	                                                       "Applying");
-	std::string
-		guardTypeStr(openpower::guard::
-			guardReasonToStr(target_info->guardType));
+	std::string guard_action(target_info->set_hwas_state ? "Clearing"
+							     : "Applying");
+	std::string guardTypeStr(
+	    openpower::guard::guardReasonToStr(target_info->guardType));
 
-	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21, path))
-		//Returning 0 for continue traversal, as the requested target is not
-		//found
+	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH", 1, 21,
+				       path))
+		// Returning 0 for continue traversal, as the requested target
+		// is not found
 		return GUARD_CONTINUE_TGT_TRAVERSAL;
 
 	if (memcmp(target_info->path, path, sizeof(path)) != 0)
 		return GUARD_CONTINUE_TGT_TRAVERSAL;
 
 	if (!pdbg_target_get_attribute(target, "ATTR_PHYS_DEV_PATH", 1, 64,
-	     tgtPhysDevPath)) {
+				       tgtPhysDevPath)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_PHYS_DEV_PATH for %s\n",
-		        pdbg_target_path(target));
+			pdbg_target_path(target));
 		return GUARD_TGT_NOT_FOUND;
 	}
 
-	if(!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
+	if (!pdbg_target_get_attribute(target, "ATTR_TYPE", 1, 1, &type)) {
 		ipl_log(IPL_ERROR, "Failed to read ATTR_TYPE for %s\n",
 			pdbg_target_path(target));
-		//ATTR_TYPE attribute not found for the target, hence this is an
-		//error case, so need to stop
+		// ATTR_TYPE attribute not found for the target, hence this is
+		// an error case, so need to stop
 		return GUARD_TGT_NOT_FOUND;
 	}
 
-	if (ipl_type() == IPL_TYPE_MPIPL && (type == FRU_TYPE_CORE ||
-	    type == FRU_TYPE_FC)) {
+	if (ipl_type() == IPL_TYPE_MPIPL &&
+	    (type == FRU_TYPE_CORE || type == FRU_TYPE_FC)) {
 
 		ipl_log(IPL_INFO, "%s guard record for %s. Type: %s\n",
-		        guard_action.c_str(), tgtPhysDevPath, guardTypeStr.c_str());
+			guard_action.c_str(), tgtPhysDevPath,
+			guardTypeStr.c_str());
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
-			ipl_log(IPL_ERROR,
-				"Failed to update functional state of target 0x%x, "
-				"index=0x%x\n", type, pdbg_target_index(target));
-			//Unable to update the functional state of HWAS attribute of the
-			//target, so we need to stop
+			ipl_log(
+			    IPL_ERROR,
+			    "Failed to update functional state of target 0x%x, "
+			    "index=0x%x\n",
+			    type, pdbg_target_index(target));
+			// Unable to update the functional state of HWAS
+			// attribute of the target, so we need to stop
 			return GUARD_TGT_NOT_FOUND;
 		}
 
-		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
+		if ((type == FRU_TYPE_FC) && !small_core_enabled()) {
 			struct pdbg_target *core;
 
-			ipl_log(IPL_INFO, "%s guard record for associated Core since %s guared\n",
-			        guard_action.c_str(), tgtPhysDevPath);
+			ipl_log(IPL_INFO,
+				"%s guard record for associated Core since %s "
+				"guared\n",
+				guard_action.c_str(), tgtPhysDevPath);
 
-			pdbg_for_each_target("core", target, core) {
-				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
-					ipl_log(IPL_ERROR,
-						"Failed to update functional state"
-						" of core with index 0x%x\n",
-						pdbg_target_index(core));
-					// Unable to update the functional state of HWAS
-					// attribute of the target, so we need to stop
+			pdbg_for_each_target("core", target, core)
+			{
+				if (!set_or_clear_state(
+					core, target_info->set_hwas_state)) {
+					ipl_log(
+					    IPL_ERROR,
+					    "Failed to update functional state"
+					    " of core with index 0x%x\n",
+					    pdbg_target_index(core));
+					// Unable to update the functional state
+					// of HWAS attribute of the target, so
+					// we need to stop
 					return GUARD_TGT_NOT_FOUND;
 				}
 			}
@@ -198,56 +207,66 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
 
 	} else if (ipl_type() == IPL_TYPE_NORMAL) {
 
-		if (!openpower::guard::isEphemeralType(target_info->guardType)) {
+		if (!openpower::guard::isEphemeralType(
+			target_info->guardType)) {
 			if (type == TGT_TYPE_PROC) {
 				if (ipl_is_master_proc(target)) {
-					ipl_log(IPL_INFO,
-						"Primary processor [%s] is guarded "
-						"so, skipping to apply. Type: %s\n",
-						tgtPhysDevPath, guardTypeStr.c_str());
+					ipl_log(
+					    IPL_INFO,
+					    "Primary processor [%s] is guarded "
+					    "so, skipping to apply. Type: %s\n",
+					    tgtPhysDevPath,
+					    guardTypeStr.c_str());
 					return GUARD_PRIMARY_PROC_NOT_APPLIED;
 				}
 			}
 		}
 
 		ipl_log(IPL_INFO, "%s guard record for %s. Type: %s\n",
-		        guard_action.c_str(), tgtPhysDevPath, guardTypeStr.c_str());
+			guard_action.c_str(), tgtPhysDevPath,
+			guardTypeStr.c_str());
 
 		if (!set_or_clear_state(target, target_info->set_hwas_state)) {
 			ipl_log(IPL_ERROR,
-				"Failed to update functional state of fru type 0x%x\n",
+				"Failed to update functional state of fru type "
+				"0x%x\n",
 				type);
-			//Unable to update the functional state of HWAS attribute of the
-			//target, so we need to stop
+			// Unable to update the functional state of HWAS
+			// attribute of the target, so we need to stop
 			return GUARD_TGT_NOT_FOUND;
 		}
 
-		if((type == FRU_TYPE_FC) && !small_core_enabled()) {
+		if ((type == FRU_TYPE_FC) && !small_core_enabled()) {
 			struct pdbg_target *core;
 
-			ipl_log(IPL_INFO, "%s guard record for associated Core since %s guared\n",
-			        guard_action.c_str(), tgtPhysDevPath);
+			ipl_log(IPL_INFO,
+				"%s guard record for associated Core since %s "
+				"guared\n",
+				guard_action.c_str(), tgtPhysDevPath);
 
-			pdbg_for_each_target("core", target, core) {
-				if (!set_or_clear_state(core, target_info->set_hwas_state)) {
-					ipl_log(IPL_ERROR,
-						"Failed to update functional state"
-						" of core with index 0x%x\n",
-						pdbg_target_index(core));
-					// Unable to update the functional state of HWAS
-					// attribute of the target, so we need to stop
+			pdbg_for_each_target("core", target, core)
+			{
+				if (!set_or_clear_state(
+					core, target_info->set_hwas_state)) {
+					ipl_log(
+					    IPL_ERROR,
+					    "Failed to update functional state"
+					    " of core with index 0x%x\n",
+					    pdbg_target_index(core));
+					// Unable to update the functional state
+					// of HWAS attribute of the target, so
+					// we need to stop
 					return GUARD_TGT_NOT_FOUND;
 				}
 			}
 		}
 
 	} else {
-		ipl_log(IPL_INFO,
-			"Skip, %s guard record for %s. Type: %s\n",
+		ipl_log(IPL_INFO, "Skip, %s guard record for %s. Type: %s\n",
 			guard_action.c_str(), tgtPhysDevPath);
 	}
 
-	//Requested target found
+	// Requested target found
 	return GUARD_TGT_FOUND;
 }
 
@@ -262,26 +281,26 @@ static int update_hwas_state_callback(struct pdbg_target* target, void *priv)
  */
 static bool guard_action_allowed()
 {
-    if (ipl_type() == IPL_TYPE_MPIPL) {
-        return true;
-    }
+	if (ipl_type() == IPL_TYPE_MPIPL) {
+		return true;
+	}
 
-    namespace fs = std::filesystem;
-    fs::path boottime_guard_indicator(BOOTTIME_GUARD_INDICATOR);
+	namespace fs = std::filesystem;
+	fs::path boottime_guard_indicator(BOOTTIME_GUARD_INDICATOR);
 
-    if (fs::exists(boottime_guard_indicator)) {
-        // Remove indicator since that will be created by the BMC
-        // based on the different boot path.
-        fs::remove(boottime_guard_indicator);
-        return true;
-    } else {
-        return false;
-    }
+	if (fs::exists(boottime_guard_indicator)) {
+		// Remove indicator since that will be created by the BMC
+		// based on the different boot path.
+		fs::remove(boottime_guard_indicator);
+		return true;
+	} else {
+		return false;
+	}
 }
 
 //@Brief Function will get the guard records and will update the functional
-//state of the guarded resources in HWAS state attribute in device tree based
-//on the guard actions in the different boots.
+// state of the guarded resources in HWAS state attribute in device tree based
+// on the guard actions in the different boots.
 static void process_guard_records()
 {
 	if (!guard_action_allowed()) {
@@ -293,29 +312,29 @@ static void process_guard_records()
 
 	auto records = openpower::guard::getAll();
 	if (records.size()) {
-		ipl_log(IPL_INFO, "Number of Records = %d\n",records.size());
-
+		ipl_log(IPL_INFO, "Number of Records = %d\n", records.size());
 
 		if (!ipl_guard()) {
-			// Don't return, we should handle reconfig type guard records
-			// even if guard setting is disabled.
-			ipl_log(IPL_INFO, "Disabled to apply the guard records");
+			// Don't return, we should handle reconfig type guard
+			// records even if guard setting is disabled.
+			ipl_log(IPL_INFO,
+				"Disabled to apply the guard records");
 		}
 
-		for (const auto& elem : records) {
+		for (const auto &elem : records) {
 
-			if(!ipl_guard() &&
-			   !openpower::guard::isEphemeralType(elem.errType)) {
-				// Disabled to apply the guard records so should not allow
-				// the records to apply except ephemeral type guard records.
+			if (!ipl_guard() &&
+			    !openpower::guard::isEphemeralType(elem.errType)) {
+				// Disabled to apply the guard records so should
+				// not allow the records to apply except
+				// ephemeral type guard records.
 				continue;
-			}
-			else if(elem.recordId == GUARD_RESOLVED) {
+			} else if (elem.recordId == GUARD_RESOLVED) {
 				// No need to apply the resolved guard records.
 				continue;
 			}
 
-		  	guard_target targetinfo;
+			guard_target targetinfo;
 			targetinfo.guardType = elem.errType;
 			int index = 0, i, err;
 
@@ -324,24 +343,27 @@ static void process_guard_records()
 
 			for (i = 0; i < (0x0F & elem.targetId.type_size); i++) {
 
-				targetinfo.path[index] = elem.targetId.pathElements[i].targetType;
-				targetinfo.path[index+1] = elem.targetId.pathElements[i].instance;
+				targetinfo.path[index] =
+				    elem.targetId.pathElements[i].targetType;
+				targetinfo.path[index + 1] =
+				    elem.targetId.pathElements[i].instance;
 
 				index += sizeof(elem.targetId.pathElements[0]);
 			}
 
 			// Clear ephemeral type guard records in the normal ipl.
-			if((ipl_type() == IPL_TYPE_NORMAL) &&
+			if ((ipl_type() == IPL_TYPE_NORMAL) &&
 			    openpower::guard::isEphemeralType(elem.errType)) {
-			  	openpower::guard::clear(elem.recordId);
-			  	targetinfo.set_hwas_state = true;
-			}
-			else {
-			  	targetinfo.set_hwas_state = false;
+				openpower::guard::clear(elem.recordId);
+				targetinfo.set_hwas_state = true;
+			} else {
+				targetinfo.set_hwas_state = false;
 			}
 
-			err = pdbg_target_traverse(NULL, update_hwas_state_callback, &targetinfo);
-			if ((err == GUARD_CONTINUE_TGT_TRAVERSAL) || (err == GUARD_TGT_NOT_FOUND))
+			err = pdbg_target_traverse(
+			    NULL, update_hwas_state_callback, &targetinfo);
+			if ((err == GUARD_CONTINUE_TGT_TRAVERSAL) ||
+			    (err == GUARD_TGT_NOT_FOUND))
 				ipl_log(IPL_ERROR,
 					"Failed to set HWAS state for guard"
 					" record[ID: %d]\n",
@@ -359,37 +381,42 @@ static void process_guard_records()
  */
 static void apply_fco_override(void)
 {
-	std::array<const char*, 8> mProcChild =
-		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
+	std::array<const char *, 8> mProcChild = {
+	    "core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
 	struct pdbg_target *proc, *child;
 	uint8_t buf[5];
 
-	pdbg_for_each_class_target("proc", proc) {
-		if(!ipl_is_master_proc(proc))
+	pdbg_for_each_class_target("proc", proc)
+	{
+		if (!ipl_is_master_proc(proc))
 			continue;
 
-		for(const char* data : mProcChild) {
-			pdbg_for_each_target(data, proc, child) {
+		for (const char *data : mProcChild) {
+			pdbg_for_each_target(data, proc, child)
+			{
 
-				if (!pdbg_target_get_attribute_packed(child,
-							"ATTR_HWAS_STATE",
-							"41", 1, buf)) {
-					ipl_error_callback(IPL_ERR_ATTR_READ_FAIL);
+				if (!pdbg_target_get_attribute_packed(
+					child, "ATTR_HWAS_STATE", "41", 1,
+					buf)) {
+					ipl_error_callback(
+					    IPL_ERR_ATTR_READ_FAIL);
 					continue;
 				}
 
-				//0-1 bits reserved
-				//2nd bit Functional override
-				//3rd bit spec deconfig
-				//4th bit Dump capable
-				//5th bit Functional
-				//6th bit Present
-				//7th bit Deconfig
-				//Checking the FCO bit is set or not. If it's set means
-				//functional and present state of target should be set.
-				if(buf[4] & 0x04) {
+				// 0-1 bits reserved
+				// 2nd bit Functional override
+				// 3rd bit spec deconfig
+				// 4th bit Dump capable
+				// 5th bit Functional
+				// 6th bit Present
+				// 7th bit Deconfig
+				// Checking the FCO bit is set or not. If it's
+				// set means functional and present state of
+				// target should be set.
+				if (buf[4] & 0x04) {
 					if (!set_or_clear_state(child, true)) {
-						ipl_error_callback(IPL_ERR_ATTR_WRITE);
+						ipl_error_callback(
+						    IPL_ERR_ATTR_WRITE);
 					}
 				}
 			}
@@ -404,8 +431,8 @@ static void apply_fco_override(void)
 // It will also update functional state oscrefclk target.
 static bool update_genesis_hwas_state(void)
 {
-	std::array<const char*, 8> mProcChild =
-		{"core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
+	std::array<const char *, 8> mProcChild = {
+	    "core", "pauc", "pau", "iohs", "mc", "chiplet", "pec", "fc"};
 	struct pdbg_target *proc, *child, *clock_target;
 
 	bool target_enabled = false;
@@ -413,11 +440,11 @@ static bool update_genesis_hwas_state(void)
 	uint8_t clk_pos = 0;
 	std::vector<std::pair<std::string, std::string>> ffdcs;
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		if (pdbg_target_status(proc) != PDBG_TARGET_ENABLED) {
 			target_enabled = false;
-		}
-		else {
+		} else {
 			target_enabled = true;
 		}
 
@@ -429,14 +456,17 @@ static bool update_genesis_hwas_state(void)
 			return false;
 		}
 
-		if(!ipl_is_master_proc(proc))
+		if (!ipl_is_master_proc(proc))
 			continue;
 
-		for(const char* data : mProcChild) {
-			pdbg_for_each_target(data, proc, child) {
-				if (!set_or_clear_state(child, target_enabled)) {
+		for (const char *data : mProcChild) {
+			pdbg_for_each_target(data, proc, child)
+			{
+				if (!set_or_clear_state(child,
+							target_enabled)) {
 					ipl_log(IPL_ERROR,
-						"Failed to set HWAS state of %s, index %d\n",
+						"Failed to set HWAS state of "
+						"%s, index %d\n",
 						data, pdbg_target_index(child));
 					ipl_error_callback(IPL_ERR_ATTR_WRITE);
 					return false;
@@ -445,25 +475,34 @@ static bool update_genesis_hwas_state(void)
 		}
 	}
 
-	pdbg_for_each_class_target("oscrefclk", clock_target) {
-		if(!pdbg_target_get_attribute(
-			clock_target, "ATTR_POSITION", 2, 1, &clk_pos)) {
+	pdbg_for_each_class_target("oscrefclk", clock_target)
+	{
+		if (!pdbg_target_get_attribute(clock_target, "ATTR_POSITION", 2,
+					       1, &clk_pos)) {
 
-			ipl_log(IPL_ERROR, "Attribute ATTR_POSITION read failed"
-				" for clock '%s' \n", pdbg_target_path(clock_target));
-			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_READ_FAIL);
-			// IPL need to be failed if this step is failed for any clock,
-			// since this clock cannot be marked as functional
+			ipl_log(IPL_ERROR,
+				"Attribute ATTR_POSITION read failed"
+				" for clock '%s' \n",
+				pdbg_target_path(clock_target));
+			ipl_plat_procedure_error_handler(
+			    IPL_ERR_ATTR_READ_FAIL);
+			// IPL need to be failed if this step is failed for any
+			// clock, since this clock cannot be marked as
+			// functional
 			return false;
 		}
 
 		status = pdbg_target_probe(clock_target);
-		if(status != PDBG_TARGET_ENABLED) {
-			ipl_log(IPL_ERROR, "clock '%s' is not operational, pdbg status = %d\n",
-				pdbg_target_path(clock_target), status);
+		if (status != PDBG_TARGET_ENABLED) {
+			ipl_log(
+			    IPL_ERROR,
+			    "clock '%s' is not operational, pdbg status = %d\n",
+			    pdbg_target_path(clock_target), status);
 
-			ffdcs.push_back(std::make_pair("PDBG_STATUS", std::to_string(status)));
-			ffdcs.push_back(std::make_pair("FAIL_TYPE", "CHIP_NOT_OPERATIONAL"));
+			ffdcs.push_back(std::make_pair("PDBG_STATUS",
+						       std::to_string(status)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE",
+						       "CHIP_NOT_OPERATIONAL"));
 			ipl_plat_clock_error_handler(ffdcs, clk_pos);
 			// IPL need to be failed if any clock is not operational
 			return false;
@@ -486,13 +525,14 @@ static bool update_genesis_hwas_state(void)
  *
  * return ipl error type enum
  */
-static ipl_error_type  ipl_sbe_mpipl_continue(struct pdbg_target *proc)
+static ipl_error_type ipl_sbe_mpipl_continue(struct pdbg_target *proc)
 {
 	enum sbe_state state;
 	char path[16];
 	int ret = 0;
 
-	ipl_log(IPL_INFO, "ipl_sbe_mpipl_continue: Enter(%s)", pdbg_target_path(proc));
+	ipl_log(IPL_INFO, "ipl_sbe_mpipl_continue: Enter(%s)",
+		pdbg_target_path(proc));
 
 	// get PIB target
 	sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
@@ -512,15 +552,16 @@ static ipl_error_type  ipl_sbe_mpipl_continue(struct pdbg_target *proc)
 
 	// SBE_STATE_CHECK_CFAM case is already handled by pdbg api
 	if (state != SBE_STATE_BOOTED) {
-		ipl_log(IPL_ERROR, "SBE (%s) is not ready for chip-op: state(0x%08x)",
+		ipl_log(IPL_ERROR,
+			"SBE (%s) is not ready for chip-op: state(0x%08x)",
 			pdbg_target_path(pib), state);
 		return IPL_ERR_SBE_CHIPOP;
 	}
 
 	// call pdbg back-end function
 	ret = sbe_mpipl_continue(pib);
-        if(ret != 0) {
-		 ipl_log(IPL_ERROR, "SBE (%s) mpipl continue chip-op failed",
+	if (ret != 0) {
+		ipl_log(IPL_ERROR, "SBE (%s) mpipl continue chip-op failed",
 			pdbg_target_path(pib));
 		return IPL_ERR_SBE_CHIPOP;
 	}
@@ -540,33 +581,37 @@ static int ipl_updatehwmodel(void)
 	if (!fs::exists(genesis_boot_file)) {
 		ipl_log(IPL_INFO, "updatehwmodel: Genesis mode boot\n");
 		if (!update_genesis_hwas_state()) {
-			ipl_log(IPL_ERROR,"Failed to set genesis boot state\n");
+			ipl_log(IPL_ERROR,
+				"Failed to set genesis boot state\n");
 			return 1;
 		}
 
-		//Create new file to skip the genesis setup in next boot.
+		// Create new file to skip the genesis setup in next boot.
 		if (!fs::exists(genesis_boot_file.parent_path())) {
-			if (!fs::create_directories(genesis_boot_file.parent_path())){
-				ipl_log(IPL_ERROR,"Failed to create genesis boot file\n");
+			if (!fs::create_directories(
+				genesis_boot_file.parent_path())) {
+				ipl_log(IPL_ERROR,
+					"Failed to create genesis boot file\n");
 				return 1;
 			}
 		}
 		boot_file_absent = true;
-	  	std::ofstream file(GENESIS_BOOT_FILE);
+		std::ofstream file(GENESIS_BOOT_FILE);
 	}
 
-	if((ipl_type() == IPL_TYPE_MPIPL) || (!fs::exists(BOOTTIME_GUARD_INDICATOR)))
+	if ((ipl_type() == IPL_TYPE_MPIPL) ||
+	    (!fs::exists(BOOTTIME_GUARD_INDICATOR)))
 		apply_fco_override();
 
 	process_guard_records();
 
-	if(!boot_file_absent && (ipl_type() != IPL_TYPE_MPIPL)) {
+	if (!boot_file_absent && (ipl_type() != IPL_TYPE_MPIPL)) {
 		// Update SBE state to Not usable in reboot path(not on MPIPL)
 		// Boot error callback is only required for failure
 		ipl_set_sbe_state_all(SBE_STATE_NOT_USABLE);
 	}
 
-	if (!ipl_check_functional_master()){
+	if (!ipl_check_functional_master()) {
 		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 		return 1;
 	}
@@ -617,7 +662,7 @@ static bool skip_clock_reset()
  *
  * @return 0 on success, 1 on failure
  */
-static int initialize_and_check_clock_chip(uint8_t& clock_count)
+static int initialize_and_check_clock_chip(uint8_t &clock_count)
 {
 	struct pdbg_target *clock_target;
 	enum pdbg_target_status status;
@@ -636,86 +681,117 @@ static int initialize_and_check_clock_chip(uint8_t& clock_count)
 	// So test team can use this method to skip clock reset while testing.
 	skip_reset = skip_clock_reset();
 
-	pdbg_for_each_class_target("oscrefclk", clock_target) {
+	pdbg_for_each_class_target("oscrefclk", clock_target)
+	{
 		if (!ipl_is_functional(clock_target))
 			continue;
 
-		// clock count has to be incremented even if it failed to initiallize
+		// clock count has to be incremented even if it failed to
+		// initiallize
 		clock_count++;
 		ffdcs.clear();
 
-		if(!pdbg_target_get_attribute(
-			clock_target, "ATTR_POSITION", 2, 1, &clk_pos)) {
+		if (!pdbg_target_get_attribute(clock_target, "ATTR_POSITION", 2,
+					       1, &clk_pos)) {
 
-			ipl_log(IPL_ERROR, "Attribute ATTR_POSITION read failed"
-				" for clock '%s' \n", pdbg_target_path(clock_target));
-			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_READ_FAIL);
+			ipl_log(IPL_ERROR,
+				"Attribute ATTR_POSITION read failed"
+				" for clock '%s' \n",
+				pdbg_target_path(clock_target));
+			ipl_plat_procedure_error_handler(
+			    IPL_ERR_ATTR_READ_FAIL);
 			rc++;
 			continue;
 		}
 
 		status = pdbg_target_probe(clock_target);
-		if(status != PDBG_TARGET_ENABLED) {
-			ipl_log(IPL_ERROR, "clock '%s' is not operational, pdbg status = %d\n",
-				pdbg_target_path(clock_target), status);
+		if (status != PDBG_TARGET_ENABLED) {
+			ipl_log(
+			    IPL_ERROR,
+			    "clock '%s' is not operational, pdbg status = %d\n",
+			    pdbg_target_path(clock_target), status);
 
-			ffdcs.push_back(std::make_pair("PDBG_STATUS", std::to_string(status)));
-			ffdcs.push_back(std::make_pair("FAIL_TYPE", "CHIP_NOT_OPERATIONAL"));
+			ffdcs.push_back(std::make_pair("PDBG_STATUS",
+						       std::to_string(status)));
+			ffdcs.push_back(std::make_pair("FAIL_TYPE",
+						       "CHIP_NOT_OPERATIONAL"));
 			ipl_plat_clock_error_handler(ffdcs, clk_pos);
 			rc++;
 			continue;
 		}
-		ipl_log(IPL_DEBUG, "Istep: soft reset clock, and verify clock status register"
-					" for clock-%d\n", clk_pos);
+		ipl_log(
+		    IPL_DEBUG,
+		    "Istep: soft reset clock, and verify clock status register"
+		    " for clock-%d\n",
+		    clk_pos);
 
-		if(!skip_reset) {
-			// Resetting the clock chip, so that it will recalibrate input oscillator
-			// signal and identifies bad oscillators.
+		if (!skip_reset) {
+			// Resetting the clock chip, so that it will recalibrate
+			// input oscillator signal and identifies bad
+			// oscillators.
 			data = OSC_RESET_CMD;
-			i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET, OSC_RESET_CMD_LEN, &data);
-			if(i2c_rc) {
-				ipl_log(IPL_ERROR, "soft reset command is failed for clock '%s' with rc = %d\n",
+			i2c_rc = i2c_write(clock_target, 0, OSC_CTL_OFFSET,
+					   OSC_RESET_CMD_LEN, &data);
+			if (i2c_rc) {
+				ipl_log(IPL_ERROR,
+					"soft reset command is failed for "
+					"clock '%s' with rc = %d\n",
 					pdbg_target_path(clock_target), i2c_rc);
 
-				ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
-				ffdcs.push_back(std::make_pair("FAIL_TYPE", "SOFT_RESET"));
+				ffdcs.push_back(std::make_pair(
+				    "I2C_RC", std::to_string(i2c_rc)));
+				ffdcs.push_back(
+				    std::make_pair("FAIL_TYPE", "SOFT_RESET"));
 				ipl_plat_clock_error_handler(ffdcs, clk_pos);
 				rc++;
 				continue;
-			}
-			else{
-				ipl_log(IPL_DEBUG, "soft reset command is successfull for clock '%s'\n",
+			} else {
+				ipl_log(IPL_DEBUG,
+					"soft reset command is successfull for "
+					"clock '%s'\n",
 					pdbg_target_path(clock_target));
 			}
 
 			// wait for clock to restart
-			std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_RESTART_DELAY_IN_MS));
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+			    CLOCK_RESTART_DELAY_IN_MS));
 		}
 
-		// Read clock status register to check whether it reports calibration error.
-		// Bit-0 will be set if there is a calibration error.
+		// Read clock status register to check whether it reports
+		// calibration error. Bit-0 will be set if there is a
+		// calibration error.
 
-		i2c_rc = i2c_read(clock_target, 0, OSC_STAT_OFFSET, OSC_STAT_REG_LEN, &data);
-		if(i2c_rc) {
-			ipl_log(IPL_ERROR, "status register read is failed for clock '%s', with rc = %d\n",
+		i2c_rc = i2c_read(clock_target, 0, OSC_STAT_OFFSET,
+				  OSC_STAT_REG_LEN, &data);
+		if (i2c_rc) {
+			ipl_log(IPL_ERROR,
+				"status register read is failed for clock "
+				"'%s', with rc = %d\n",
 				pdbg_target_path(clock_target), i2c_rc);
 
-			ffdcs.push_back(std::make_pair("I2C_RC", std::to_string(i2c_rc)));
-			ffdcs.push_back(std::make_pair("FAIL_TYPE", "STATUS_READ"));
+			ffdcs.push_back(
+			    std::make_pair("I2C_RC", std::to_string(i2c_rc)));
+			ffdcs.push_back(
+			    std::make_pair("FAIL_TYPE", "STATUS_READ"));
 			ipl_plat_clock_error_handler(ffdcs, clk_pos);
 			rc++;
 			continue;
-		}
-		else{
-			ipl_log(IPL_DEBUG, "status register value for clock '%s' is 0x%2X\n",
-				pdbg_target_path(clock_target), data);
+		} else {
+			ipl_log(
+			    IPL_DEBUG,
+			    "status register value for clock '%s' is 0x%2X\n",
+			    pdbg_target_path(clock_target), data);
 
-			if(data & OSC_STAT_ERR_MASK) {
-				ipl_log(IPL_ERROR, "Calibration is failed for clock '%s', status=0x%2X",
+			if (data & OSC_STAT_ERR_MASK) {
+				ipl_log(IPL_ERROR,
+					"Calibration is failed for clock '%s', "
+					"status=0x%2X",
 					pdbg_target_path(clock_target), data);
 
-				ffdcs.push_back(std::make_pair("CLOCK_STATUS", std::to_string(data)));
-				ffdcs.push_back(std::make_pair("FAIL_TYPE", "CALIB_ERR"));
+				ffdcs.push_back(std::make_pair(
+				    "CLOCK_STATUS", std::to_string(data)));
+				ffdcs.push_back(
+				    std::make_pair("FAIL_TYPE", "CALIB_ERR"));
 				ipl_plat_clock_error_handler(ffdcs, clk_pos);
 				rc++;
 				continue;
@@ -736,20 +812,22 @@ static int ipl_set_ref_clock(void)
 
 	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
 
-	if(initialize_and_check_clock_chip(clock_count)) {
+	if (initialize_and_check_clock_chip(clock_count)) {
 		ipl_log(IPL_ERROR, "Clock initialization failed\n");
 		return 1;
 	}
 
-	if(clock_count != 1 && clock_count != 2) {
-		ipl_log(IPL_ERROR, "Invalid number (%d) of clock target found\n",
-							clock_count);
+	if (clock_count != 1 && clock_count != 2) {
+		ipl_log(IPL_ERROR,
+			"Invalid number (%d) of clock target found\n",
+			clock_count);
 
 		ipl_plat_procedure_error_handler(IPL_ERR_INVALID_NUM_CLOCK);
 		return 1;
 	}
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapirc;
 
 		if (!ipl_is_functional(proc))
@@ -758,26 +836,34 @@ static int ipl_set_ref_clock(void)
 		// Check if system have clocks to enable redundant mode,
 		// If yes set attribute to enable redundant mode.
 		// Default value of attribute will be for non-redundant mode
-		if(clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
+		if (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
 			fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
-				fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
-			if(!pdbg_target_set_attribute(
-					proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1, &clock_select)) {
+			    fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
+			if (!pdbg_target_set_attribute(
+				proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1,
+				&clock_select)) {
 
-				ipl_log(IPL_ERROR, "Attribute CP_REFCLOCK_SELECT update failed"
-					" for proc %d \n", pdbg_target_index(proc));
-				ipl_plat_procedure_error_handler(IPL_ERR_ATTR_WRITE);
+				ipl_log(
+				    IPL_ERROR,
+				    "Attribute CP_REFCLOCK_SELECT update failed"
+				    " for proc %d \n",
+				    pdbg_target_index(proc));
+				ipl_plat_procedure_error_handler(
+				    IPL_ERR_ATTR_WRITE);
 				rc++;
 				continue;
 			}
 		}
 
-		ipl_log(IPL_INFO, "Running p10_setup_ref_clock HWP on processor %d\n",
+		ipl_log(IPL_INFO,
+			"Running p10_setup_ref_clock HWP on processor %d\n",
 			pdbg_target_index(proc));
 		fapirc = p10_setup_ref_clock(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log(IPL_ERROR, "Istep set_ref_clock failed on chip %s, rc=%d \n",
-				pdbg_target_path(proc), fapirc);
+			ipl_log(
+			    IPL_ERROR,
+			    "Istep set_ref_clock failed on chip %s, rc=%d \n",
+			    pdbg_target_path(proc), fapirc);
 			rc++;
 		}
 
@@ -797,17 +883,20 @@ static int ipl_proc_clock_test(void)
 
 	ipl_log(IPL_INFO, "Istep: proc_clock_test: started\n");
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapirc;
 
 		if (!ipl_is_functional(proc))
 			continue;
 
-		ipl_log(IPL_INFO,"Running p10_clock_test HWP on processor %d\n",
+		ipl_log(IPL_INFO,
+			"Running p10_clock_test HWP on processor %d\n",
 			pdbg_target_index(proc));
 		fapirc = p10_clock_test(proc);
 		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log(IPL_ERROR, "HWP clock_test failed on proc %d, rc=%d\n",
+			ipl_log(IPL_ERROR,
+				"HWP clock_test failed on proc %d, rc=%d\n",
 				pdbg_target_index(proc), fapirc);
 			rc++;
 		}
@@ -842,17 +931,19 @@ static int ipl_proc_select_boot_prom(void)
 
 	// Check the availabilty of primary processor.
 	if (!ipl_check_functional_master()) {
-                ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-                return 1;
-        }
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+		return 1;
+	}
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapirc;
 
 		if (!ipl_is_master_proc(proc) || !ipl_is_functional(proc))
 			continue;
 
-		ipl_log(IPL_INFO,"Running p10_select_boot_master HWP on processor %d\n",
+		ipl_log(IPL_INFO,
+			"Running p10_select_boot_master HWP on processor %d\n",
 			pdbg_target_index(proc));
 		fapirc = p10_select_boot_master(proc);
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
@@ -883,13 +974,15 @@ static int ipl_sbe_config_update(void)
 
 	// Check the availabilty of primary processor.
 	if (!ipl_check_functional_master()) {
-                ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
-                return 1;
-        }
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+		return 1;
+	}
 
 	root = pdbg_target_root();
-	if (!pdbg_target_get_attribute(root, "ATTR_ISTEP_MODE", 1, 1, &istep_mode)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_ISTEP_MODE] read failed \n");
+	if (!pdbg_target_get_attribute(root, "ATTR_ISTEP_MODE", 1, 1,
+				       &istep_mode)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_ISTEP_MODE] read failed \n");
 		return 1;
 	}
 
@@ -902,8 +995,10 @@ static int ipl_sbe_config_update(void)
 	// Set the Security Disable bit based on the ATTR_DISABLE_SECURITY
 	// attribute. Its "0" by default, i.e. security is always enabled by
 	// default, unless user overrides the value.
-	if (!pdbg_target_get_attribute(root, "ATTR_DISABLE_SECURITY", 1, 1, &disable_security)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_DISABLE_SECURITY] read failed \n");
+	if (!pdbg_target_get_attribute(root, "ATTR_DISABLE_SECURITY", 1, 1,
+				       &disable_security)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_DISABLE_SECURITY] read failed \n");
 		return 1;
 	}
 
@@ -918,8 +1013,10 @@ static int ipl_sbe_config_update(void)
 		boot_flags.clearBit(6);
 
 	// bit 7 - Allow hostboot attribute overrides. 0b1 indicates enable
-	if (!pdbg_target_get_attribute(root, "ATTR_ALLOW_ATTR_OVERRIDES", 1, 1, &attr_override)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_ALLOW_ATTR_OVERRIDES] read failed \n");
+	if (!pdbg_target_get_attribute(root, "ATTR_ALLOW_ATTR_OVERRIDES", 1, 1,
+				       &attr_override)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_ALLOW_ATTR_OVERRIDES] read failed \n");
 		return 1;
 	}
 	if (attr_override)
@@ -928,8 +1025,10 @@ static int ipl_sbe_config_update(void)
 		boot_flags.clearBit(7);
 
 	// bit 11 - Disable denial list based SCOM access. 0b1 indicates disable
-	if (!pdbg_target_get_attribute(root, "ATTR_NO_XSCOM_ENFORCEMENT", 1, 1, &scom_allowed)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_NO_XSCOM_ENFORCEMENT] read failed \n");
+	if (!pdbg_target_get_attribute(root, "ATTR_NO_XSCOM_ENFORCEMENT", 1, 1,
+				       &scom_allowed)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_NO_XSCOM_ENFORCEMENT] read failed \n");
 		return 1;
 	}
 	if (scom_allowed)
@@ -937,29 +1036,35 @@ static int ipl_sbe_config_update(void)
 	else
 		boot_flags.clearBit(11);
 
-	if (!pdbg_target_set_attribute(root, "ATTR_BOOT_FLAGS", 4, 1, &boot_flags)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_BOOT_FLAGS] update failed \n");
+	if (!pdbg_target_set_attribute(root, "ATTR_BOOT_FLAGS", 4, 1,
+				       &boot_flags)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_BOOT_FLAGS] update failed \n");
 		return 1;
 	}
 
 	if (small_core_enabled())
-		core_mode = 0x00;  /* CORE_UNFUSED mode */
+		core_mode = 0x00; /* CORE_UNFUSED mode */
 	else
-		core_mode = 0x01;  /* CORE_FUSED mode */
+		core_mode = 0x01; /* CORE_FUSED mode */
 
-	if (!pdbg_target_set_attribute(root, "ATTR_FUSED_CORE_MODE", 1, 1, &core_mode)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_FUSED_CORE_MODE] update failed \n");
+	if (!pdbg_target_set_attribute(root, "ATTR_FUSED_CORE_MODE", 1, 1,
+				       &core_mode)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_FUSED_CORE_MODE] update failed \n");
 		return 1;
 	}
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapirc;
 
 		// Run HWP only on functional master processor
 		if (!ipl_is_master_proc(proc) || !ipl_is_functional(proc))
 			continue;
 
-		ipl_log(IPL_INFO, "Running p10_setup_sbe_config HWP on processor %d\n",
+		ipl_log(IPL_INFO,
+			"Running p10_setup_sbe_config HWP on processor %d\n",
 			pdbg_target_index(proc));
 		fapirc = p10_setup_sbe_config(proc);
 		if (fapirc == fapi2::FAPI2_RC_SUCCESS)
@@ -979,14 +1084,16 @@ static int ipl_sbe_start(void)
 
 	ipl_log(IPL_INFO, "Istep: sbe_start: started\n");
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapirc;
 
 		if (!ipl_is_functional(proc))
 			continue;
 
 		if (ipl_mode() == IPL_CRONUS) {
-			ipl_log(IPL_INFO, "Running p10_start_cbs HWP on processor %d\n",
+			ipl_log(IPL_INFO,
+				"Running p10_start_cbs HWP on processor %d\n",
 				pdbg_target_index(proc));
 			fapirc = p10_start_cbs(proc, true);
 			if (fapirc != fapi2::FAPI2_RC_SUCCESS)
@@ -1001,7 +1108,8 @@ static int ipl_sbe_start(void)
 		// non cronus mode
 		if (ipl_is_master_proc(proc)) {
 			if (ipl_type() == IPL_TYPE_MPIPL) {
-				ipl_error_type err = ipl_sbe_mpipl_continue(proc);
+				ipl_error_type err =
+				    ipl_sbe_mpipl_continue(proc);
 				ipl_error_callback(err);
 				rc = err;
 			} else {
@@ -1009,18 +1117,23 @@ static int ipl_sbe_start(void)
 
 				fapirc = p10_start_cbs(proc, true);
 				if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
-					// Update Primary processor SBE state to check cfam.
-					// Boot error callback is only required for failure.
-					ipl_set_sbe_state(proc, SBE_STATE_CHECK_CFAM);
+					// Update Primary processor SBE state to
+					// check cfam. Boot error callback is
+					// only required for failure.
+					ipl_set_sbe_state(proc,
+							  SBE_STATE_CHECK_CFAM);
 
 					if (!ipl_sbe_booted(proc, 25)) {
-						ipl_log(IPL_ERROR, "SBE did not boot\n");
+						ipl_log(IPL_ERROR,
+							"SBE did not boot\n");
 						err_type = IPL_ERR_SBE_BOOT;
-					}
-					else {
-						// Update Primary processor SBE state to booted
-						// Boot error callback is only required for failure.
-						ipl_set_sbe_state(proc, SBE_STATE_BOOTED);
+					} else {
+						// Update Primary processor SBE
+						// state to booted Boot error
+						// callback is only required for
+						// failure.
+						ipl_set_sbe_state(
+						    proc, SBE_STATE_BOOTED);
 						rc = 0;
 					}
 				} else {
@@ -1032,7 +1145,7 @@ static int ipl_sbe_start(void)
 		}
 	}
 
-	if(!rc) {
+	if (!rc) {
 		// Update Secondary processors SBE state to check cfam
 		// Boot error callback is required for failue
 		ipl_set_sbe_state_all_sec(SBE_STATE_CHECK_CFAM);
@@ -1058,7 +1171,8 @@ static int ipl_proc_attn_listen(void)
 	char path[16];
 	int rc;
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		if (!ipl_is_functional(proc))
 			continue;
 
@@ -1083,17 +1197,20 @@ static int ipl_proc_attn_listen(void)
 
 	rc = fsi_read(fsi, 0x100d, &regval); // FSI2_PIB_TRUE_MASK
 	if (rc != 0) {
-		ipl_log(IPL_ERROR, "read TRUEMASK register failed, rc=%d\n", rc);
+		ipl_log(IPL_ERROR, "read TRUEMASK register failed, rc=%d\n",
+			rc);
 	} else {
 		// ANY_ERROR, RECOVERABLE_ERROR
-		regval &= ~0x90000000;	// mask
+		regval &= ~0x90000000; // mask
 
-		// SYSTEM_CHECKSTOP, SPECIAL_ATTENTION, SELFBOOT_ENGINE_ATTENTION
-		regval |= 0x60000002;	// un-mask
+		// SYSTEM_CHECKSTOP, SPECIAL_ATTENTION,
+		// SELFBOOT_ENGINE_ATTENTION
+		regval |= 0x60000002; // un-mask
 
 		rc = fsi_write(fsi, 0x100d, regval); // FSI2_PIB_TRUE_MASK
 		if (rc != 0) {
-			ipl_log(IPL_ERROR, "write TRUEMASK register failed, rc=%d\n", rc);
+			ipl_log(IPL_ERROR,
+				"write TRUEMASK register failed, rc=%d\n", rc);
 		}
 	}
 
@@ -1102,27 +1219,26 @@ static int ipl_proc_attn_listen(void)
 }
 
 static struct ipl_step ipl0[] = {
-	{ IPL_DEF(poweron),                   0,  1,  true,  true  },
-	{ IPL_DEF(startipl),                  0,  2,  true,  true  },
-	{ IPL_DEF(DisableAttns),              0,  3,  true,  true  },
-	{ IPL_DEF(updatehwmodel),             0,  4,  true,  true  },
-	{ IPL_DEF(alignment_check),           0,  5,  true,  true  },
-	{ IPL_DEF(set_ref_clock),             0,  6,  true,  true  },
-	{ IPL_DEF(proc_clock_test),           0,  7,  true,  true  },
-	{ IPL_DEF(proc_prep_ipl),             0,  8,  true,  true  },
-	{ IPL_DEF(edmarepair),                0,  9,  true,  true  },
-	{ IPL_DEF(asset_protection),          0, 10,  true,  true  },
-	{ IPL_DEF(proc_select_boot_prom),     0, 11,  true,  true  },
-	{ IPL_DEF(hb_config_update),          0, 12,  true,  true  },
-	{ IPL_DEF(sbe_config_update),         0, 13,  true,  true  },
-	{ IPL_DEF(sbe_start),                 0, 14,  true,  true  },
-	{ IPL_DEF(startPRD),                  0, 15,  true,  true  },
-	{ IPL_DEF(proc_attn_listen),          0, 16,  true,  true  },
-	{ NULL, NULL, -1, -1, false, false },
+    {IPL_DEF(poweron), 0, 1, true, true},
+    {IPL_DEF(startipl), 0, 2, true, true},
+    {IPL_DEF(DisableAttns), 0, 3, true, true},
+    {IPL_DEF(updatehwmodel), 0, 4, true, true},
+    {IPL_DEF(alignment_check), 0, 5, true, true},
+    {IPL_DEF(set_ref_clock), 0, 6, true, true},
+    {IPL_DEF(proc_clock_test), 0, 7, true, true},
+    {IPL_DEF(proc_prep_ipl), 0, 8, true, true},
+    {IPL_DEF(edmarepair), 0, 9, true, true},
+    {IPL_DEF(asset_protection), 0, 10, true, true},
+    {IPL_DEF(proc_select_boot_prom), 0, 11, true, true},
+    {IPL_DEF(hb_config_update), 0, 12, true, true},
+    {IPL_DEF(sbe_config_update), 0, 13, true, true},
+    {IPL_DEF(sbe_start), 0, 14, true, true},
+    {IPL_DEF(startPRD), 0, 15, true, true},
+    {IPL_DEF(proc_attn_listen), 0, 16, true, true},
+    {NULL, NULL, -1, -1, false, false},
 };
 
-__attribute__((constructor))
-static void ipl_register_ipl0(void)
+__attribute__((constructor)) static void ipl_register_ipl0(void)
 {
 	ipl_register(0, ipl0, ipl_pre0);
 }

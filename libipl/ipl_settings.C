@@ -18,15 +18,15 @@ struct ipl_settings {
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 {
-    vfprintf(stdout, fmt, ap);
+	vfprintf(stdout, fmt, ap);
 }
 
 static ipl_settings g_ipl_settings = {
-	.mode = IPL_HOSTBOOT,
-	.type = IPL_TYPE_NORMAL,
-	.log_level = IPL_ERROR,
-	.log_func = ipl_log_default,
-	.apply_guard = true,
+    .mode = IPL_HOSTBOOT,
+    .type = IPL_TYPE_NORMAL,
+    .log_level = IPL_ERROR,
+    .log_func = ipl_log_default,
+    .apply_guard = true,
 };
 
 void ipl_set_mode(enum ipl_mode mode)
@@ -66,8 +66,8 @@ void ipl_set_type(enum ipl_type type)
 
 	case IPL_TYPE_MPIPL:
 		if (ipl_mode() != IPL_AUTOBOOT) {
-			ipl_log(IPL_ERROR,
-				"MPIPL can only be set in AUTOBOOOT mode, ignoring\n");
+			ipl_log(IPL_ERROR, "MPIPL can only be set in AUTOBOOOT "
+					   "mode, ignoring\n");
 			return;
 		}
 
@@ -144,7 +144,7 @@ ipl_error_callback_func_t ipl_error_callback_fn(void)
 	return g_ipl_settings.error_callback_fn;
 }
 
-void ipl_error_callback(const ipl_error_info& error)
+void ipl_error_callback(const ipl_error_info &error)
 {
 	if (!g_ipl_settings.error_callback_fn)
 		return;

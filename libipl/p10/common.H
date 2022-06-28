@@ -98,8 +98,8 @@ int ipl_set_sbe_state_all_sec(enum sbe_state state);
  * @param target[in] - target pointer
  * @param deconfig[in] - true deconfig the target
  */
-void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
-	struct pdbg_target *target, bool deconfig=true);
+void ipl_process_fapi_error(const fapi2::ReturnCode &fapirc,
+			    struct pdbg_target *target, bool deconfig = true);
 
 /**
  * @brief Process PLAT clock error to add callout/deconfig and callback
@@ -111,8 +111,8 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
  * @param[in] clk_pos    position of failed clock
  */
 void ipl_plat_clock_error_handler(
-	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
-	uint8_t clk_pos);
+    const std::vector<std::pair<std::string, std::string>> &ffdcs_data,
+    uint8_t clk_pos);
 
 /**
  * @brief Process PLAT software error to add procedure callout and call callback
@@ -124,7 +124,7 @@ void ipl_plat_clock_error_handler(
  * @param[in] ffdcs_data list of internal ffdc values
  */
 void ipl_plat_procedure_error_handler(
-	const ipl_error_type& err_type,
-	const std::vector<std::pair<std::string, std::string>>& ffdcs_data = {});
+    const ipl_error_type &err_type,
+    const std::vector<std::pair<std::string, std::string>> &ffdcs_data = {});
 
 #endif /* __LIBIPL_P10_COMMON_H__ */

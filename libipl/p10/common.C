@@ -20,8 +20,10 @@ bool ipl_is_master_proc(struct pdbg_target *proc)
 {
 	uint8_t type;
 
-	if (!pdbg_target_get_attribute(proc, "ATTR_PROC_MASTER_TYPE", 1, 1, &type)) {
-		ipl_log(IPL_ERROR, "Attribute [ATTR_PROC_MASTER_TYPE] read failed \n");
+	if (!pdbg_target_get_attribute(proc, "ATTR_PROC_MASTER_TYPE", 1, 1,
+				       &type)) {
+		ipl_log(IPL_ERROR,
+			"Attribute [ATTR_PROC_MASTER_TYPE] read failed \n");
 
 		if (pdbg_target_index(proc) == 0)
 			return true;
@@ -43,7 +45,8 @@ int ipl_istep_via_sbe(int major, int minor)
 
 	ipl_log(IPL_INFO, "Istep: SBE %d.%d : started\n", major, minor);
 
-	pdbg_for_each_class_target("pib", pib) {
+	pdbg_for_each_class_target("pib", pib)
+	{
 		int ret;
 
 		if (pdbg_target_status(pib) != PDBG_TARGET_ENABLED)
@@ -55,7 +58,8 @@ int ipl_istep_via_sbe(int major, int minor)
 			continue;
 
 		if (!ipl_is_functional(proc)) {
-			ipl_log(IPL_ERROR, "Master processor (%d) is not functional\n",
+			ipl_log(IPL_ERROR,
+				"Master processor (%d) is not functional\n",
 				pdbg_target_index(proc));
 			ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 			return 1;
@@ -66,8 +70,9 @@ int ipl_istep_via_sbe(int major, int minor)
 
 		ret = sbe_istep(pib, major, minor);
 		if (ret) {
-			ipl_log(IPL_ERROR, "Istep %d.%d failed on proc-%d, rc=%d\n",
-				major, minor, pdbg_target_index(proc), ret);
+			ipl_log(IPL_ERROR,
+				"Istep %d.%d failed on proc-%d, rc=%d\n", major,
+				minor, pdbg_target_index(proc), ret);
 			ipl_log_sbe_ffdc(pib);
 		} else {
 			rc = 0;
@@ -83,13 +88,14 @@ int ipl_istep_via_sbe(int major, int minor)
 int ipl_istep_via_hostboot(int major, int minor)
 {
 	struct pdbg_target *proc;
-        uint64_t retry_limit_ms = 30 * 60 * 1000;
-        uint64_t delay_ms = 100;
+	uint64_t retry_limit_ms = 30 * 60 * 1000;
+	uint64_t delay_ms = 100;
 	int rc = 1;
 
 	ipl_log(IPL_INFO, "Istep: Hostboot %d.%d : started\n", major, minor);
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		fapi2::ReturnCode fapi_rc;
 
 		// Run HWP only on functional master processor
@@ -97,20 +103,23 @@ int ipl_istep_via_hostboot(int major, int minor)
 			continue;
 
 		if (!ipl_is_functional(proc)) {
-			ipl_log(IPL_ERROR, "Master processor(%d) is not functional\n",
+			ipl_log(IPL_ERROR,
+				"Master processor(%d) is not functional\n",
 				pdbg_target_index(proc));
 			ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
 			return 1;
 		}
 
-		ipl_log(IPL_INFO, "Running p10_do_fw_hb_istep HWP on processor %d\n",
+		ipl_log(IPL_INFO,
+			"Running p10_do_fw_hb_istep HWP on processor %d\n",
 			pdbg_target_index(proc));
 
-		fapi_rc = p10_do_fw_hb_istep(proc, major, minor,
-					     retry_limit_ms, delay_ms);
+		fapi_rc = p10_do_fw_hb_istep(proc, major, minor, retry_limit_ms,
+					     delay_ms);
 		if (fapi_rc != fapi2::FAPI2_RC_SUCCESS)
-			ipl_log(IPL_ERROR, "Istep %d.%d failed on chip %d, rc=%d\n",
-				major, minor, pdbg_target_index(proc), fapi_rc);
+			ipl_log(IPL_ERROR,
+				"Istep %d.%d failed on chip %d, rc=%d\n", major,
+				minor, pdbg_target_index(proc), fapi_rc);
 		else
 			rc = 0;
 
@@ -130,19 +139,24 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 	loopcount = wait_time_seconds > 0 ? wait_time_seconds : 25;
 
 	while (loopcount > 0) {
-	  	fapi_rc = p10_get_sbe_msg_register(proc, sbeReg);
+		fapi_rc = p10_get_sbe_msg_register(proc, sbeReg);
 		if (fapi_rc == fapi2::FAPI2_RC_SUCCESS) {
 			if (sbeReg.sbeBooted) {
-				ipl_log(IPL_INFO, "SBE booted. sbeReg[0x%08x] Wait time: [%d]\n",
+				ipl_log(IPL_INFO,
+					"SBE booted. sbeReg[0x%08x] Wait time: "
+					"[%d]\n",
 					uint32_t(sbeReg.reg), loopcount);
 				return true;
 			} else {
-				ipl_log(IPL_DEBUG, "SBE boot is in progress. sbeReg[0x%08x]\n",
-					uint32_t(sbeReg.reg));
+				ipl_log(
+				    IPL_DEBUG,
+				    "SBE boot is in progress. sbeReg[0x%08x]\n",
+				    uint32_t(sbeReg.reg));
 			}
 		} else {
 			ipl_log(IPL_ERROR,
-				"p10_get_sbe_msg_register failed for proc %d, rc=%d\n",
+				"p10_get_sbe_msg_register failed for proc %d, "
+				"rc=%d\n",
 				pdbg_target_index(proc), fapi_rc);
 		}
 
@@ -169,7 +183,8 @@ bool ipl_is_present(struct pdbg_target *target)
 {
 	uint8_t buf[5];
 
-	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41", 1, buf)) {
+	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41",
+					      1, buf)) {
 		ipl_log(IPL_ERROR, "Attribute [ATTR_HWAS_STATE] read failed\n");
 
 		if (pdbg_target_status(target) == PDBG_TARGET_ENABLED)
@@ -178,7 +193,7 @@ bool ipl_is_present(struct pdbg_target *target)
 		return false;
 	}
 
-	//Present bit is stored in 4th byte and bit 2 position in HWAS_STATE
+	// Present bit is stored in 4th byte and bit 2 position in HWAS_STATE
 	return (buf[4] & 0x40);
 }
 
@@ -186,17 +201,19 @@ bool ipl_is_functional(struct pdbg_target *target)
 {
 	uint8_t buf[5];
 
-	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41", 1, buf)) {
+	if (!pdbg_target_get_attribute_packed(target, "ATTR_HWAS_STATE", "41",
+					      1, buf)) {
 		ipl_log(IPL_INFO, "Attribute [ATTR_HWAS_STATE] read failed\n");
 
-		//Checking pdbg functional state
+		// Checking pdbg functional state
 		if (pdbg_target_status(target) == PDBG_TARGET_ENABLED)
 			return true;
 
 		return false;
 	}
 
-	//isFuntional bit is stored in 4th byte and bit 3 position in HWAS_STATE
+	// isFuntional bit is stored in 4th byte and bit 3 position in
+	// HWAS_STATE
 	return (buf[4] & 0x20);
 }
 
@@ -204,12 +221,14 @@ bool ipl_check_functional_master(void)
 {
 	struct pdbg_target *proc;
 
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		if (!ipl_is_master_proc(proc))
 			continue;
 
 		if (!ipl_is_functional(proc)) {
-			ipl_log(IPL_ERROR, "Master processor(%d) is not functional\n",
+			ipl_log(IPL_ERROR,
+				"Master processor(%d) is not functional\n",
 				pdbg_target_index(proc));
 			return false;
 		}
@@ -263,10 +282,11 @@ int ipl_set_sbe_state(struct pdbg_target *proc, enum sbe_state state)
 		ipl_error_callback(IPL_ERR_PIB_TGT_NOT_FOUND);
 		return 1;
 	}
-	//PIB already probed as part of ipl init function.
-	//update SBE state
+	// PIB already probed as part of ipl init function.
+	// update SBE state
 	if (sbe_set_state(pib, state)) {
-		ipl_log(IPL_ERROR, "Failed to update SBE state information (%s)",
+		ipl_log(IPL_ERROR,
+			"Failed to update SBE state information (%s)",
 			pdbg_target_path(proc));
 		ipl_error_callback(IPL_ERR_FSI_REG);
 		return 1;
@@ -278,7 +298,8 @@ int ipl_set_sbe_state_all(enum sbe_state state)
 {
 	struct pdbg_target *proc;
 	int ret = 0;
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		if (ipl_is_present(proc)) {
 			if (ipl_set_sbe_state(proc, state)) {
 				ret = 1;
@@ -292,41 +313,46 @@ int ipl_set_sbe_state_all_sec(enum sbe_state state)
 {
 	struct pdbg_target *proc;
 	int ret = 0;
-	pdbg_for_each_class_target("proc", proc) {
+	pdbg_for_each_class_target("proc", proc)
+	{
 		if (ipl_is_master_proc(proc))
 			continue;
 		if (ipl_is_present(proc)) {
 			if (ipl_set_sbe_state(proc, state)) {
-				 ret = 1;
+				ret = 1;
 			}
 		}
 	}
 	return ret;
 }
 
-void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
-		struct pdbg_target *target, bool deconfig)
+void ipl_process_fapi_error(const fapi2::ReturnCode &fapirc,
+			    struct pdbg_target *target, bool deconfig)
 {
-	if(fapirc == fapi2::FAPI2_RC_SUCCESS) {
+	if (fapirc == fapi2::FAPI2_RC_SUCCESS) {
 		ipl_error_callback(IPL_ERR_OK);
-	}
-	else if(fapirc.getCreator() == fapi2::ReturnCode::CREATOR_PLAT) {
+	} else if (fapirc.getCreator() == fapi2::ReturnCode::CREATOR_PLAT) {
 		CDG_Target cdgTarget;
 		cdgTarget.callout_priority =
-		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::MEDIUM);
+		    fapi2::plat_CalloutPriority_tostring(
+			fapi2::CalloutPriorities::MEDIUM);
 
 		ATTR_PHYS_BIN_PATH_Type physBinPath;
-		uint32_t binPathElemCount = dtAttr::fapi2::ATTR_PHYS_BIN_PATH_ElementCount;
-		if (!pdbg_target_get_attribute(target, "ATTR_PHYS_BIN_PATH",
+		uint32_t binPathElemCount =
+		    dtAttr::fapi2::ATTR_PHYS_BIN_PATH_ElementCount;
+		if (!pdbg_target_get_attribute(
+			target, "ATTR_PHYS_BIN_PATH",
 			std::stoi(dtAttr::fapi2::ATTR_PHYS_BIN_PATH_Spec),
-				binPathElemCount, physBinPath)) {
-			ipl_log(IPL_ERROR, "Failed to read ATTR_PHYS_BIN_PATH for target %s\n",
-				pdbg_target_path(target));
+			binPathElemCount, physBinPath)) {
+			ipl_log(
+			    IPL_ERROR,
+			    "Failed to read ATTR_PHYS_BIN_PATH for target %s\n",
+			    pdbg_target_path(target));
 			ipl_error_callback(IPL_ERR_ATTR_READ_FAIL);
-		}
-		else {
-			std::copy(physBinPath, physBinPath+binPathElemCount,
-			std::back_inserter(cdgTarget.target_entity_path));
+		} else {
+			std::copy(
+			    physBinPath, physBinPath + binPathElemCount,
+			    std::back_inserter(cdgTarget.target_entity_path));
 			cdgTarget.deconfigure = deconfig;
 
 			FFDC ffdc;
@@ -334,24 +360,27 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
 			ffdc.ffdc_type = FFDC_TYPE_HWP;
 			uint32_t rc = fapirc;
 			ffdc.hwp_errorinfo.rc = std::to_string(rc);
-			ffdc.hwp_errorinfo.rc_desc = "Error in executing platform function";
+			ffdc.hwp_errorinfo.rc_desc =
+			    "Error in executing platform function";
 
 			ProcedureCallout proc_callout;
 			proc_callout.proc_callout =
-				fapi2::plat_ProcedureCallout_tostring(
-					fapi2::ProcedureCallouts::ProcedureCallout::BUS_CALLOUT);
+			    fapi2::plat_ProcedureCallout_tostring(
+				fapi2::ProcedureCallouts::ProcedureCallout::
+				    BUS_CALLOUT);
 			proc_callout.callout_priority =
-				fapi2::plat_CalloutPriority_tostring(
-					fapi2::CalloutPriorities::CalloutPriority::MEDIUM);
-			ffdc.hwp_errorinfo.procedures_callout.push_back(proc_callout);
+			    fapi2::plat_CalloutPriority_tostring(
+				fapi2::CalloutPriorities::CalloutPriority::
+				    MEDIUM);
+			ffdc.hwp_errorinfo.procedures_callout.push_back(
+			    proc_callout);
 			ipl_error_callback({IPL_ERR_PLAT, &ffdc});
 		}
-	}
-	else if(fapirc.getCreator() == fapi2::ReturnCode::CREATOR_HWP) {
+	} else if (fapirc.getCreator() == fapi2::ReturnCode::CREATOR_HWP) {
 		ipl_error_callback(IPL_ERR_HWP);
-	}
-	else {
-		ipl_log(IPL_ERROR, "Unknown fapi error 0x%08X, ignoring\n", fapirc);
+	} else {
+		ipl_log(IPL_ERROR, "Unknown fapi error 0x%08X, ignoring\n",
+			fapirc);
 	}
 }
 
@@ -367,19 +396,17 @@ void ipl_process_fapi_error(const fapi2::ReturnCode& fapirc,
  *
  * @return Error message corresponding to err_type
  */
-static std::string ipl_get_err_msg(
-	const ipl_error_type& err_type,
-	const ipl_error_type& bkp_err_type)
+static std::string ipl_get_err_msg(const ipl_error_type &err_type,
+				   const ipl_error_type &bkp_err_type)
 {
 	std::string ret_msg = "Undefined error";
 
 	auto err_msg_it = err_msg_map.find(err_type);
-	if(err_msg_it != err_msg_map.end()) {
+	if (err_msg_it != err_msg_map.end()) {
 		ret_msg = err_msg_it->second;
-	}
-	else {
+	} else {
 		auto err_msg_it = err_msg_map.find(bkp_err_type);
-		if(err_msg_it != err_msg_map.end()) {
+		if (err_msg_it != err_msg_map.end()) {
 			ret_msg = err_msg_it->second;
 		}
 	}
@@ -387,37 +414,38 @@ static std::string ipl_get_err_msg(
 }
 
 void ipl_plat_clock_error_handler(
-	const std::vector<std::pair<std::string, std::string>>& ffdcs_data,
-	uint8_t clk_pos)
+    const std::vector<std::pair<std::string, std::string>> &ffdcs_data,
+    uint8_t clk_pos)
 {
 	FFDC ffdc;
 	ffdc.ffdc_type = FFDC_TYPE_HWP;
 	ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_CLK);
 	ffdc.hwp_errorinfo.rc_desc = ipl_get_err_msg(IPL_ERR_CLK, IPL_ERR_PLAT);
 
-	ffdc.hwp_errorinfo.ffdcs_data.insert(ffdc.hwp_errorinfo.ffdcs_data.end(),
-		ffdcs_data.begin(), ffdcs_data.end());
+	ffdc.hwp_errorinfo.ffdcs_data.insert(
+	    ffdc.hwp_errorinfo.ffdcs_data.end(), ffdcs_data.begin(),
+	    ffdcs_data.end());
 
 	HWCallout hwcallout_data;
 	hwcallout_data.hwid = fapi2::plat_HwCalloutEnum_tostring(
-			fapi2::HwCallouts::PROC_REF_CLOCK);
-	hwcallout_data.callout_priority =
-		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
+	    fapi2::HwCallouts::PROC_REF_CLOCK);
+	hwcallout_data.callout_priority = fapi2::plat_CalloutPriority_tostring(
+	    fapi2::CalloutPriorities::HIGH);
 	hwcallout_data.isPlanarCallout = true;
 	hwcallout_data.clkPos = clk_pos;
 	// No need for entity path, since no need of this to callout the planar
 
 	ffdc.hwp_errorinfo.hwcallouts.push_back(hwcallout_data);
 
-	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific error and
-	// the exact error code and description are included in the FFDC.RC and
-	// FFDC.RC_DESC members.
+	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific
+	// error and the exact error code and description are included in the
+	// FFDC.RC and FFDC.RC_DESC members.
 	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, &ffdc});
 }
 
 void ipl_plat_procedure_error_handler(
-	const ipl_error_type& err_type,
-	const std::vector<std::pair<std::string, std::string>>& ffdcs_data)
+    const ipl_error_type &err_type,
+    const std::vector<std::pair<std::string, std::string>> &ffdcs_data)
 {
 	FFDC ffdc;
 	ffdc.ffdc_type = FFDC_TYPE_HWP;
@@ -425,18 +453,20 @@ void ipl_plat_procedure_error_handler(
 	ffdc.hwp_errorinfo.rc_desc = ipl_get_err_msg(err_type, IPL_ERR_PLAT);
 
 	ffdc.hwp_errorinfo.ffdcs_data.insert(
-		ffdc.hwp_errorinfo.ffdcs_data.end(),
-		ffdcs_data.begin(), ffdcs_data.end());
+	    ffdc.hwp_errorinfo.ffdcs_data.end(), ffdcs_data.begin(),
+	    ffdcs_data.end());
 
 	ProcedureCallout procedurecallout_data;
-	procedurecallout_data.proc_callout = fapi2::plat_ProcedureCallout_tostring(
-			fapi2::ProcedureCallouts::ProcedureCallout::CODE);
+	procedurecallout_data.proc_callout =
+	    fapi2::plat_ProcedureCallout_tostring(
+		fapi2::ProcedureCallouts::ProcedureCallout::CODE);
 	procedurecallout_data.callout_priority =
-		fapi2::plat_CalloutPriority_tostring(fapi2::CalloutPriorities::HIGH);
+	    fapi2::plat_CalloutPriority_tostring(
+		fapi2::CalloutPriorities::HIGH);
 	ffdc.hwp_errorinfo.procedures_callout.push_back(procedurecallout_data);
 
-	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific error and
-	// the exact error code and description are included in the FFDC.RC and
-	// FFDC.RC_DESC members.
+	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific
+	// error and the exact error code and description are included in the
+	// FFDC.RC and FFDC.RC_DESC members.
 	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, &ffdc});
 }

@@ -5,7 +5,7 @@ extern "C" {
 #include <stdbool.h>
 }
 
-#define IPL_DEF(a)	#a, ipl_ ## a
+#define IPL_DEF(a) #a, ipl_##a
 
 struct ipl_step {
 	const char *name;
@@ -25,6 +25,6 @@ void ipl_pre(void);
 void ipl_register(int major, struct ipl_step *steps, void (*pre_func)(void));
 enum ipl_mode ipl_mode(void);
 
-void ipl_error_callback(const ipl_error_info& error);
+void ipl_error_callback(const ipl_error_info &error);
 
 #endif /* __IPL_H__ */

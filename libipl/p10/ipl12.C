@@ -74,23 +74,22 @@ static int ipl_update_omi_firmware(void)
 }
 
 static struct ipl_step ipl12[] = {
-	{ IPL_DEF(mss_getecid),            12,  1,  true,  true  },
-	{ IPL_DEF(omi_attr_update),        12,  2,  true,  true  },
-	{ IPL_DEF(proc_omi_scominit),      12,  3,  true,  true  },
-	{ IPL_DEF(ocmb_omi_scominit),      12,  4,  true,  true  },
-	{ IPL_DEF(omi_pre_trainadv),       12,  5,  true,  true  },
-	{ IPL_DEF(omi_setup),              12,  6,  true,  true  },
-	{ IPL_DEF(omi_io_run_training),    12,  7,  true,  true  },
-	{ IPL_DEF(omi_train_check),        12,  8,  true,  true  },
-	{ IPL_DEF(omi_post_trainadv),      12,  9,  true,  true  },
-	{ IPL_DEF(host_attnlisten_memb),   12, 10,  true,  true  },
-	{ IPL_DEF(host_omi_init),          12, 11,  true,  true  },
-	{ IPL_DEF(update_omi_firmware),    12, 12,  true,  true  },
-	{ NULL, NULL, -1, -1, false, false },
+    {IPL_DEF(mss_getecid), 12, 1, true, true},
+    {IPL_DEF(omi_attr_update), 12, 2, true, true},
+    {IPL_DEF(proc_omi_scominit), 12, 3, true, true},
+    {IPL_DEF(ocmb_omi_scominit), 12, 4, true, true},
+    {IPL_DEF(omi_pre_trainadv), 12, 5, true, true},
+    {IPL_DEF(omi_setup), 12, 6, true, true},
+    {IPL_DEF(omi_io_run_training), 12, 7, true, true},
+    {IPL_DEF(omi_train_check), 12, 8, true, true},
+    {IPL_DEF(omi_post_trainadv), 12, 9, true, true},
+    {IPL_DEF(host_attnlisten_memb), 12, 10, true, true},
+    {IPL_DEF(host_omi_init), 12, 11, true, true},
+    {IPL_DEF(update_omi_firmware), 12, 12, true, true},
+    {NULL, NULL, -1, -1, false, false},
 };
 
-__attribute__((constructor))
-static void ipl_register_ipl12(void)
+__attribute__((constructor)) static void ipl_register_ipl12(void)
 {
 	ipl_register(12, ipl12, ipl_pre12);
 }

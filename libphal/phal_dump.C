@@ -87,9 +87,9 @@ struct DumpPIBMSRegVal {
 
 // PPE register details
 struct DumpPPERegValue {
-	uint16_t number;     // Register number
-	uint32_t value;	     // Extracted value
-	char* name;          // Name of the register(Unused)
+	uint16_t number; // Register number
+	uint32_t value;	 // Extracted value
+	char* name;	 // Name of the register(Unused)
 
 	DumpPPERegValue(uint16_t num, uint32_t val)
 	{
@@ -141,28 +141,28 @@ struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
  *
  */
 void writeSbeData(const std::filesystem::path& dumpPath, uint32_t reasonCode,
-                  uint32_t recoveryAction)
+		  uint32_t recoveryAction)
 {
-	//Writing data to file
+	// Writing data to file
 	std::string dumpFilename = "sbe_data_file";
 	std::string additionalPath = "additional_data";
 	std::filesystem::path dirPath = dumpPath / additionalPath;
 	std::filesystem::path basePath = dirPath / dumpFilename;
-	try{
+	try {
 		std::filesystem::create_directories(dirPath);
-		std::ofstream sbefile (basePath);
-		if (sbefile.is_open())
-		{
-			sbefile << "sbe-reason-code: " << std::hex << "0x" << reasonCode << std::endl;
-			sbefile << "sbe-recovery-action: " << std::hex << "0x" << recoveryAction << std::endl;
+		std::ofstream sbefile(basePath);
+		if (sbefile.is_open()) {
+			sbefile << "sbe-reason-code: " << std::hex << "0x"
+				<< reasonCode << std::endl;
+			sbefile << "sbe-recovery-action: " << std::hex << "0x"
+				<< recoveryAction << std::endl;
 			sbefile.close();
 		}
-	}
-	catch(const std::exception& oe)
-	{
+	} catch (const std::exception& oe) {
 		log(level::ERROR,
-			"Failed to write sbe contents in path:%s errno:%d error message:%s",
-			basePath.string().c_str(), errno, oe.what());
+		    "Failed to write sbe contents in path:%s errno:%d error "
+		    "message:%s",
+		    basePath.string().c_str(), errno, oe.what());
 		throw dumpError_t(exception::FILE_OPERATION_FAILED);
 	}
 }
@@ -175,7 +175,8 @@ void writeSbeData(const std::filesystem::path& dumpPath, uint32_t reasonCode,
  *             PDBG_TARGET_NOT_OPERATIONAL for invalid failing unit
  *             HWP_EXECUTION_FAILED if the extract rc procedure is failing
  */
-struct pdbg_target* preCollection(const uint32_t failingUnit, const std::filesystem::path& dumpPath)
+struct pdbg_target* preCollection(const uint32_t failingUnit,
+				  const std::filesystem::path& dumpPath)
 {
 	// Initialize PDBG with KERNEL backend
 	pdbg::init(PDBG_BACKEND_KERNEL);
