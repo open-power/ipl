@@ -66,6 +66,9 @@ bool isTgtFunctional(struct pdbg_target *target)
 
 bool isPrimaryProc(struct pdbg_target *proc)
 {
+	// Validate input target and only allow for proc type input
+	validateProcTgt(proc);
+
 	ATTR_PROC_MASTER_TYPE_Type type;
 
 	// Get processor type (Primary or Secondary)
