@@ -9,6 +9,8 @@ extern "C" {
 
 #include <ekb/hwpf/fapi2/include/return_code.H>
 
+#define NUM_CLOCK_FOR_REDUNDANT_MODE 2
+
 bool ipl_is_master_proc(struct pdbg_target *proc);
 int ipl_istep_via_sbe(int major, int minor);
 int ipl_istep_via_hostboot(int major, int minor);

@@ -458,28 +458,99 @@ void ipl_plat_clock_error_handler(
     uint8_t clk_pos)
 {
 	FFDC ffdc;
-	ffdc.ffdc_type = FFDC_TYPE_HWP;
-	ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_CLK);
-	ffdc.hwp_errorinfo.rc_desc = ipl_get_err_msg(IPL_ERR_CLK, IPL_ERR_PLAT);
-
-	ffdc.hwp_errorinfo.ffdcs_data.insert(
-	    ffdc.hwp_errorinfo.ffdcs_data.end(), ffdcs_data.begin(),
-	    ffdcs_data.end());
-
 	HWCallout hwcallout_data;
+
+	if (ipl_clock_is_redundancy_enabled()) {
+		// Redudancy enaabled case
+		ffdc.ffdc_type = FFDC_TYPE_SPARE_CLOCK_INFO;
+
+		// Get clock target
+		struct pdbg_target *clock_target;
+		uint8_t attr_clk_pos = 0;
+		pdbg_for_each_class_target("oscrefclk", clock_target)
+		{
+			if (!pdbg_target_get_attribute(clock_target,
+						       "ATTR_POSITION", 2, 1,
+						       &attr_clk_pos)) {
+				ipl_log(IPL_ERROR,
+					"Attribute ATTR_POSITION read failed"
+					" for clock '%s' \n",
+					pdbg_target_path(clock_target));
+				ipl_plat_procedure_error_handler(
+				    IPL_ERR_ATTR_READ_FAIL);
+				return;
+			}
+			if (attr_clk_pos == clk_pos)
+				break;
+		}
+
+		// clock_target returns null incase pdbg_for_each_class_target()
+		// fail to match target
+		if (clock_target == nullptr) {
+			ipl_log(IPL_ERROR,
+				"oscrefclk target not found"
+				" for clock position(%d) \n",
+				clk_pos);
+			ipl_plat_procedure_error_handler(
+			    IPL_ERR_PDBG_TARGET_NOT_FOUND);
+			return;
+		}
+
+		ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_SPARE_CLK);
+		ffdc.hwp_errorinfo.rc_desc =
+		    ipl_get_err_msg(IPL_ERR_SPARE_CLK, IPL_ERR_PLAT);
+		ffdc.hwp_errorinfo.ffdcs_data.insert(
+		    ffdc.hwp_errorinfo.ffdcs_data.end(), ffdcs_data.begin(),
+		    ffdcs_data.end());
+
+		CDG_Target cdgTarget;
+		ATTR_PHYS_BIN_PATH_Type physBinPath;
+		uint32_t binPathElemCount =
+		    dtAttr::fapi2::ATTR_PHYS_BIN_PATH_ElementCount;
+		if (!pdbg_target_get_attribute(
+			clock_target, "ATTR_PHYS_BIN_PATH",
+			std::stoi(dtAttr::fapi2::ATTR_PHYS_BIN_PATH_Spec),
+			binPathElemCount, physBinPath)) {
+			ipl_log(
+			    IPL_ERROR,
+			    "Failed to read ATTR_PHYS_BIN_PATH for target %s\n",
+			    pdbg_target_path(clock_target));
+			ipl_error_callback(IPL_ERR_ATTR_READ_FAIL);
+			return;
+		}
+		std::copy(physBinPath, physBinPath + binPathElemCount,
+			  std::back_inserter(cdgTarget.target_entity_path));
+		cdgTarget.deconfigure = true;
+		cdgTarget.guard = false;
+		cdgTarget.callout = false;
+		ffdc.hwp_errorinfo.cdg_targets.push_back(cdgTarget);
+
+		// No planar callout.
+		hwcallout_data.isPlanarCallout = false;
+
+	} else {
+		ffdc.ffdc_type = FFDC_TYPE_HWP;
+		ffdc.hwp_errorinfo.rc = std::to_string(IPL_ERR_CLK);
+		ffdc.hwp_errorinfo.rc_desc =
+		    ipl_get_err_msg(IPL_ERR_CLK, IPL_ERR_PLAT);
+
+		ffdc.hwp_errorinfo.ffdcs_data.insert(
+		    ffdc.hwp_errorinfo.ffdcs_data.end(), ffdcs_data.begin(),
+		    ffdcs_data.end());
+
+		hwcallout_data.isPlanarCallout = true;
+	}
 	hwcallout_data.hwid = fapi2::plat_HwCalloutEnum_tostring(
 	    fapi2::HwCallouts::PROC_REF_CLOCK);
 	hwcallout_data.callout_priority = fapi2::plat_CalloutPriority_tostring(
 	    fapi2::CalloutPriorities::HIGH);
-	hwcallout_data.isPlanarCallout = true;
 	hwcallout_data.clkPos = clk_pos;
-	// No need for entity path, since no need of this to callout the planar
-
+	// No need for entity path, not used by pel code.
 	ffdc.hwp_errorinfo.hwcallouts.push_back(hwcallout_data);
 
-	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat specific
-	// error and the exact error code and description are included in the
-	// FFDC.RC and FFDC.RC_DESC members.
+	// Use "ipl_error_type" as "IPL_ERR_PLAT" since it is plat
+	// specific error and the exact error code and description are
+	// included in the FFDC.RC and FFDC.RC_DESC members.
 	ipl_error_callback(ipl_error_info{IPL_ERR_PLAT, &ffdc});
 }
 
