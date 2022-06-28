@@ -111,12 +111,23 @@ void deconfigureTgt(const ATTR_PHYS_BIN_PATH_Type &physBinPath,
 		throw pdbgError_t(exception::PDBG_TARGET_NOT_FOUND);
 	}
 
-	if (isPrimaryProc(target)) {
-		log(level::WARNING,
-		    "deconfigureTgt: Skipping primary proc((%s)) deconfig by "
-		    "policy",
-		    pdbg_target_path(target));
-		return;
+	// Skip deconfig request for primary proc.
+	const char *tgtClass = pdbg_target_class_name(target);
+	if (!tgtClass) {
+		log(level::ERROR,
+		    "deconfigureTgt: pdbg_target_class_name returns "
+		    "empty class name");
+		throw pdbgError_t(exception::PDBG_TARGET_INVALID);
+	}
+	if (strcmp("proc", tgtClass) == 0) {
+		if (isPrimaryProc(target)) {
+			log(level::WARNING,
+			    "deconfigureTgt: Skipping primary proc((%s)) "
+			    "deconfig by "
+			    "policy",
+			    pdbg_target_path(target));
+			return;
+		}
 	}
 
 	ATTR_HWAS_STATE_Type hwasState;
