@@ -413,6 +413,46 @@ static std::string ipl_get_err_msg(const ipl_error_type &err_type,
 	return ret_msg;
 }
 
+/**
+ * @brief Function to check clock redundant mode is enabled in the system
+ *
+ * if the functional clock targets is greater than one redundant mode
+ * is enabled. Default behaviour is redundant mode is disabled.
+ * Any internal failures during this function execution results  redundant
+ * mode as disabled.
+ *
+ * return true if clock redundant mode is enabled, false otherwise
+ */
+
+bool ipl_clock_is_redundancy_enabled()
+{
+	fprintf(stderr, "ipl_clock_is_redundancy_enabled \n");
+
+	struct pdbg_target *clock_target;
+	uint8_t clock_count = 0;
+	pdbg_for_each_class_target("oscrefclk", clock_target)
+	{
+		if (!ipl_is_functional(clock_target))
+			continue;
+		clock_count++;
+	}
+
+	if (clock_count != 1 && clock_count != 2) {
+		ipl_log(IPL_ERROR,
+			"Invalid number (%d) of clock target found\n",
+			clock_count);
+		return false;
+	}
+
+	if (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
+		ipl_log(IPL_INFO, "Clock redundant mode(%d) enabled",
+			clock_count);
+		return true;
+	}
+
+	ipl_log(IPL_INFO, "Clock redundant mode(%d) disabled", clock_count);
+	return false;
+}
 void ipl_plat_clock_error_handler(
     const std::vector<std::pair<std::string, std::string>> &ffdcs_data,
     uint8_t clk_pos)
