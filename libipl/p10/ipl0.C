@@ -11,6 +11,7 @@ extern "C" {
 #include "libipl.H"
 #include "libipl_internal.H"
 #include "common.H"
+#include <attributes_info.H>
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_start_cbs.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_setup_ref_clock.H>
@@ -122,6 +123,84 @@ static bool set_or_clear_state(struct pdbg_target *target, bool do_set)
 		ipl_log(IPL_ERROR,
 			"Attribute [ATTR_HWAS_STATE] write failed\n");
 		return false;
+	}
+	return true;
+}
+
+/*
+ * Helper function set the clock functional state based on
+ * ATTR_SYS_CLOCK_DECONFIG_STATE values
+ * ATTR_SYS_CLOCK_DECONFIG_STATE contains the functional state
+ * of the system clocks/oscillators. This is the way that Hostboot
+ * communicates to the BMC which clocks have failed.
+ *
+ * @return true on success, false on failure
+ */
+static bool update_clock_func_state(void)
+{
+	ipl_log(
+	    IPL_INFO,
+	    "Updating ref clock target HWAS state based on Hostboot value \n");
+
+	ATTR_SYS_CLOCK_DECONFIG_STATE_Type clk_state =
+	    ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_NO_DECONFIG;
+
+	struct pdbg_target *clock_target;
+	struct pdbg_target *root = pdbg_target_root();
+	if (!pdbg_target_get_attribute(root, "ATTR_SYS_CLOCK_DECONFIG_STATE", 1,
+				       1, &clk_state)) {
+		ipl_log(
+		    IPL_ERROR,
+		    "Attribute [ATTR_SYS_CLOCK_DECONFIG_STATE] read failed \n");
+		ipl_plat_procedure_error_handler(IPL_ERR_ATTR_READ_FAIL);
+		return false;
+	}
+
+	if (clk_state == ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_NO_DECONFIG) {
+		// No HWAS state update required
+		ipl_log(IPL_INFO, "update_clock_func_state : No updates \n");
+		return true;
+	}
+	pdbg_for_each_class_target("oscrefclk", clock_target)
+	{
+		if (clk_state ==
+		    ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_ALL_DECONFIG) {
+			// Update HWAS state to non-functional
+			ipl_log(IPL_INFO,
+				"Clock(%s) setting to non functional \n",
+				pdbg_target_path(clock_target));
+			if (!set_or_clear_state(clock_target, false)) {
+				return false;
+			}
+			continue;
+		}
+		// Get Clock position
+		ATTR_POSITION_Type clk_pos;
+		if (!pdbg_target_get_attribute(clock_target, "ATTR_POSITION", 2,
+					       1, &clk_pos)) {
+			ipl_log(IPL_ERROR,
+				"Attribute ATTR_POSITION read failed"
+				" for clock '%s' \n",
+				pdbg_target_path(clock_target));
+			ipl_plat_procedure_error_handler(
+			    IPL_ERR_ATTR_READ_FAIL);
+			return false;
+		}
+		// Assumption: Clock A linked to ATTR_POSITION value 0 and
+		// Clock B linked to ATTR_POSITION value 1
+		if (((clk_pos == 0) &&
+		     (clk_state ==
+		      ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_A_DECONFIG)) ||
+		    ((clk_pos == 1) &&
+		     (clk_state ==
+		      ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_B_DECONFIG))) {
+			ipl_log(IPL_INFO,
+				"Clock(%s) setting to non functional(%d) \n",
+				pdbg_target_path(clock_target), clk_state);
+			if (!set_or_clear_state(clock_target, false)) {
+				return false;
+			}
+		}
 	}
 	return true;
 }
@@ -608,6 +687,14 @@ static int ipl_updatehwmodel(void)
 		// Update SBE state to Not usable in reboot path(not on MPIPL)
 		// Boot error callback is only required for failure
 		ipl_set_sbe_state_all(SBE_STATE_NOT_USABLE);
+
+		// update refclock targets  functional sate based on
+		// SYS_CLOCK_DECONFIG_STATE values.
+		if (!update_clock_func_state()) {
+			ipl_log(IPL_ERROR, "Failed to update set-ref clock "
+					   "functional state \n");
+			return 1;
+		}
 	}
 
 	if (!ipl_check_functional_master()) {
