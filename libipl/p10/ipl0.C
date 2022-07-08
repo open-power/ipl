@@ -147,7 +147,7 @@ static bool update_clock_func_state(void)
 
 	struct pdbg_target *clock_target;
 	struct pdbg_target *root = pdbg_target_root();
-	if (!pdbg_target_get_attribute(root, "ATTR_SYS_CLOCK_DECONFIG_STATE", 1,
+	if (!pdbg_target_get_attribute(root, "ATTR_SYS_CLOCK_DECONFIG_STATE", 4,
 				       1, &clk_state)) {
 		ipl_log(
 		    IPL_ERROR,
@@ -195,8 +195,9 @@ static bool update_clock_func_state(void)
 		     (clk_state ==
 		      ENUM_ATTR_SYS_CLOCK_DECONFIG_STATE_B_DECONFIG))) {
 			ipl_log(IPL_INFO,
-				"Clock(%s) setting to non functional(%d) \n",
-				pdbg_target_path(clock_target), clk_state);
+				"deconfig state(%d) Clock(%s) setting to non "
+				"functional \n",
+				clk_state, pdbg_target_path(clock_target));
 			if (!set_or_clear_state(clock_target, false)) {
 				return false;
 			}
