@@ -893,70 +893,60 @@ static int ipl_set_ref_clock(void)
 	struct pdbg_target *proc;
 	int rc = 0;
 	uint8_t clock_count = 0;
-
+	fapi2::ReturnCode fapirc;
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
 	ipl_log(IPL_INFO, "Istep: set_ref_clock: started\n");
 
+	proc = ipl_get_functional_primary_proc();
+	if (proc == NULL) {
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+		return 1;
+	}
+
 	if (initialize_and_check_clock_chip(clock_count)) {
 		ipl_log(IPL_ERROR, "Clock initialization failed\n");
 		return 1;
 	}
-
 	if (clock_count != 1 && clock_count != 2) {
 		ipl_log(IPL_ERROR,
 			"Invalid number (%d) of clock target found\n",
 			clock_count);
-
 		ipl_plat_procedure_error_handler(IPL_ERR_INVALID_NUM_CLOCK);
 		return 1;
 	}
 
-	pdbg_for_each_class_target("proc", proc)
-	{
-		fapi2::ReturnCode fapirc;
-
-		if (!ipl_is_functional(proc))
-			continue;
-
-		// Check if system have clocks to enable redundant mode,
-		// If yes set attribute to enable redundant mode.
-		// Default value of attribute will be for non-redundant mode
-		if (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
-			fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
-			    fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
-			if (!pdbg_target_set_attribute(
-				proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1,
-				&clock_select)) {
-
-				ipl_log(
-				    IPL_ERROR,
-				    "Attribute CP_REFCLOCK_SELECT update failed"
-				    " for proc %d \n",
-				    pdbg_target_index(proc));
-				ipl_plat_procedure_error_handler(
-				    IPL_ERR_ATTR_WRITE);
-				rc++;
-				continue;
-			}
-		}
-
-		ipl_log(IPL_INFO,
-			"Running p10_setup_ref_clock HWP on processor %d\n",
-			pdbg_target_index(proc));
-		fapirc = p10_setup_ref_clock(proc);
-		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log(
-			    IPL_ERROR,
-			    "Istep set_ref_clock failed on chip %s, rc=%d \n",
-			    pdbg_target_path(proc), fapirc);
+	// Check if system have clocks to enable redundant mode,
+	// If yes set attribute to enable redundant mode.
+	// Default value of attribute will be for non-redundant mode
+	if (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
+		fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
+		    fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
+		if (!pdbg_target_set_attribute(proc, "ATTR_CP_REFCLOCK_SELECT",
+					       1, 1, &clock_select)) {
+			ipl_log(IPL_ERROR,
+				"Attribute CP_REFCLOCK_SELECT update failed"
+				" for proc %d \n",
+				pdbg_target_index(proc));
+			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_WRITE);
 			rc++;
+			return 1;
 		}
-
-		ipl_process_fapi_error(fapirc, proc);
 	}
 
+	ipl_log(IPL_INFO,
+		"Running p10_setup_ref_clock HWP on primary processor %d\n",
+		pdbg_target_index(proc));
+	fapirc = p10_setup_ref_clock(proc);
+	if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
+		ipl_log(IPL_ERROR,
+			"Istep set_ref_clock failed on chip %s, rc=%d \n",
+			pdbg_target_path(proc), fapirc);
+		rc++;
+	}
+
+	ipl_process_fapi_error(fapirc, proc);
 	return rc;
 }
 

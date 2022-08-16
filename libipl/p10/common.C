@@ -237,6 +237,26 @@ bool ipl_check_functional_master(void)
 	return true;
 }
 
+struct pdbg_target *ipl_get_functional_primary_proc(void)
+{
+	struct pdbg_target *proc = NULL;
+
+	pdbg_for_each_class_target("proc", proc)
+	{
+		if (!ipl_is_master_proc(proc))
+			continue;
+
+		if (!ipl_is_functional(proc)) {
+			ipl_log(IPL_ERROR,
+				"Primary processor(%d) is not functional\n",
+				pdbg_target_index(proc));
+			return NULL;
+		}
+		return proc;
+	}
+	return NULL;
+}
+
 void ipl_log_sbe_ffdc(struct pdbg_target *pib)
 {
 	uint8_t *ffdc = NULL;

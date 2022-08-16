@@ -51,6 +51,13 @@ bool ipl_is_functional(struct pdbg_target *target);
 bool ipl_check_functional_master(void);
 
 /**
+ * @brief Get functional primary processor
+ *
+ * @return On success return pointer to functional primary proc, else NULL
+ */
+struct pdbg_target *ipl_get_functional_primary_proc(void);
+
+/**
  * @brief Fetch and log SBE FFDC data if available
  *
  * param[in] pib pdbg_target
