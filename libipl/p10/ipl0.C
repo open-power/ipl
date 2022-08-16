@@ -954,32 +954,30 @@ static int ipl_proc_clock_test(void)
 {
 	struct pdbg_target *proc;
 	int rc = 0;
+	fapi2::ReturnCode fapirc;
 
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
 	ipl_log(IPL_INFO, "Istep: proc_clock_test: started\n");
 
-	pdbg_for_each_class_target("proc", proc)
-	{
-		fapi2::ReturnCode fapirc;
-
-		if (!ipl_is_functional(proc))
-			continue;
-
-		ipl_log(IPL_INFO,
-			"Running p10_clock_test HWP on processor %d\n",
-			pdbg_target_index(proc));
-		fapirc = p10_clock_test(proc);
-		if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
-			ipl_log(IPL_ERROR,
-				"HWP clock_test failed on proc %d, rc=%d\n",
-				pdbg_target_index(proc), fapirc);
-			rc++;
-		}
-
-		ipl_process_fapi_error(fapirc, proc);
+	proc = ipl_get_functional_primary_proc();
+	if (proc == NULL) {
+		ipl_error_callback(IPL_ERR_PRI_PROC_NON_FUNC);
+		return 1;
 	}
+
+	ipl_log(IPL_INFO,
+		"Running p10_clock_test HWP on primary processor %d\n",
+		pdbg_target_index(proc));
+	fapirc = p10_clock_test(proc);
+	if (fapirc != fapi2::FAPI2_RC_SUCCESS) {
+		ipl_log(IPL_ERROR, "HWP clock_test failed on proc %d, rc=%d\n",
+			pdbg_target_index(proc), fapirc);
+		rc++;
+	}
+
+	ipl_process_fapi_error(fapirc, proc);
 
 	return rc;
 }
