@@ -9,6 +9,8 @@
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <unistd.h>
+#include <ekb/hwpf/fapi2/include/return_code_defs.H>
+#include <ekb/chips/p10/procedures/hwp/perv/p10_extract_sbe_rc.H>
 
 namespace openpower::phal
 {
@@ -19,6 +21,8 @@ using namespace openpower::phal::logging;
 using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
+
+void sbeErrorHandler(struct pdbg_target *proc);
 
 /**
  * @brief helper function to log SBE debug data
@@ -242,6 +246,24 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
 		log(level::ERROR, "SBE chipop timeout reported(%s)",
 		    pdbg_target_path(proc));
+		// only for primary processor SBE run p10_extract_sbe_rc hwp and
+		// perform recovery actions
+		if (isPrimaryProc(proc)) {
+			try {
+				sbeErrorHandler(proc);
+			} catch (const std::exception &ex) {
+				// TODO: for now just return SBE_CMD_TIMEOUT
+				// error, until openpower-proc-control and
+				// phosphor-logging caters for new errors that
+				// could be thrown from sbeErrorHandler
+				log(level::ERROR, "Exception caught %s",
+				    ex.what());
+			}
+		}
+		// TODO: Need to call p10_extract_sbe_rc for secondary processor
+		// chip-op failure but should not perform any recovery action.
+		// Just need to log the details got from p10_extract_sbe_rc for
+		// debugging purpose
 		return sbeError_t(exception::SBE_CMD_TIMEOUT);
 	}
 
@@ -370,5 +392,211 @@ void threadStopProc(struct pdbg_target *proc)
 	}
 }
 
+/**
+ * @brief Retry reipl from current failed side
+ *
+ * p10_extract_sbe_rc HWP is run to identify the recovery action
+ * for the SBE seeprom failure.
+ *
+ * Restart and ReIPL from the same side unless the no
+ * of retries is less than max retry count.
+ *
+ * If reached max retry count then reipl using backup boot seeprom
+ *
+ * @param[in] proc processor target to operate on
+ * @return throws exception if not able to switch or for any
+ *  attribute read/write error.
+ */
+
+void restartSBERCHandler(struct pdbg_target *proc)
+{
+	log(level::INFO, "SBERC:restartSBERCHandler on %s",
+	    pdbg_target_path(proc));
+}
+
+/**
+ * @brief ReIPL using backup boot seeprom
+ *
+ * Current sbe seeprom/sbe boot code used by the processor could
+ * be faulty due to which chip-op could fail.
+ *
+ * p10_extract_sbe_rc HWP is run to identify the recovery action
+ * for the SBE seeprom failure.
+ *
+ * This method is to cater to ReIPL using backup boot seeprom
+ * recovery action specified by p10_extract_sbe_rc. This could
+ * be because the current side seeprom is not recoverable.
+ *
+ * Check the currently used boot seeprom side used and mark it
+ * as bad and then select the backup boot seeprom if the same is
+ * not bad.
+ *
+ * If both primary and secondary seeprom's are bad throw exception
+ * to the caller so that the processor can be deconfigured/guarded.
+ *
+ * @param[in] proc processor target to operate on
+ * @return throws exception if not able to switch or for any
+ *  attribute read/write error.
+ */
+void reiplUsingBKPBootSeeprom(struct pdbg_target *proc)
+{
+	log(level::INFO, "SBERC:reiplUsingBKPBootSeeprom on %s",
+	    pdbg_target_path(proc));
+}
+
+/**
+ * @brief ReIPL using backup measurement seeprom
+ *
+ * Current sbe seeprom/sbe measurement seeprom code used by the
+ * the processor could be faulty due to which chip-op could fail.
+ *
+ * p10_extract_sbe_rc HWP is run to identify the recovery action
+ * for the SBE seeprom failure.
+ *
+ * This method is to cater to ReIPL using backup meas seeprom
+ * recovery action specified by p10_extract_sbe_rc. This could
+ * be because the current side of the seeprom is not recoverable.
+ *
+ * Check the currently used measurement seeprom side used and mark
+ * it as bad and then select the backup measurement seeprom if the
+ * same is not bad.
+ *
+ * If both primary and secondary seeprom's are bad throw exception
+ * to the caller so that the processor can be deconfigured/guarded.
+ *
+ * @param[in] proc processor target to operate on
+
+ * @return throws exception if not able to switch or for any
+ * 		attribute read/write error.
+ */
+void reiplUsingBKPMeasurementSeeprom(struct pdbg_target *proc)
+{
+	log(level::INFO, "SBERC:reiplUsingBKPMeasurementSeeprom on %s",
+	    pdbg_target_path(proc));
+}
+
+/**
+ * @brief Handle SBE error and perform recovery action
+ *
+ * For any SBE access/chip-op failure SBE FFDC is collected,
+ * If SBE FFDC collection fails with a Timeout error, then
+ * we assume SBE is in a bad state. Execute p10_extract_sbe_rc
+ * HWP to determine the SBE failure reason and the recovery
+ * action to be done by BMC for the failure.
+ *
+ * Routine should be called as part of SBE error handling
+ *
+ * This method puts the SBE state as FAILED in device tree
+ *
+ * @param[in] proc Non NULL proc Target handle.
+ * @return Exception thrown on failure
+ */
+void sbeErrorHandler(struct pdbg_target *proc)
+{
+	try {
+		assert(proc != nullptr);
+
+		log(level::INFO, "SBERC: sbeErrorHandler on %s",
+		    pdbg_target_path(proc));
+
+		auto sbeState = getState(proc);
+
+		if (sbeState == SBE_STATE_DEBUG_MODE ||
+		    sbeState == SBE_STATE_FAILED) {
+			// The SBE on this processor is not in a state
+			// where chipOps can be issued. SBE Error handling
+			// will be skipped.
+			log(level::ERROR,
+			    "SBERC: sbe for proc %s is not in DEBUG/FAILED "
+			    "state %d",
+			    pdbg_target_path(proc), sbeState);
+			throw sbeError_t(exception::SBE_INVALID_STATE);
+		}
+
+		// set state to debug mode to extract sbe rc
+		setState(proc, SBE_STATE_DEBUG_MODE);
+
+		P10_EXTRACT_SBE_RC::RETURN_ACTION recovAction;
+		auto fapiRc = p10_extract_sbe_rc(proc, recovAction, true);
+		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
+			log(level::INFO,
+			    "SBERC: p10_extract_sbe_rc returned error %d, skip "
+			    "recovery",
+			    fapiRc);
+			return;
+		}
+		log(level::INFO,
+		    "SBERC: p10_extract_sbe_rc for proc=%s returned rc=0x%08X "
+		    "and "
+		    "SBE Recovery Action=0x%08X",
+		    pdbg_target_path(proc), fapiRc, recovAction);
+
+		// marking sbe state failed after p10_extract_sbe_rc so
+		// that no further recovery actions are executed in parallel
+		setState(proc, SBE_STATE_FAILED);
+
+		switch (recovAction) {
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::RESTART_SBE:
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::RESTART_CBS:
+			log(level::INFO,
+			    "SBERC: recovery action RESTART_SBE/RESTART_CBS "
+			    "received "
+			    "on Proc %s",
+			    pdbg_target_path(proc));
+			(void)restartSBERCHandler(proc);
+			break;
+
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_BKP_SEEPROM:
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_UPD_SEEPROM:
+			log(level::INFO,
+			    "SBERC: recovery action "
+			    "REIPL_BKP_SEEPROM/REIPL_UPD_SEEPROM "
+			    "received on Proc %s",
+			    recovAction, pdbg_target_path(proc));
+			(void)reiplUsingBKPBootSeeprom(proc);
+			break;
+
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_BKP_MSEEPROM:
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_UPD_MSEEPROM:
+			log(level::INFO,
+			    "SBERC: recovery action "
+			    "REIPL_BKP_MSEEPROM/REIPL_UPD_MSEEPROM "
+			    "received on Proc %s",
+			    pdbg_target_path(proc));
+			(void)reiplUsingBKPMeasurementSeeprom(proc);
+			break;
+
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::NO_RECOVERY_ACTION:
+			log(level::INFO,
+			    "SBERC: recovery action NO_RECOVERY_ACTION "
+			    "received on "
+			    "Proc %s",
+			    pdbg_target_path(proc));
+			(void)reiplUsingBKPBootSeeprom(proc);
+			break;
+
+		case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_BKP_BMSEEPROM:
+			log(level::INFO,
+			    "SBERC: recovery action REIPL_BKP_BMSEEPROM "
+			    "received on "
+			    "Proc %s",
+			    pdbg_target_path(proc));
+			(void)reiplUsingBKPBootSeeprom(proc);
+			(void)reiplUsingBKPMeasurementSeeprom(proc);
+			break;
+		default:
+			log(level::INFO,
+			    "SBERC: recovery action default received on Proc "
+			    "%s",
+			    pdbg_target_path(proc));
+			break;
+		}
+	} catch (const std::exception &ex) {
+		log(level::INFO,
+		    "SBERC: exception thrown in sbeErrorHandler error %s",
+		    ex.what());
+		throw ex;
+	}
+}
 } // namespace sbe
 } // namespace openpower::phal
