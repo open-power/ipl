@@ -716,14 +716,38 @@ void reiplUsingBKPBootSeeprom(struct pdbg_target *proc)
  * to the caller so that the processor can be deconfigured/guarded.
  *
  * @param[in] proc processor target to operate on
-
  * @return throws exception if not able to switch or for any
  * 		attribute read/write error.
  */
 void reiplUsingBKPMeasurementSeeprom(struct pdbg_target *proc)
 {
-	log(level::INFO, "SBERC:reiplUsingBKPMeasurementSeeprom on %s",
+	assert(proc != nullptr);
+
+	log(level::INFO, "SBERC: reiplUsingBKPMeasurementSeeprom on %s",
 	    pdbg_target_path(proc));
+
+	// Determine the current side of the SEEPROM used
+	auto seepromSideUsed =
+	    getSeepromSideUsed(proc, SeepromType::Measurement);
+
+	// update max failure count to the attribute to mark it as bad.
+	setSeepromFailCount(proc, SeepromType::Measurement, seepromSideUsed,
+			    MAX_SEEPROM_FAIL_COUNT);
+
+	// Switch the seeprom if possible else throw error to log pel
+	// If current side of SEEPROM is primary , check the fail count of the
+	// secondary, vice-versa.
+	uint8_t failCount = getSeepromFailCount(proc, SeepromType::Measurement,
+						(!seepromSideUsed));
+	if (failCount < MAX_SEEPROM_FAIL_COUNT) {
+		setSeepromSideToUse(proc, SeepromType::Measurement,
+				    (!seepromSideUsed));
+		return;
+	}
+
+	log(level::ERROR,
+	    "SBERC: Both primary and secondary measurement seeproms are bad");
+	throw sbeError_t(exception::SBE_MEASUREMENT_SEEPROMS_BAD);
 }
 
 /**
