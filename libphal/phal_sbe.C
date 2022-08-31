@@ -11,11 +11,15 @@
 #include <unistd.h>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_extract_sbe_rc.H>
+#include <attributes_info.H>
 
 namespace openpower::phal
 {
 namespace sbe
 {
+
+enum class SeepromType { Boot, Measurement };
+constexpr uint8_t MAX_SEEPROM_FAIL_COUNT = 2;
 
 using namespace openpower::phal::logging;
 using namespace openpower::phal;
@@ -243,8 +247,9 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
 	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
 
-	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
-		log(level::ERROR, "SBE chipop timeout reported(%s)",
+	if (status == SBEFIFO_PRI_UNKNOWN_ERROR ||
+	    status == SBEFIFO_SEC_HW_TIMEOUT) {
+		log(level::ERROR, "SBERC: SBE chipop timeout reported(%s)",
 		    pdbg_target_path(proc));
 		// only for primary processor SBE run p10_extract_sbe_rc hwp and
 		// perform recovery actions
@@ -393,6 +398,230 @@ void threadStopProc(struct pdbg_target *proc)
 }
 
 /**
+ * @brief Return fail count attribute from device tree
+ *
+ * @param[in] proc processor target to operate on
+ * @param[in] side  side of the seeprom
+ * @param[in] type type of the seeprom (boot/measurement)
+ *
+ * @return Current SEEPROM failure count, throws DEVTREE_ATTR_READ_FAIL
+ *      exception on failure.
+ */
+uint8_t getSeepromFailCount(struct pdbg_target *proc, const SeepromType type,
+			    const uint8_t seepromSide)
+{
+	if (type == SeepromType::Boot) {
+		if (seepromSide == ENUM_ATTR_BACKUP_SEEPROM_SELECT_PRIMARY) {
+			ATTR_PRIMARY_SEEPROM_FAIL_COUNT_Type failCount;
+			if (DT_GET_PROP(ATTR_PRIMARY_SEEPROM_FAIL_COUNT, proc,
+					failCount)) {
+				log(level::ERROR, "SBERC: Attribute "
+						  "[ATTR_PRIMARY_SEEPROM_FAIL_"
+						  "COUNT] read failed");
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_READ_FAIL);
+			}
+			log(level::INFO,
+			    "SBERC: get prim boot seeprom failcount %d",
+			    failCount);
+			return static_cast<uint8_t>(failCount);
+		} else {
+			ATTR_SECONDARY_SEEPROM_FAIL_COUNT_Type failCount;
+			if (DT_GET_PROP(ATTR_SECONDARY_SEEPROM_FAIL_COUNT, proc,
+					failCount)) {
+				log(level::ERROR, "SBERC: Attribute "
+						  "[ATTR_SECONDARY_SEEPROM_"
+						  "FAIL_COUNT] read failed");
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_READ_FAIL);
+			}
+			log(level::INFO,
+			    "SBERC: get second boot seeprom failcount %d",
+			    failCount);
+			return static_cast<uint8_t>(failCount);
+		}
+	} else if (type == SeepromType::Measurement) {
+		if (seepromSide ==
+		    ENUM_ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT_PRIMARY) {
+			ATTR_PRIMARY_MEASUREMENT_SEEPROM_FAIL_COUNT_Type
+			    failCount;
+			if (DT_GET_PROP(
+				ATTR_PRIMARY_MEASUREMENT_SEEPROM_FAIL_COUNT,
+				proc, failCount)) {
+				log(level::ERROR,
+				    "SBERC: Attribute "
+				    "[ATTR_PRIMARY_MEASUREMENT_SEEPROM_FAIL_"
+				    "COUNT] read failed");
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_READ_FAIL);
+			}
+			log(level::INFO,
+			    "SBERC: get primary meas seeprom failcount %d",
+			    failCount);
+			return static_cast<uint8_t>(failCount);
+		} else {
+			ATTR_SECONDARY_MEASUREMENT_SEEPROM_FAIL_COUNT_Type
+			    failCount;
+			if (DT_GET_PROP(
+				ATTR_SECONDARY_MEASUREMENT_SEEPROM_FAIL_COUNT,
+				proc, failCount)) {
+				log(level::ERROR,
+				    "SBERC: Attribute "
+				    "[ATTR_SECONDARY_MEASUREMENT_SEEPROM_FAIL_"
+				    "COUNT] read failed");
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_READ_FAIL);
+			}
+			log(level::INFO,
+			    "SBERC: get second meas seeprom failcount %d",
+			    failCount);
+			return static_cast<uint8_t>(failCount);
+		}
+	} else {
+		log(level::ERROR, "SBERC: Unsupported seeprom type %d", type);
+	}
+	return 0;
+}
+
+/**
+ * @brief Write fail count attribute to device tree
+ *
+ * @param[in] proc processor target to operate on
+ * @param[in] side  side of the seeprom
+ * @param[in] type type of the seeprom (boot/measurement)
+ *
+ * @return Current SEEPROM failure count, throws DEVTREE_ATTR_WRITE_FAIL
+ *      exception on failure.
+ */
+void setSeepromFailCount(struct pdbg_target *proc, const SeepromType type,
+			 const uint8_t seepromSide, uint8_t failCount)
+{
+	log(level::INFO, "SBERC: set seeprom failcount %d side %d type %d",
+	    failCount, seepromSide, type);
+	if (type == SeepromType::Boot) {
+		if (seepromSide == ENUM_ATTR_BACKUP_SEEPROM_SELECT_PRIMARY) {
+			if (DT_SET_PROP(ATTR_PRIMARY_SEEPROM_FAIL_COUNT, proc,
+					failCount)) {
+				log(level::ERROR,
+				    "SBERC: Could not write(%s) "
+				    "ATTR_PRIMARY_SEEPROM_FAIL_COUNT",
+				    pdbg_target_path(proc));
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_WRITE_FAIL);
+			}
+		} else {
+			if (DT_SET_PROP(ATTR_SECONDARY_SEEPROM_FAIL_COUNT, proc,
+					failCount)) {
+				log(level::ERROR,
+				    "SBERC: Could not write(%s) "
+				    "ATTR_SECONDARY_SEEPROM_FAIL_COUNT",
+				    pdbg_target_path(proc));
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_WRITE_FAIL);
+			}
+		}
+	} else {
+		if (seepromSide ==
+		    ENUM_ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT_PRIMARY) {
+			if (DT_SET_PROP(
+				ATTR_PRIMARY_MEASUREMENT_SEEPROM_FAIL_COUNT,
+				proc, failCount)) {
+				log(level::ERROR,
+				    "SBERC: Could not write(%s) "
+				    "ATTR_PRIMARY_MEASUREMENT_SEEPROM_FAIL_"
+				    "COUNT",
+				    pdbg_target_path(proc));
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_WRITE_FAIL);
+			}
+		} else {
+			if (DT_SET_PROP(
+				ATTR_SECONDARY_MEASUREMENT_SEEPROM_FAIL_COUNT,
+				proc, failCount)) {
+				log(level::ERROR,
+				    "SBERC: Could not write(%s) "
+				    "ATTR_SECONDARY_MEASUREMENT_SEEPROM_FAIL_"
+				    "COUNT",
+				    pdbg_target_path(proc));
+				throw pdbgError_t(
+				    exception::DEVTREE_ATTR_WRITE_FAIL);
+			}
+		}
+	}
+}
+
+/**
+ * @brief Return current seeprom side used
+ *
+ * @param[in] proc processor target to operate on
+ * @param[in] type type of the seeprom (boot/measurement)
+ *
+ * @return Seeprom side used, throws DEVTREE_ATTR_READ_FAIL
+ *      exception on failure.
+ */
+uint8_t getSeepromSideUsed(struct pdbg_target *proc, const SeepromType type)
+{
+	if (type == SeepromType::Boot) {
+		ATTR_BACKUP_SEEPROM_SELECT_Type side;
+		if (DT_GET_PROP(ATTR_BACKUP_SEEPROM_SELECT, proc, side)) {
+			log(level::ERROR, "SBERC: Attribute "
+					  "[ATTR_BACKUP_SEEPROM_SELECT] read "
+					  "failed");
+			throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+		}
+		log(level::INFO, "SBERC: get boot  side %d ", side);
+		return static_cast<uint8_t>(side);
+	} else {
+		ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT_Type side;
+		if (DT_GET_PROP(ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT, proc,
+				side)) {
+			log(level::ERROR, "SBERC: Attribute "
+					  "[ATTR_BACKUP_MEASUREMENT_SEEPROM_"
+					  "SELECT] read failed");
+			throw pdbgError_t(exception::DEVTREE_ATTR_READ_FAIL);
+		}
+		log(level::INFO, "SBERC: get meas side %d ", side);
+		return static_cast<uint8_t>(side);
+	}
+	return 0;
+}
+
+/**
+ * @brief Set seeprom side to be used
+ *
+ * @param[in] proc processor target to operate on
+ * @param[in] type type of the seeprom (boot/measurement)
+ * @param[in] seepromSide side of the seeprom (boot/measurement)
+ *
+ * @return throws DEVTREE_ATTR_WRITE_FAIL exception on failure.
+ */
+void setSeepromSideToUse(struct pdbg_target *proc, const SeepromType type,
+			 uint8_t seepromSide)
+{
+	log(level::INFO, "SBERC: set seeprom side %d type %d", seepromSide,
+	    type);
+	if (type == SeepromType::Boot) {
+		if (DT_SET_PROP(ATTR_BACKUP_SEEPROM_SELECT, proc,
+				seepromSide)) {
+			log(level::ERROR,
+			    "SBERC: Could not write(%s) "
+			    "ATTR_BACKUP_SEEPROM_SELECT",
+			    pdbg_target_path(proc));
+			throw pdbgError_t(exception::DEVTREE_ATTR_WRITE_FAIL);
+		}
+	} else {
+		if (DT_SET_PROP(ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT, proc,
+				seepromSide)) {
+			log(level::ERROR,
+			    "SBERC: Could not write(%s) "
+			    "ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT",
+			    pdbg_target_path(proc));
+			throw pdbgError_t(exception::DEVTREE_ATTR_WRITE_FAIL);
+		}
+	}
+}
+
+/**
  * @brief Retry reipl from current failed side
  *
  * p10_extract_sbe_rc HWP is run to identify the recovery action
@@ -407,7 +636,6 @@ void threadStopProc(struct pdbg_target *proc)
  * @return throws exception if not able to switch or for any
  *  attribute read/write error.
  */
-
 void restartSBERCHandler(struct pdbg_target *proc)
 {
 	log(level::INFO, "SBERC:restartSBERCHandler on %s",
@@ -440,8 +668,31 @@ void restartSBERCHandler(struct pdbg_target *proc)
  */
 void reiplUsingBKPBootSeeprom(struct pdbg_target *proc)
 {
-	log(level::INFO, "SBERC:reiplUsingBKPBootSeeprom on %s",
+	assert(proc != nullptr);
+
+	log(level::INFO, "SBERC: reiplUsingBKPBootSeeprom on %s",
 	    pdbg_target_path(proc));
+
+	// Determine the current side of the SEEPROM used
+	auto seepromSideUsed = getSeepromSideUsed(proc, SeepromType::Boot);
+
+	// update max failure count to the attribute to mark it as bad.
+	setSeepromFailCount(proc, SeepromType::Boot, seepromSideUsed,
+			    MAX_SEEPROM_FAIL_COUNT);
+
+	// Switch the seeprom if possible else throw error to log pel
+	// If current side of SEEPROM is primary , check the fail count of the
+	// secondary, vice-versa.
+	uint8_t failCount =
+	    getSeepromFailCount(proc, SeepromType::Boot, (!seepromSideUsed));
+	if (failCount < MAX_SEEPROM_FAIL_COUNT) {
+		setSeepromSideToUse(proc, SeepromType::Boot, !seepromSideUsed);
+		return;
+	}
+
+	log(level::ERROR,
+	    "SBERC: Both primary and secondary boot seeproms are bad");
+	throw sbeError_t(exception::SBE_BOOT_SEEPROMS_BAD);
 }
 
 /**
