@@ -27,6 +27,7 @@ using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
 
 void sbeErrorHandler(struct pdbg_target *proc);
+void reiplUsingBKPBootSeeprom(struct pdbg_target *proc);
 
 /**
  * @brief helper function to log SBE debug data
@@ -638,8 +639,38 @@ void setSeepromSideToUse(struct pdbg_target *proc, const SeepromType type,
  */
 void restartSBERCHandler(struct pdbg_target *proc)
 {
+	assert(proc != NULL);
+
 	log(level::INFO, "SBERC:restartSBERCHandler on %s",
 	    pdbg_target_path(proc));
+
+	uint8_t seepromSide = getSeepromSideUsed(proc, SeepromType::Boot);
+	uint8_t failCount =
+	    getSeepromFailCount(proc, SeepromType::Boot, seepromSide);
+
+	if (failCount < MAX_SEEPROM_FAIL_COUNT) {
+		failCount++;
+		// Update the respective SEEPROM side attribute
+		(void)setSeepromFailCount(proc, SeepromType::Boot, seepromSide,
+					  failCount);
+
+		log(level::INFO,
+		    "SBERC: Attempting to REIPL using the same side of the"
+		    "seeprom. side=%d proc=%s",
+		    seepromSide, pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_REIPL_WITHOUT_SWITCHING);
+	}
+
+	if (failCount >= MAX_SEEPROM_FAIL_COUNT) {
+		// RE-IPLing using the same side of the SEEPROM may not solve
+		// the issue, will attempt to switch the SEEPROM and re-ipl.
+		log(level::INFO,
+		    "SBERC: RE-IPLing using the same side of the SEEPROM"
+		    " did not solve the issue. Will attempt to "
+		    "switch the SEEPROM"
+		    " and re-IPL");
+		(void)reiplUsingBKPBootSeeprom(proc);
+	}
 }
 
 /**
