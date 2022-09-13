@@ -745,11 +745,11 @@ static bool skip_clock_reset()
  * For all clocks available, do a soft reset, and then check the status register
  * to check whether it encounter a calibration failure or not.
  *
- * @param[out] clock_count    number of clocks available in the system
+ * @param[out]  clock_select  clock selection type
  *
  * @return 0 on success, 1 on failure
  */
-static int initialize_and_check_clock_chip(uint8_t &clock_count)
+static int initialize_and_check_clock_chip(uint8_t &clock_select)
 {
 	struct pdbg_target *clock_target;
 	enum pdbg_target_status status;
@@ -759,9 +759,7 @@ static int initialize_and_check_clock_chip(uint8_t &clock_count)
 	std::vector<std::pair<std::string, std::string>> ffdcs;
 	uint8_t clk_pos = 0;
 	bool skip_reset = false;
-
-	// initialize output variable.
-	clock_count = 0;
+	uint8_t clock_count = 0;
 
 	// Clock reset will revert all i2c write done, which may have written
 	// to test firmware for different error scenario, in lab environment.
@@ -789,6 +787,15 @@ static int initialize_and_check_clock_chip(uint8_t &clock_count)
 			    IPL_ERR_ATTR_READ_FAIL);
 			rc++;
 			continue;
+		}
+
+		// Update clock select value based on clock position
+		// Note : Unsupported index value defaults to user initliased
+		// value
+		if (clk_pos == 0) {
+			clock_select = ENUM_ATTR_CP_REFCLOCK_SELECT_OSC0;
+		} else if (clk_pos == 1) {
+			clock_select = ENUM_ATTR_CP_REFCLOCK_SELECT_OSC1;
 		}
 
 		status = pdbg_target_probe(clock_target);
@@ -885,6 +892,21 @@ static int initialize_and_check_clock_chip(uint8_t &clock_count)
 			}
 		}
 	}
+
+	// Check clock count value is valid.
+	if ((rc == 0) && (clock_count != 1 && clock_count != 2)) {
+		ipl_log(IPL_ERROR,
+			"Invalid number (%d) of clock target found\n",
+			clock_count);
+
+		ipl_plat_procedure_error_handler(IPL_ERR_INVALID_NUM_CLOCK);
+		rc++;
+	}
+
+	// Override clock slection value incase spare clock support is available
+	if ((rc == 0) && (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE)) {
+		clock_select = fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
+	}
 	return rc;
 }
 
@@ -892,8 +914,11 @@ static int ipl_set_ref_clock(void)
 {
 	struct pdbg_target *proc;
 	int rc = 0;
-	uint8_t clock_count = 0;
 	fapi2::ReturnCode fapirc;
+	// Default value of attribute will be for non-redundant mode
+	fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
+	    ENUM_ATTR_CP_REFCLOCK_SELECT_OSC0;
+
 	if (ipl_type() == IPL_TYPE_MPIPL)
 		return -1;
 
@@ -905,34 +930,21 @@ static int ipl_set_ref_clock(void)
 		return 1;
 	}
 
-	if (initialize_and_check_clock_chip(clock_count)) {
+	if (initialize_and_check_clock_chip(clock_select)) {
 		ipl_log(IPL_ERROR, "Clock initialization failed\n");
 		return 1;
 	}
-	if (clock_count != 1 && clock_count != 2) {
-		ipl_log(IPL_ERROR,
-			"Invalid number (%d) of clock target found\n",
-			clock_count);
-		ipl_plat_procedure_error_handler(IPL_ERR_INVALID_NUM_CLOCK);
-		return 1;
-	}
 
-	// Check if system have clocks to enable redundant mode,
-	// If yes set attribute to enable redundant mode.
-	// Default value of attribute will be for non-redundant mode
-	if (clock_count == NUM_CLOCK_FOR_REDUNDANT_MODE) {
-		fapi2::ATTR_CP_REFCLOCK_SELECT_Type clock_select =
-		    fapi2::ENUM_ATTR_CP_REFCLOCK_SELECT_BOTH_OSC0;
-		if (!pdbg_target_set_attribute(proc, "ATTR_CP_REFCLOCK_SELECT",
-					       1, 1, &clock_select)) {
-			ipl_log(IPL_ERROR,
-				"Attribute CP_REFCLOCK_SELECT update failed"
-				" for proc %d \n",
-				pdbg_target_index(proc));
-			ipl_plat_procedure_error_handler(IPL_ERR_ATTR_WRITE);
-			rc++;
-			return 1;
-		}
+	// Update clock select mode value.
+	if (!pdbg_target_set_attribute(proc, "ATTR_CP_REFCLOCK_SELECT", 1, 1,
+				       &clock_select)) {
+		ipl_log(IPL_ERROR,
+			"Attribute CP_REFCLOCK_SELECT update failed"
+			" for proc %d \n",
+			pdbg_target_index(proc));
+		ipl_plat_procedure_error_handler(IPL_ERR_ATTR_WRITE);
+		rc++;
+		return 1;
 	}
 
 	ipl_log(IPL_INFO,
