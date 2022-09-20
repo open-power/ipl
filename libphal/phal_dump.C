@@ -427,15 +427,15 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 			    pdbg_target_path(proc), fapiRc);
 		} else {
 			std::vector<DumpPPERegValue> ppeState;
-			for (auto& gpr : ppeGprsValue) {
-				ppeState.emplace_back(gpr.number, gpr.value);
-			}
 			for (auto& spr : ppeSprsValue) {
-				ppeState.emplace_back(spr.number, spr.value);
-			}
+                                ppeState.emplace_back(spr.number, spr.value);
+                        }
 			for (auto& xir : ppeXirsValue) {
-				ppeState.emplace_back(xir.number, xir.value);
-			}
+                                ppeState.emplace_back(xir.number, xir.value);
+                        }
+			for (auto& gpr : ppeGprsValue) {
+                                ppeState.emplace_back(gpr.number, gpr.value);
+                        }
 
 			std::string dumpFilename =
 			    baseFilename + "p10_ppe_state";
