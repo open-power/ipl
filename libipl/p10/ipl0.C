@@ -22,6 +22,7 @@ extern "C" {
 #include <libguard/guard_interface.hpp>
 #include <libguard/guard_entity.hpp>
 #include <libguard/include/guard_record.hpp>
+#include <libguard/guard_exception.hpp>
 #include <filesystem>
 #include <fstream>
 #include <array>
@@ -682,7 +683,14 @@ static int ipl_updatehwmodel(void)
 	    (!fs::exists(BOOTTIME_GUARD_INDICATOR)))
 		apply_fco_override();
 
-	process_guard_records();
+	try {
+		process_guard_records();
+	} catch (const openpower::guard::exception::GuardException &ex) {
+		// capture the exception to use it in the PEL
+		char *exceptionReason = const_cast<char *>(ex.what());
+		ipl_error_callback({IPL_ERR_GUARD_FILE_READ, exceptionReason});
+		throw ex;
+	}
 
 	if (!boot_file_absent && (ipl_type() != IPL_TYPE_MPIPL)) {
 		// Update SBE state to Not usable in reboot path(not on MPIPL)
