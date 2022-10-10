@@ -22,6 +22,7 @@ extern "C" {
 #include <libguard/guard_interface.hpp>
 #include <libguard/guard_entity.hpp>
 #include <libguard/include/guard_record.hpp>
+#include <libguard/guard_exception.hpp>
 #include <filesystem>
 #include <fstream>
 #include <array>
@@ -387,67 +388,92 @@ static void process_guard_records()
 		return;
 	}
 
-	openpower::guard::libguard_init(false);
+	try {
+		openpower::guard::libguard_init(false);
+		auto records = openpower::guard::getAll();
 
-	auto records = openpower::guard::getAll();
-	if (records.size()) {
-		ipl_log(IPL_INFO, "Number of Records = %d\n", records.size());
+		if (records.size()) {
+			ipl_log(IPL_INFO, "Number of Records = %d\n",
+				records.size());
 
-		if (!ipl_guard()) {
-			// Don't return, we should handle reconfig type guard
-			// records even if guard setting is disabled.
-			ipl_log(IPL_INFO,
-				"Disabled to apply the guard records");
-		}
-
-		for (const auto &elem : records) {
-
-			if (!ipl_guard() &&
-			    !openpower::guard::isEphemeralType(elem.errType)) {
-				// Disabled to apply the guard records so should
-				// not allow the records to apply except
-				// ephemeral type guard records.
-				continue;
-			} else if (elem.recordId == GUARD_RESOLVED) {
-				// No need to apply the resolved guard records.
-				continue;
+			if (!ipl_guard()) {
+				// Don't return, we should handle reconfig type
+				// guard records even if guard setting is
+				// disabled.
+				ipl_log(IPL_INFO,
+					"Disabled to apply the guard records");
 			}
 
-			guard_target targetinfo;
-			targetinfo.guardType = elem.errType;
-			int index = 0, i, err;
+			for (const auto &elem : records) {
 
-			targetinfo.path[index] = elem.targetId.type_size;
-			index += 1;
+				if (!ipl_guard() &&
+				    !openpower::guard::isEphemeralType(
+					elem.errType)) {
+					// Disabled to apply the guard records
+					// so should not allow the records to
+					// apply except ephemeral type guard
+					// records.
+					continue;
+				} else if (elem.recordId == GUARD_RESOLVED) {
+					// No need to apply the resolved guard
+					// records.
+					continue;
+				}
 
-			for (i = 0; i < (0x0F & elem.targetId.type_size); i++) {
+				guard_target targetinfo;
+				targetinfo.guardType = elem.errType;
+				int index = 0, i, err;
 
 				targetinfo.path[index] =
-				    elem.targetId.pathElements[i].targetType;
-				targetinfo.path[index + 1] =
-				    elem.targetId.pathElements[i].instance;
+				    elem.targetId.type_size;
+				index += 1;
 
-				index += sizeof(elem.targetId.pathElements[0]);
+				for (i = 0;
+				     i < (0x0F & elem.targetId.type_size);
+				     i++) {
+
+					targetinfo.path[index] =
+					    elem.targetId.pathElements[i]
+						.targetType;
+					targetinfo.path[index + 1] =
+					    elem.targetId.pathElements[i]
+						.instance;
+
+					index += sizeof(
+					    elem.targetId.pathElements[0]);
+				}
+
+				// Clear ephemeral type guard records in the
+				// normal ipl.
+				if ((ipl_type() == IPL_TYPE_NORMAL) &&
+				    openpower::guard::isEphemeralType(
+					elem.errType)) {
+					openpower::guard::clear(elem.recordId);
+					targetinfo.set_hwas_state = true;
+				} else {
+					targetinfo.set_hwas_state = false;
+				}
+
+				err = pdbg_target_traverse(
+				    NULL, update_hwas_state_callback,
+				    &targetinfo);
+				if ((err == GUARD_CONTINUE_TGT_TRAVERSAL) ||
+				    (err == GUARD_TGT_NOT_FOUND))
+					ipl_log(
+					    IPL_ERROR,
+					    "Failed to set HWAS state for guard"
+					    " record[ID: %d]\n",
+					    elem.recordId);
 			}
-
-			// Clear ephemeral type guard records in the normal ipl.
-			if ((ipl_type() == IPL_TYPE_NORMAL) &&
-			    openpower::guard::isEphemeralType(elem.errType)) {
-				openpower::guard::clear(elem.recordId);
-				targetinfo.set_hwas_state = true;
-			} else {
-				targetinfo.set_hwas_state = false;
-			}
-
-			err = pdbg_target_traverse(
-			    NULL, update_hwas_state_callback, &targetinfo);
-			if ((err == GUARD_CONTINUE_TGT_TRAVERSAL) ||
-			    (err == GUARD_TGT_NOT_FOUND))
-				ipl_log(IPL_ERROR,
-					"Failed to set HWAS state for guard"
-					" record[ID: %d]\n",
-					elem.recordId);
 		}
+	} catch (const openpower::guard::exception::GuardException &ex) {
+		// For any exeption related to guard, add the PEL and continue
+		// to boot
+		ipl_log(IPL_ERROR,
+			"Caught the exception %s and continuing to boot "
+			"without processing guard records",
+			ex.what());
+		ipl_error_callback(IPL_ERR_GUARD_PARTITION_ACCESS);
 	}
 }
 
