@@ -389,6 +389,12 @@ static void process_guard_records()
 
 	openpower::guard::libguard_init(false);
 
+	if (openpower::guard::checkWriteFlag()) {
+		ipl_log(IPL_INFO, "Guard partition is corrupt");
+		openpower::guard::clearAll();
+		return;
+	}
+
 	auto records = openpower::guard::getAll();
 	if (records.size()) {
 		ipl_log(IPL_INFO, "Number of Records = %d\n", records.size());
