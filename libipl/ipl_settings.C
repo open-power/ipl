@@ -3,6 +3,9 @@
 
 #include "libipl.H"
 
+#ifdef ENABLE_JOURNAL
+#include <systemd/sd-journal.h>
+#endif
 struct ipl_settings {
 	enum ipl_mode mode;
 	enum ipl_type type;
@@ -18,7 +21,11 @@ struct ipl_settings {
 
 static void ipl_log_default(void *priv, const char *fmt, va_list ap)
 {
+#ifdef ENABLE_JOURNAL
+	sd_journal_printv(LOG_INFO, fmt, ap);
+#else
 	vfprintf(stdout, fmt, ap);
+#endif
 }
 
 static ipl_settings g_ipl_settings = {

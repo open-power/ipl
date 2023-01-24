@@ -25,10 +25,21 @@ AC_ARG_ENABLE([libphal],
 		[build phal util library]))
 AM_CONDITIONAL([BUILD_PHAL_API], [test "x$enable_libphal" = "xyes"])
 
+AC_ARG_ENABLE([journal],
+	AS_HELP_STRING([--enable-journal]
+		[enable systemd journal]))
+AM_CONDITIONAL([BUILD_JOURNAL], [test "x$enable_journal" = "xyes"])
+
 if test "x$enable_libphal" = "xyes"; then
 	PKG_CHECK_MODULES([LIBDT_API], [libdt-api])
 	LIBS="$LIBS $LIBDT_API_LIBS"
 	CFLAGS="$CFLAGS $LIBDT_API_CFLAGS"
+fi
+
+if test "x$enable_journal" = "xyes"; then
+	PKG_CHECK_MODULES([LIB_SYSTEMD], [libsystemd])
+	LIBS="$LIBS -lsystemd"
+	CXXFLAGS="$CXXFLAGS -DENABLE_JOURNAL"
 fi
 
 AC_LANG([C++])
