@@ -567,17 +567,63 @@ static bool update_genesis_hwas_state(void)
 		for (const char *data : mProcChild) {
 			pdbg_for_each_target(data, proc, child)
 			{
-				if (!set_or_clear_state(child,
+				// mark targets as non functional in the devtree
+				// if it is marked UNUSED in the MRW. This is a workaround for
+				// handling unused IOHS targets in Bonnell.	
+				if (strcmp(data , "iohs") == 0)
+				{
+					ATTR_IOHS_CONFIG_MODE_Type iohs_config;
+					if (!pdbg_target_get_attribute(child,
+						"ATTR_IOHS_CONFIG_MODE",
+						1,
+						1, &iohs_config)) {
+						ipl_log(IPL_ERROR,
+							"Attribute ATTR_IOHS_CONFIG_MODE read failed"
+							" for iohs '%s' \n",
+							pdbg_target_path(child));
+						ipl_plat_procedure_error_handler(
+							IPL_ERR_ATTR_READ_FAIL);
+						return false;
+					}
+					if (iohs_config == ENUM_ATTR_IOHS_CONFIG_MODE_UNUSED) {
+						ipl_log(IPL_INFO,
+							"iohs(%s) setting to non functional \n",
+						pdbg_target_path(child));
+						if (!set_or_clear_state(child, false)) {
+							ipl_log(IPL_ERROR,
+								"Failed to set HWAS state of "
+								"%s, index %d\n",
+								data, pdbg_target_index(child));
+							ipl_error_callback(IPL_ERR_ATTR_WRITE);
+							return false;
+						}
+					}
+					else
+					{
+						if (!set_or_clear_state(child,
 							target_enabled)) {
-					ipl_log(IPL_ERROR,
-						"Failed to set HWAS state of "
-						"%s, index %d\n",
-						data, pdbg_target_index(child));
-					ipl_error_callback(IPL_ERR_ATTR_WRITE);
-					return false;
+							ipl_log(IPL_ERROR,
+								"Failed to set HWAS state of "
+								"%s, index %d\n",
+								data, pdbg_target_index(child));
+							ipl_error_callback(IPL_ERR_ATTR_WRITE);
+							return false;
+						}
+					}
+				} //iohs
+				else {
+					if (!set_or_clear_state(child,
+							target_enabled)) {
+						ipl_log(IPL_ERROR,
+							"Failed to set HWAS state of "
+							"%s, index %d\n",
+							data, pdbg_target_index(child));
+						ipl_error_callback(IPL_ERR_ATTR_WRITE);
+						return false;
+					}
 				}
-			}
-		}
+			} //foreach
+		} //endfor
 	}
 
 	pdbg_for_each_class_target("oscrefclk", clock_target)
