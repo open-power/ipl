@@ -8,7 +8,9 @@
 #include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
+
 #include <unistd.h>
+#include <filesystem>
 
 namespace openpower::phal
 {
@@ -220,6 +222,49 @@ bool isDumpAllowed(struct pdbg_target *proc)
 
 sbeError_t captureFFDC(struct pdbg_target *proc)
 {
+	{
+		/**
+		 * @brief This is only a test section to test the
+		 * SBE_RC_EXTRACT_HWP with PDBG backend switching.
+		 * The exact location of the calling instance is
+		 * yet TBD
+		 */
+		const std::filesystem::path filePath =
+		    "/tmp/test_SBERC_EXTRACT_HWP.txt";
+		if (!proc)
+			log(level::INFO,
+			    "Swarnendu-Debug-Msg: Processor chip is NULL");
+
+		auto fileExists = std::filesystem::exists(filePath);
+
+		if (!fileExists)
+			log(level::INFO,
+			    "Swarnendu-Debug-Msg: File %s doesn't exist",
+			    filePath.c_str());
+
+		if (proc && fileExists) {
+			FFDC ffdcData;
+			const auto failingUnitId = pdbg_target_index(proc);
+			if (!libekb_get_sbe_ffdc_via_switch_backend(
+				failingUnitId, ffdcData, proc)) {
+				log(level::ERROR,
+				    "Swarnendu-Debug-Msg: "
+				    "libekb_get_sbe_ffdc_via_switch_backend "
+				    "returned false");
+				return sbeError_t(exception::SBE_FFDC_NO_DATA);
+			}
+			log(level::INFO, "Swarnendu-Debug-Msg: "
+					 "libekb_get_sbe_ffdc_via_switch_"
+					 "backend returned true");
+		}
+	}
+
+	if (!isPrimaryProc(proc)) {
+		log(level::ERROR, "Swarnendu-Debug-Msg: (In IPL) Returned proc "
+				  "target is not the primary one");
+		return sbeError_t(exception::SBE_CMD_FAILED);
+	}
+
 	// get SBE FFDC info
 	bufPtr_t bufPtr;
 	uint32_t ffdcLen = 0;
