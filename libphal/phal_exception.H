@@ -31,6 +31,7 @@ enum ERR_TYPE {
 	DEVTREE_PRI_PROC_NOT_FOUND,
 	PDBG_FSI_READ_FAIL,
 	PDBG_FSI_WRITE_FAIL,
+	SBE_DUMP_IS_ALREADY_COLLECTED,
 };
 
 // Error type to message map.
@@ -55,8 +56,9 @@ const errMsgMapType errMsgMap = {
     {DEVTREE_ATTR_WRITE_FAIL, "Device Tree attribute write fail"},
     {DEVTREE_PRI_PROC_NOT_FOUND, "Device Tree primary processor not found"},
     {PDBG_FSI_READ_FAIL, "FSI read failed"},
-    {PDBG_FSI_WRITE_FAIL, "FSI write failed"}};
-
+    {PDBG_FSI_WRITE_FAIL, "FSI write failed"},
+    {SBE_DUMP_IS_ALREADY_COLLECTED, "Dump from this SBE is already collected"},
+};
 // phal specific errors base exception class
 struct phalError : public std::exception {
 	virtual ERR_TYPE errType() const noexcept = 0;
