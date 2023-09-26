@@ -280,4 +280,28 @@ bool isSbeVitalAttnActive(struct pdbg_target *proc)
 	return validAttn;
 }
 
+bool hasControlTransitionedToHost()
+{
+	// Read the scratch register to find if the control has moved to host
+	auto pibTarget = pdbg_target_from_path(nullptr, "/proc0/pib");
+
+	uint64_t l_coreScratchRegData = 0xFFFFFFFFFFFFFFFFull;
+	// HB changes the below core scratch reg as one of the last instructions
+	// that is run, so if that is zero then we're in host (hypervisor)
+	uint64_t l_coreScratchRegAddr = 0x4602F489;
+
+	// Is there any error in reading the scom address, consider control is
+	// in hostboot
+	if (pib_read(pibTarget, l_coreScratchRegAddr, &l_coreScratchRegData)) {
+		// If unable to read the register, by default consider the
+		// control is in hostboot
+		log(level::ERROR, "scom read error: 0x%X",
+		    l_coreScratchRegAddr);
+		return false;
+	}
+
+	// If the register reads zero, return control moved to host.
+	return (l_coreScratchRegData == 0);
+}
+
 } // namespace openpower::phal::pdbg
