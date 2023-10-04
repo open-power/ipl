@@ -89,7 +89,7 @@ bool isDumpAllowed(struct pdbg_target *proc);
  * Exceptions: SbeError for pdbg lib function failure
  *             std::runtime_error - for file operation failure.
  */
-sbeError_t captureFFDC(struct pdbg_target *proc);
+sbeError_t captureFFDC(struct pdbg_target *&proc);
 
 /**
  * @brief Execute continue mpipl on the pib

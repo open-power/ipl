@@ -7,6 +7,7 @@
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
+#include <ekb/chips/p10/procedures/hwp/perv/p10_extract_sbe_rc.H>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <unistd.h>
 
@@ -19,6 +20,151 @@ using namespace openpower::phal::logging;
 using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
+
+static sbeError_t switchPdbgBackend(std::string_view backendString,
+				    struct pdbg_target *&proc)
+{
+	log(level::INFO,
+	    "Enter switchPdbgBackend with targeted backend as (%s)",
+	    backendString);
+	if (backendString.empty()) {
+		log(level::ERROR, "Backend type is not provided for switching");
+		return exception::PDBG_INIT_FAIL;
+	}
+
+	log(level::INFO, "Switching PDBG backend to (%s)", backendString);
+	enum pdbg_backend backend;
+	if (("SBEFIFO" == backendString) || ("sbefifo" == backendString))
+		backend = pdbg_backend::PDBG_BACKEND_SBEFIFO;
+	else if (("KERNEL" == backendString) || ("kernel" == backendString))
+		backend = pdbg_backend::PDBG_BACKEND_KERNEL;
+	else if (("FSI" == backendString) || ("fsi" == backendString))
+		backend = pdbg_backend::PDBG_BACKEND_FSI;
+	else if (("I2C" == backendString) || ("i2c" == backendString))
+		backend = pdbg_backend::PDBG_BACKEND_I2C;
+	else
+		backend = pdbg_backend::PDBG_DEFAULT_BACKEND;
+
+	// First clear the existing dev tree
+	if (pdbg_target_root())
+		pdbg_release_dt_root();
+
+	// Then set the backend to the targeted one
+	if (!pdbg_set_backend(backend, nullptr)) {
+		log(level::ERROR, "Backend type can not be set to %s",
+		    backendString);
+		return exception::PDBG_INIT_FAIL;
+	}
+	constexpr auto devtree =
+	    "/var/lib/phosphor-software-manager/pnor/rw/DEVTREE";
+	// PDBG_DTB environment variable set to CEC device tree path
+	if (setenv("PDBG_DTB", devtree, 1)) {
+		log(level::ERROR, "Failed to set PDBG_DTB. ErrNo: %s",
+		    strerror(errno));
+		return exception::PDBG_INIT_FAIL;
+	}
+	constexpr auto PDATA_INFODB_PATH =
+	    "/usr/share/pdata/attributes_info.db";
+	// PDATA_INFODB environment variable set to attributes tool infodb path
+	if (setenv("PDATA_INFODB", PDATA_INFODB_PATH, 1)) {
+		log(level::ERROR, "Failed to set PDATA_INFODB_PATH. ErrNo: %s",
+		    strerror(errno));
+		return exception::PDBG_INIT_FAIL;
+	}
+	// initialize the targeting system
+	if (!pdbg_targets_init(nullptr)) {
+		log(level::ERROR, "pdbg_targets_init failed for backend %s",
+		    backendString);
+		return exception::PDBG_INIT_FAIL;
+	}
+	// Get the new root node of the new device tree
+	auto root = pdbg_target_root();
+	if (!root) {
+		log(level::ERROR,
+		    "root target can not be aquired after switching backend %s",
+		    backendString);
+		return exception::PDBG_INIT_FAIL;
+	}
+	// Probe all the new targets before returning
+	pdbg_target_probe_all(root);
+
+	// Get the primary proc from the new device tree
+	proc = getPrimaryProc();
+	if (!getPibTarget(proc)) {
+		log(level::ERROR,
+		    "Probing PIB target failed after swicthing PDBG backend to "
+		    "%s",
+		    backendString);
+		return exception::PDBG_TARGET_NOT_OPERATIONAL;
+	}
+	if (!getFsiTarget(proc)) {
+		log(level::ERROR,
+		    "Probing FSI target failed after swicthing PDBG backend to "
+		    "%s",
+		    backendString);
+		return exception::PDBG_TARGET_NOT_OPERATIONAL;
+	}
+	return exception::NONE;
+}
+
+std::tuple<fapi2::ReturnCode, std::string>
+    getSbeExtractRc(struct pdbg_target *proc)
+{
+	log(level::INFO, "Enter getSbeExtractRc for proc target (%s)",
+	    pdbg_target_path(proc));
+
+	// Execute SBE extract rc to get the reason code for SEEPROM/SBE boot
+	// failure
+	P10_EXTRACT_SBE_RC::RETURN_ACTION recovAction;
+	// p10_extract_sbe_rc is returning the error along with
+	// recovery action.
+	auto fapiRc = p10_extract_sbe_rc(proc, recovAction, true);
+	std::string recovActionString;
+
+	switch (recovAction) {
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::ERROR_RECOVERED: {
+		recovActionString = "ERROR_RECOVERED";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::NO_RECOVERY_ACTION: {
+		recovActionString = "NO_RECOVERY_ACTION";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::RECONFIG_WITH_CLOCK_GARD: {
+		recovActionString = "RECONFIG_WITH_CLOCK_GARD";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_BKP_BMSEEPROM: {
+		recovActionString = "REIPL_BKP_BMSEEPROM";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_BKP_MSEEPROM: {
+		recovActionString = "REIPL_BKP_MSEEPROM";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_UPD_MSEEPROM: {
+		recovActionString = "REIPL_UPD_MSEEPROM";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::REIPL_UPD_SPI_CLK_DIV: {
+		recovActionString = "REIPL_UPD_SPI_CLK_DIV";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::RESTART_CBS: {
+		recovActionString = "RESTART_CBS";
+		break;
+	}
+	case P10_EXTRACT_SBE_RC::RETURN_ACTION::RESTART_SBE: {
+		recovActionString = "RESTART_SBE";
+		break;
+	}
+	default: {
+		recovActionString = "UNKNOWN_RECOV_ACTION";
+		break;
+	}
+	}
+	return std::make_tuple(fapiRc, recovActionString);
+}
 
 /**
  * @brief helper function to log SBE debug data
@@ -111,7 +257,54 @@ void sbeHaltStateRecovery(struct pdbg_target *proc)
 		log(level::ERROR,
 		    "Failed: Checking SBE state procedure (%s) fapiRC=%x",
 		    pdbg_target_path(proc), fapiRC);
-		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+		/**
+		 * Okay, so the SBE is dead with the current backend SBEFIFO.
+		 * Let's switch it to KERNEL and try to run the SBE_EXTRACT_RC
+		 * to see if we can get some FFDC data along with the SBE dead's
+		 * reason
+		 */
+		auto switchBackend = [&](std::string_view backend) {
+			auto sbeErr_t = switchPdbgBackend(backend, proc);
+			if (sbeErr_t.errType() != exception::NONE)
+				log(level::ERROR,
+				    "Switching the backend to '%s' failed",
+				    backend.data());
+			return sbeErr_t;
+		};
+
+		if (switchBackend("KERNEL").errType() == exception::NONE) {
+			log(level::INFO, "Calling Extract SBE RC for details");
+			const auto &[fapiSBE_RC, recovAction] =
+			    getSbeExtractRc(proc);
+			if (fapiSBE_RC == fapi2::FAPI2_RC_SUCCESS) {
+				log(level::INFO,
+				    "Recovery action from getSbeExtractRc "
+				    "returned as: %s",
+				    recovAction);
+				// Log the SBE debug data and then return
+				logSbeDebugData(proc);
+				// But before that switch the PDBG backend back
+				// to SBEFIFO but don't throw any error here if
+				// it fails as during the next reboot which will
+				// be happening eventually after this method
+				// returns the backend will be automatically
+				// switched to SBEFIFO
+				switchBackend("SBEFIFO");
+				throw sbeError_t(exception::SBE_EXTRACT_RC);
+			} else {
+				log(level::ERROR, "getSbeExtractRc HWP failed");
+				// Try to switch back the PDBG backend to
+				// SBEFIFO before we throw the error
+				switchBackend("SBEFIFO");
+				throw sbeError_t(
+				    exception::SBE_STATE_READ_FAIL);
+			}
+		} else {
+			// Try to switch back the PDBG backend to SBEFIFO before
+			// we throw the error
+			switchBackend("SBEFIFO");
+			throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+		}
 	}
 	if (sbeReg.currState == SBE_STATE_RUNTIME) {
 		log(level::INFO, "SBE (%s), recoverd from halt state",
@@ -218,7 +411,7 @@ bool isDumpAllowed(struct pdbg_target *proc)
 	return allowed;
 }
 
-sbeError_t captureFFDC(struct pdbg_target *proc)
+sbeError_t captureFFDC(struct pdbg_target *&proc)
 {
 	// get SBE FFDC info
 	bufPtr_t bufPtr;
@@ -236,13 +429,75 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
 	}
 	// TODO Need to remove this once pdbg header file support in place
-	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
-	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
+	constexpr auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
+	constexpr auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
 
 	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
 		log(level::ERROR, "SBE chipop timeout reported(%s)",
 		    pdbg_target_path(proc));
-		return sbeError_t(exception::SBE_CMD_TIMEOUT);
+		/**
+		 * Okay, so the SBE is dead with the current backend SBEFIFO.
+		 * Let's switch it to KERNEL and try to run the SBE_EXTRACT_RC
+		 * to see if we can get some FFDC data along with the SBE dead's
+		 * reason
+		 */
+		auto switchBackend = [&](std::string_view backend) {
+			auto sbeErr_t = switchPdbgBackend(backend, proc);
+			if (sbeErr_t.errType() != exception::NONE)
+				log(level::ERROR,
+				    "Switching the backend to '%s' failed",
+				    backend.data());
+			return sbeErr_t;
+		};
+
+		if (switchBackend("KERNEL").errType() != exception::NONE) {
+			// Try to switch the PDBG backend back to SBEFIFO before
+			// returning but don't throw any error if it fails
+			switchBackend("SBEFIFO");
+			return sbeError_t(exception::SBE_CMD_TIMEOUT);
+		}
+		log(level::INFO, "Calling Extract SBE RC for details");
+		const auto &[fapiRC, recovAction] = getSbeExtractRc(proc);
+		if (fapiRC != fapi2::FAPI2_RC_SUCCESS) {
+			log(level::INFO, "Calling getSbeExtractRc failed");
+			// Try to switch the PDBG backend back to SBEFIFO before
+			// returning but don't throw any error if it fails
+			switchBackend("SBEFIFO");
+			return sbeError_t(exception::SBE_CMD_TIMEOUT);
+		} else {
+			log(level::INFO,
+			    "Recovery action returned from getSbeExtractRc as: "
+			    "%s",
+			    recovAction);
+			// Try to get the SBE FFDC with the new backend
+			if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(),
+					 &ffdcLen)) {
+				log(level::ERROR,
+				    "sbe_ffdc_get function failed with new "
+				    "backend too");
+				throw sbeError_t(
+				    exception::SBE_FFDC_GET_FAILED);
+			} else {
+				// Handle empty buffer.
+				if (!ffdcLen) {
+					// log message and return.
+					log(level::ERROR,
+					    "Empty SBE FFDC returned (%s)",
+					    pdbg_target_path(proc));
+					return sbeError_t(
+					    exception::SBE_FFDC_NO_DATA);
+				}
+				// Try to switch the PDBG backend back to
+				// SBEFIFO before returning but don't throw any
+				// error if it fails
+				switchBackend("SBEFIFO");
+				// create ffdc file
+				tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
+				return sbeError_t(exception::SBE_EXTRACT_RC,
+						  ffdcFile.getFd(),
+						  ffdcFile.getPath().c_str());
+			}
+		}
 	}
 
 	// Handle empty buffer.
