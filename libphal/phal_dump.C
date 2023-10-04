@@ -193,6 +193,7 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	// Find the proc target from the failing unit id
 	struct pdbg_target* proc = getProcFromFailingId(failingUnit);
 
+
 	// Probe FSI for HWP execution
 	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
 	fsi = pdbg_target_from_path(NULL, path);
@@ -215,6 +216,22 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	     pdbg_target_probe(pib) != PDBG_TARGET_ENABLED)) {
 		log(level::ERROR, "Failed to prob PIB or FSI");
 		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+
+	enum sbe_state state;
+
+	// If the SBE dump is already collected return error
+	if (sbe_get_state(pib, &state)) {
+		log(level::ERROR, "Failed to read SBE state information (%s)",
+				pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+	
+	}
+
+	if (state == SBE_STATE_FAILED) {
+		log(level::ERROR, "Dump is already collected from the "
+				"SBE on (%s)", pdbg_target_path(proc));
+		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
 	}
 
 	// Execute SBE extract rc to set up sdb bit for pibmem dump to work
