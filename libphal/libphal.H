@@ -271,6 +271,15 @@ void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val);
  */
 bool isSbeVitalAttnActive(struct pdbg_target *proc);
 
+/**
+ * @brief Check if Hostboot has completed and the control transistioned to Host/PHYP
+ *
+ * @return true when we have moved to PHYP
+ * @return false if there is any error in reading the scom address, 
+ * consider control still in hostboot
+ */
+bool hasControlTransitionedToHost();
+
 } // namespace pdbg
 
 namespace dump
