@@ -193,7 +193,6 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	// Find the proc target from the failing unit id
 	struct pdbg_target* proc = getProcFromFailingId(failingUnit);
 
-
 	// Probe FSI for HWP execution
 	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
 	fsi = pdbg_target_from_path(NULL, path);
@@ -223,14 +222,15 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	// If the SBE dump is already collected return error
 	if (sbe_get_state(pib, &state)) {
 		log(level::ERROR, "Failed to read SBE state information (%s)",
-				pdbg_target_path(proc));
+		    pdbg_target_path(proc));
 		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
-	
 	}
 
 	if (state == SBE_STATE_FAILED) {
-		log(level::ERROR, "Dump is already collected from the "
-				"SBE on (%s)", pdbg_target_path(proc));
+		log(level::ERROR,
+		    "Dump is already collected from the "
+		    "SBE on (%s)",
+		    pdbg_target_path(proc));
 		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
 	}
 
@@ -313,181 +313,221 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	}
 
 	fapi2::ReturnCode fapiRc;
+	auto fileBasePath = [&](const std::string& fileName) {
+		std::string dumpFilename = baseFilename + fileName;
+		std::filesystem::path basePath = dumpPath / dumpFilename;
+		return basePath;
+	};
+	auto fapiRCToString = [&](const fapi2::ReturnCode& rc) {
+		std::string errLogID = "ELog ID: ";
+		std::stringstream ss;
+		ss << std::setw(8) << std::setfill('0')
+		   << static_cast<uint32_t>(rc);
+		errLogID += ss.str();
+		return errLogID;
+	};
+	auto writeDumpFileWithExceptionHandling =
+	    [&](std::string_view data, const size_t dataLen,
+		const std::string& dumpFileName,
+		std::filesystem::path filePath) {
+		    try {
+			    writeDumpFile(const_cast<char*>(data.data()),
+					  dataLen, filePath);
+		    } catch (const dumpError_t& e) {
+			    log(level::ERROR,
+				"Error in writing %s file, errorMsg=%s",
+				dumpFileName.c_str(), e.what());
+			    throw;
+		    }
+	    };
 
 	try {
-		// Collect SBE local register dump
-		std::vector<SBESCOMRegValue_t> sbeScomRegValue;
-		fapiRc = p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
-		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
-			log(level::ERROR,
-			    "Failed in p10_sbe_localreg_dump for proc=%s, "
-			    "rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
-		} else {
-			std::vector<DumpSBERegVal> dumpRegs;
-			for (auto& reg : sbeScomRegValue) {
-				dumpRegs.emplace_back(reg.reg.number,
-						      reg.reg.name, reg.value);
-			}
-			std::string dumpFilename =
-			    baseFilename + "p10_sbe_localreg_dump";
-			std::filesystem::path basePath =
-			    dumpPath / dumpFilename;
+		{
+			// Collect SBE local register dump
+			std::vector<SBESCOMRegValue_t> sbeScomRegValue;
+			std::string dumpFileName = "p10_sbe_localreg_dump";
+			auto basePath = fileBasePath(dumpFileName);
+			fapiRc =
+			    p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
+			if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
+				log(level::ERROR,
+				    "Failed in p10_sbe_localreg_dump for "
+				    "proc=%s, "
+				    "rc=0x%08X",
+				    pdbg_target_path(proc), fapiRc);
 
-			try {
-				writeDumpFile(
+				auto fapiRCString = fapiRCToString(fapiRc);
+				writeDumpFileWithExceptionHandling(
+				    fapiRCString, fapiRCString.length(),
+				    dumpFileName, basePath);
+			} else {
+				std::vector<DumpSBERegVal> dumpRegs;
+				for (auto& reg : sbeScomRegValue) {
+					dumpRegs.emplace_back(reg.reg.number,
+							      reg.reg.name,
+							      reg.value);
+				}
+				writeDumpFileWithExceptionHandling(
 				    reinterpret_cast<char*>(&dumpRegs[0]),
 				    sizeof(DumpSBERegVal) * dumpRegs.size(),
-				    basePath);
-			} catch (const dumpError_t& e) {
+				    dumpFileName, basePath);
+			}
+
+			// Dump contents of various PIB Masters and Slaves
+			// internal registers
+			{
+				std::vector<sRegV> pibmsRegSet;
+				for (auto& reg : pibms_regs_2dump) {
+					sRegV regv;
+					regv.reg = reg;
+					pibmsRegSet.emplace_back(regv);
+				}
+
+				std::string dumpFileName = "p10_pibms_reg_dump";
+				auto basePath = fileBasePath(dumpFileName);
+				fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
+				if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
+					log(level::ERROR,
+					    "Failed in p10_pibms_reg_dump for "
+					    "proc=%s, "
+					    "rc=0x%08X",
+					    pdbg_target_path(proc), fapiRc);
+
+					auto fapiRCString =
+					    fapiRCToString(fapiRc);
+					writeDumpFileWithExceptionHandling(
+					    fapiRCString, fapiRCString.length(),
+					    dumpFileName, basePath);
+				} else {
+					std::vector<DumpPIBMSRegVal> dumpRegs;
+					for (sRegV& regs : pibmsRegSet) {
+						dumpRegs.emplace_back(
+						    regs.reg.addr,
+						    regs.reg.name,
+						    regs.reg.attr, regs.value);
+					}
+					writeDumpFileWithExceptionHandling(
+					    reinterpret_cast<char*>(
+						&dumpRegs[0]),
+					    sizeof(DumpPIBMSRegVal) *
+						dumpRegs.size(),
+					    dumpFileName, basePath);
+				}
+			}
+
+			// Dump the PIBMEM Array based on starting and number of
+			// address
+			{
+				std::vector<array_data_t> pibmemContents;
+				bool eccEnable = false;
+				uint32_t pibmemDumpStartByte = 0;
+				// Number of bytes to be read from PIBMEM
+				static constexpr uint32_t pibmemDumpNumOfByte =
+				    0x7D400;
+				user_options userOptions =
+				    INTERMEDIATE_TILL_INTERMEDIATE;
+				std::string dumpFileName = "p10_pibmem_dump";
+				auto basePath = fileBasePath(dumpFileName);
+
+				fapiRc = p10_pibmem_dump(
+				    proc, pibmemDumpStartByte,
+				    pibmemDumpNumOfByte, userOptions,
+				    pibmemContents, eccEnable);
+				if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
+					log(level::ERROR,
+					    "Failed in p10_pibmem_dump for "
+					    "proc=%s, rc=0x%08X",
+					    pdbg_target_path(proc), fapiRc);
+
+					auto fapiRCString =
+					    fapiRCToString(fapiRc);
+					writeDumpFileWithExceptionHandling(
+					    fapiRCString, fapiRCString.length(),
+					    dumpFileName, basePath);
+				} else {
+					std::vector<uint64_t> dumpData;
+					for (auto& data : pibmemContents) {
+						dumpData.push_back(
+						    data.read_data);
+					}
+					writeDumpFileWithExceptionHandling(
+					    reinterpret_cast<char*>(
+						&dumpData[0]),
+					    sizeof(DumpPIBMSRegVal) *
+						dumpData.size(),
+					    dumpFileName, basePath);
+				}
+			}
+
+			// Dump the PPE state based on the based base address
+			{
+				PPE_DUMP_MODE mode = SNAPSHOT;
+				uint32_t instanceNum = 0;
+				std::vector<Reg32Value_t> ppeGprsValue;
+				std::vector<Reg32Value_t> ppeSprsValue;
+				std::vector<Reg32Value_t> ppeXirsValue;
+				PPE_TYPES type = PPE_TYPE_SBE;
+
+				std::string dumpFileName = "p10_ppe_state";
+				auto basePath = fileBasePath(dumpFileName);
+
+				fapiRc = p10_ppe_state(
+				    proc, type, instanceNum, mode, ppeGprsValue,
+				    ppeSprsValue, ppeXirsValue);
+				if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
+					log(level::ERROR,
+					    "Failed in p10_ppe_state for "
+					    "proc=%s, rc=0x%08X",
+					    pdbg_target_path(proc), fapiRc);
+
+					auto fapiRCString =
+					    fapiRCToString(fapiRc);
+					writeDumpFileWithExceptionHandling(
+					    fapiRCString, fapiRCString.length(),
+					    dumpFileName, basePath);
+				} else {
+					std::vector<DumpPPERegValue> ppeState;
+					for (auto& spr : ppeSprsValue) {
+						ppeState.emplace_back(
+						    spr.number, spr.value);
+					}
+					for (auto& xir : ppeXirsValue) {
+						ppeState.emplace_back(
+						    xir.number, xir.value);
+					}
+					for (auto& gpr : ppeGprsValue) {
+						ppeState.emplace_back(
+						    gpr.number, gpr.value);
+					}
+
+					writeDumpFileWithExceptionHandling(
+					    reinterpret_cast<char*>(
+						&ppeState[0]),
+					    sizeof(DumpPIBMSRegVal) *
+						ppeState.size(),
+					    dumpFileName, basePath);
+				}
+			}
+		}
+		catch (const std::exception& e)
+		{
+			log(level::ERROR, "Failed to collect the SBE dump");
+			if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
 				log(level::ERROR,
-				    "Error in writing p10_sbe_localreg_dump "
-				    "file "
-				    "errorMsg=%s",
-				    e.what());
-				throw;
+				    "Failed to set SBE state to FAILED");
 			}
+			// Dump collection failed remove the directory
+			// and partial contents
+			std::filesystem::remove_all(dumpPath);
+			// Rethrow the exception
+			throw;
 		}
 
-		// Dump contents of various PIB Masters and Slaves internal
-		// registers
-		std::vector<sRegV> pibmsRegSet;
-		for (auto& reg : pibms_regs_2dump) {
-			sRegV regv;
-			regv.reg = reg;
-			pibmsRegSet.emplace_back(regv);
-		}
-
-		fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
-		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
-			log(level::ERROR,
-			    "Failed in p10_pibms_reg_dump for proc=%s, "
-			    "rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
-		} else {
-			std::vector<DumpPIBMSRegVal> dumpRegs;
-			for (sRegV& regs : pibmsRegSet) {
-				dumpRegs.emplace_back(
-				    regs.reg.addr, regs.reg.name, regs.reg.attr,
-				    regs.value);
-			}
-			std::string dumpFilename =
-			    baseFilename + "p10_pibms_reg_dump";
-			std::filesystem::path basePath =
-			    dumpPath / dumpFilename;
-			try {
-				writeDumpFile(
-				    reinterpret_cast<char*>(&dumpRegs[0]),
-				    sizeof(DumpPIBMSRegVal) * dumpRegs.size(),
-				    basePath);
-			} catch (const dumpError_t& e) {
-				log(level::ERROR,
-				    "Error in writing p10_pibms_reg_dump file, "
-				    "errorMsg=%s",
-				    e.what());
-				throw;
-			}
-		}
-
-		// Dump the PIBMEM Array based on starting and number of address
-		std::vector<array_data_t> pibmemContents;
-		bool eccEnable = false;
-		uint32_t pibmemDumpStartByte = 0;
-		// Number of bytes to be read from PIBMEM
-		static constexpr uint32_t pibmemDumpNumOfByte = 0x7D400;
-		user_options userOptions = INTERMEDIATE_TILL_INTERMEDIATE;
-
-		fapiRc = p10_pibmem_dump(proc, pibmemDumpStartByte,
-					 pibmemDumpNumOfByte, userOptions,
-					 pibmemContents, eccEnable);
-		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
-			log(level::ERROR,
-			    "Failed in p10_pibmem_dump for proc=%s, rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
-		} else {
-			std::vector<uint64_t> dumpData;
-			for (auto& data : pibmemContents) {
-				dumpData.push_back(data.read_data);
-			}
-			std::string dumpFilename =
-			    baseFilename + "p10_pibmem_dump";
-			std::filesystem::path basePath =
-			    dumpPath / dumpFilename;
-			try {
-				writeDumpFile(
-				    reinterpret_cast<char*>(&dumpData[0]),
-				    sizeof(uint64_t) * dumpData.size(),
-				    basePath);
-			} catch (const dumpError_t& e) {
-				log(level::ERROR,
-				    "Error in writing p10_pibmem_dump file "
-				    "errorMsg=%s",
-				    e.what());
-				throw;
-			}
-		}
-
-		// Dump the PPE state based on the based base address
-		PPE_DUMP_MODE mode = SNAPSHOT;
-		uint32_t instanceNum = 0;
-		std::vector<Reg32Value_t> ppeGprsValue;
-		std::vector<Reg32Value_t> ppeSprsValue;
-		std::vector<Reg32Value_t> ppeXirsValue;
-		PPE_TYPES type = PPE_TYPE_SBE;
-
-		fapiRc =
-		    p10_ppe_state(proc, type, instanceNum, mode, ppeGprsValue,
-				  ppeSprsValue, ppeXirsValue);
-		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
-			log(level::ERROR,
-			    "Failed in p10_ppe_state for proc=%s, rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
-		} else {
-			std::vector<DumpPPERegValue> ppeState;
-			for (auto& spr : ppeSprsValue) {
-				ppeState.emplace_back(spr.number, spr.value);
-			}
-			for (auto& xir : ppeXirsValue) {
-				ppeState.emplace_back(xir.number, xir.value);
-			}
-			for (auto& gpr : ppeGprsValue) {
-				ppeState.emplace_back(gpr.number, gpr.value);
-			}
-
-			std::string dumpFilename =
-			    baseFilename + "p10_ppe_state";
-			std::filesystem::path basePath =
-			    dumpPath / dumpFilename;
-			try {
-				writeDumpFile(
-				    reinterpret_cast<char*>(&ppeState[0]),
-				    sizeof(DumpPPERegValue) * ppeState.size(),
-				    basePath);
-			} catch (const dumpError_t& e) {
-				log(level::ERROR,
-				    "Error in writing p10_ppe_state file, "
-				    "errorMsg=%s",
-				    e.what());
-				throw;
-			}
-		}
-	} catch (const std::exception& e) {
-		log(level::ERROR, "Failed to collect the SBE dump");
+		// Set SBE state to SBE_STATE_FAILED
 		if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
 			log(level::ERROR, "Failed to set SBE state to FAILED");
 		}
-		// Dump collection failed remove the directory
-		// and partial contents
-		std::filesystem::remove_all(dumpPath);
-		// Rethrow the exception
-		throw;
+		log(level::INFO, "SBE dump collected");
 	}
-
-	// Set SBE state to SBE_STATE_FAILED
-	if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
-		log(level::ERROR, "Failed to set SBE state to FAILED");
-	}
-	log(level::INFO, "SBE dump collected");
-}
 } // namespace dump
 } // namespace openpower::phal
