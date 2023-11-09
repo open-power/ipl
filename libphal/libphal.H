@@ -279,11 +279,12 @@ namespace dump
  * @brief Execute HWPs to collect SBE dump
  * @param[in] id Id of the dump
  * @param[in] failingUnit Id of proc containing failing SBE
+ * @param[in] sbeTypeId ID for SBE type i.e.; whether Odyssey or normal memory chip
+ * 						10-->Normal SBE type, 11-->Odyssey SBE type
  * @param[in] dumpPath Path to stored the dump files
  *
  * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
  */
-void collectSBEDump(uint32_t id, uint32_t failingUnit,
-		    const std::filesystem::path &dumpPath);
+void collectSBEDump(uint32_t id, uint32_t failingUnit, uint16_t sbeTypeId, const std::filesystem::path &dumpPath);
 } // namespace dump
 } // namespace openpower::phal
