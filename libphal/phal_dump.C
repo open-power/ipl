@@ -193,7 +193,6 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	// Find the proc target from the failing unit id
 	struct pdbg_target* proc = getProcFromFailingId(failingUnit);
 
-
 	// Probe FSI for HWP execution
 	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
 	fsi = pdbg_target_from_path(NULL, path);
@@ -223,14 +222,15 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	// If the SBE dump is already collected return error
 	if (sbe_get_state(pib, &state)) {
 		log(level::ERROR, "Failed to read SBE state information (%s)",
-				pdbg_target_path(proc));
+		    pdbg_target_path(proc));
 		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
-	
 	}
 
 	if (state == SBE_STATE_FAILED) {
-		log(level::ERROR, "Dump is already collected from the "
-				"SBE on (%s)", pdbg_target_path(proc));
+		log(level::ERROR,
+		    "Dump is already collected from the "
+		    "SBE on (%s)",
+		    pdbg_target_path(proc));
 		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
 	}
 
@@ -290,7 +290,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
     constexpr int ODYSSEY_SBE_DUMP = 0xB;
     auto forOdySsey = (ODYSSEY_SBE_DUMP == sbeTypeId) ? true : false;
 
-    log(level::INFO,
+	log(level::INFO,
 	    "Collecting SBE dump: path=%s, id=%d, chip position=%d",
 	    dumpPath.string().c_str(), id, failingUnit);
 
@@ -320,32 +320,33 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	try {
 		// Collect SBE local register dump
 		std::vector<SBESCOMRegValue_t> sbeScomRegValue;
-        std::string hwpName = (forOdySsey ? "ody_sbe_localreg_dump" : "p10_sbe_localreg_dump");
+		std::string hwpName = (forOdySsey ? "ody_sbe_localreg_dump"
+						  : "p10_sbe_localreg_dump");
 		/**
-         * @brief Commented till the new necessary files
-         *        for Odyssey dump collection are been
-         *        mirrored in libekb from ekb-p10
-         */
-        if (forOdySsey)
-            // fapiRc = ody_sbe_localreg_dump(proc, true, sbeScomRegValue);
-            ;
-        else
-            fapiRc = p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
+		 * @brief Commented till the new necessary files
+		 *        for Odyssey dump collection are been
+		 *        mirrored in libekb from ekb-p10
+		 */
+		if (forOdySsey)
+			// fapiRc = ody_sbe_localreg_dump(proc, true,
+			// sbeScomRegValue);
+			;
+		else
+			fapiRc =
+			    p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
 
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
 			    "Failed in %s for proc=%s, "
 			    "rc=0x%08X",
-                hwpName.c_str(),
-                pdbg_target_path(proc), fapiRc);
+			    hwpName.c_str(), pdbg_target_path(proc), fapiRc);
 		} else {
 			std::vector<DumpSBERegVal> dumpRegs;
 			for (auto& reg : sbeScomRegValue) {
 				dumpRegs.emplace_back(reg.reg.number,
 						      reg.reg.name, reg.value);
 			}
-			std::string dumpFilename =
-			    baseFilename + hwpName;
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 
@@ -359,8 +360,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    "Error in writing %s "
 				    "file "
 				    "errorMsg=%s",
-                    hwpName.c_str(),
-				    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -368,10 +368,10 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		// Dump contents of various PIB Masters and Slaves internal
 		// registers
 		std::vector<sRegV> pibmsRegSet;
-        if (forOdySsey)
-            hwpName = "ody_pibms_reg_dump";
-        else
-            hwpName = "p10_pibms_reg_dump";
+		if (forOdySsey)
+			hwpName = "ody_pibms_reg_dump";
+		else
+			hwpName = "p10_pibms_reg_dump";
 
 		for (auto& reg : pibms_regs_2dump) {
 			sRegV regv;
@@ -379,23 +379,23 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 			pibmsRegSet.emplace_back(regv);
 		}
 
-        /**
-         * @brief Commented till the new necessary files
-         *        for Odyssey dump collection are been
-         *        mirrored in libekb from ekb-p10
-         */
-        if (forOdySsey)
-            // fapiRc = fapiRc = ody_pibms_reg_dump(proc, pibmsRegSet);
-            ;
-        else
-            fapiRc = fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
+		/**
+		 * @brief Commented till the new necessary files
+		 *        for Odyssey dump collection are been
+		 *        mirrored in libekb from ekb-p10
+		 */
+		if (forOdySsey)
+			// fapiRc = fapiRc = ody_pibms_reg_dump(proc,
+			// pibmsRegSet);
+			;
+		else
+			fapiRc = fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
 
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
 			    "Failed in %s for proc=%s, "
 			    "rc=0x%08X",
-			    hwpName.c_str(),
-                pdbg_target_path(proc), fapiRc);
+			    hwpName.c_str(), pdbg_target_path(proc), fapiRc);
 		} else {
 			std::vector<DumpPIBMSRegVal> dumpRegs;
 			for (sRegV& regs : pibmsRegSet) {
@@ -403,8 +403,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    regs.reg.addr, regs.reg.name, regs.reg.attr,
 				    regs.value);
 			}
-			std::string dumpFilename =
-			    baseFilename + hwpName;
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 			try {
@@ -416,8 +415,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				log(level::ERROR,
 				    "Error in writing %s file, "
 				    "errorMsg=%s",
-                    hwpName.c_str(),
-				    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -429,32 +427,29 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		// Number of bytes to be read from PIBMEM
 		static constexpr uint32_t pibmemDumpNumOfByte = 0x7D400;
 		user_options userOptions = INTERMEDIATE_TILL_INTERMEDIATE;
-        if (forOdySsey)
-            hwpName = "ody_pibms_reg_dump";
-        else
-            hwpName = "p10_pibms_reg_dump";
+		if (forOdySsey)
+			hwpName = "ody_pibms_reg_dump";
+		else
+			hwpName = "p10_pibms_reg_dump";
 
-        /**
-         * @brief H/W team is still looking the
-         *       alternative of this HWP for Odyssey so till
-         *       they find one this poor guy is staying on an
-         *       extended notice period :-(
-         */
-        fapiRc = p10_pibmem_dump(proc, pibmemDumpStartByte,
+		/**
+		 * @brief H/W team is still looking the
+		 *       alternative of this HWP for Odyssey so till
+		 *       they find one this poor guy is staying on an
+		 *       extended notice period :-(
+		 */
+		fapiRc = p10_pibmem_dump(proc, pibmemDumpStartByte,
 					 pibmemDumpNumOfByte, userOptions,
 					 pibmemContents, eccEnable);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
-			log(level::ERROR,
-			    "Failed in %s for proc=%s, rc=0x%08X",
-			    hwpName.c_str(),
-                pdbg_target_path(proc), fapiRc);
+			log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
+			    hwpName.c_str(), pdbg_target_path(proc), fapiRc);
 		} else {
 			std::vector<uint64_t> dumpData;
 			for (auto& data : pibmemContents) {
 				dumpData.push_back(data.read_data);
 			}
-			std::string dumpFilename =
-			    baseFilename + hwpName;
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 			try {
@@ -466,8 +461,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				log(level::ERROR,
 				    "Error in writing %s file "
 				    "errorMsg=%s",
-				    hwpName.c_str(),
-                    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -480,12 +474,12 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		std::vector<Reg32Value_t> ppeXirsValue;
 		PPE_TYPES type = PPE_TYPE_SBE;
 
-        /**
-         * @brief This HWP is common for both
-         *        as informed by the HW team
-         *        thus leaving as it is
-         */
-        fapiRc =
+		/**
+		 * @brief This HWP is common for both
+		 *        as informed by the HW team
+		 *        thus leaving as it is
+		 */
+		fapiRc =
 		    p10_ppe_state(proc, type, instanceNum, mode, ppeGprsValue,
 				  ppeSprsValue, ppeXirsValue);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
