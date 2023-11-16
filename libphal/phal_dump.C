@@ -285,11 +285,14 @@ void writeDumpFile(char* data, size_t len, std::filesystem::path& dumpPath)
 }
 
 void collectSBEDump(uint32_t id, uint32_t failingUnit,
-		    const std::filesystem::path& dumpPath)
+		    const std::filesystem::path& dumpPath, const int sbeTypeId)
 {
+	if (sbeTypeId != static_cast<uint16_t>(10))
+		throw dumpError_t(exception::HWP_EXECUTION_FAILED);
+
 	log(level::INFO,
-	    "Collecting SBE dump: path=%s, id=%d, chip position=%d",
-	    dumpPath.string().c_str(), id, failingUnit);
+		"Collecting SBE dump: path=%s, id=%d, chip position=%d",
+		dumpPath.string().c_str(), id, failingUnit);
 
 	std::stringstream ss;
 	ss << std::setw(8) << std::setfill('0') << id;
