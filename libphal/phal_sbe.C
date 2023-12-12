@@ -20,6 +20,23 @@ using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
 
+bool is_ody_ocmb_chip(struct pdbg_target *target)
+{
+	const uint16_t ODYSSEY_CHIP_ID = 0x60C0;
+    const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
+    ATTR_TYPE_Type type;
+    DT_GET_PROP(ATTR_TYPE, target, type);
+    if(type != ATTR_TYPE_OCMB_CHIP) {
+    	return false;
+    }
+    ATTR_CHIP_ID_Type chipId = 0;
+    DT_GET_PROP(ATTR_CHIP_ID, target,chipId);
+    if(chipId == ODYSSEY_CHIP_ID) {
+        return true;
+	}    
+    return false;
+}
+
 /**
  * @brief helper function to log SBE debug data
  *
@@ -320,31 +337,41 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
 	}
 }
 
-void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
+void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
 {
 	log(level::INFO, "Enter: getDump(%d) on %s", type,
-	    pdbg_target_path(proc));
+	    pdbg_target_path(chip));
+
+	if (is_ody_ocmb_chip(chip))
+	{
+		auto ret = sbe_dump(chip, type, clock, faCollect, data, dataLen);
+		if (ret != 0)
+		{
+			log(level::ERROR, "getDump(%s) failed", pdbg_target_path(chip));
+		}
+		return;
+	}
 
 	// Validate input target is processor target.
-	validateProcTgt(proc);
+	validateProcTgt(chip);
 
-	if (!isTgtPresent(proc)) {
+	if (!isTgtPresent(chip)) {
 		log(level::ERROR, "getDump(%s) Target is not present",
-		    pdbg_target_path(proc));
+		    pdbg_target_path(chip));
 	}
 	// SBE halt state need recovery before dump chip-ops
-	sbeHaltStateRecovery(proc);
+	sbeHaltStateRecovery(chip);
 
 	// validate SBE state
-	validateSBEState(proc);
+	validateSBEState(chip);
 
 	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
+	struct pdbg_target *pib = getPibTarget(chip);
 
 	// call pdbg back-end function
 	if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
-		throw captureFFDC(proc);
+		throw captureFFDC(chip);
 	}
 }
 

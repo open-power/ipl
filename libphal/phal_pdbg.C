@@ -63,6 +63,24 @@ bool isTgtFunctional(struct pdbg_target *target)
 
 	return hwasState.functional;
 }
+/*
+bool is_ody_ocmb_chip(struct pdbg_target *target)
+{
+	const uint16_t ODYSSEY_CHIP_ID = 0x60C0;
+        const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
+	ATTR_CHIP_ID_type ODYSSEY_CHIP_ID = 
+	ATTR_TYPE_type type;
+	DT_GET_PROP(ATTR_TYPE, target, type);
+        if(type != ATTR_TYPE_OCMB_CHIP) {
+                                return false;
+        }
+        ATTR_CHIP_ID_type chipId = 0;
+        pdbg_target_get_attribute(ATTR_CHIP_ID, target,chipId);
+        if(chipId == ODYSSEY_CHIP_ID) {
+                return true;
+        }
+        return false;
+}*/
 
 bool isPrimaryProc(struct pdbg_target *proc)
 {
