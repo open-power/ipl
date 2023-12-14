@@ -304,20 +304,30 @@ static std::map<const int, chip_hwps*> chipHWPSMap =
 	{ 	{ PROC_SBE_DUMP, &P10_CHIP_HWPS },
 		{ ODYSSEY_SBE_DUMP, &ODYSSEY_CHIP_HWPS } };
 
-
 /**
  * @brief Return the proc target corresponding to failing unit
  * @param[in] failingUnit Position of the proc containing the failed SBE
+ * @param[in] sbeTypeId Target type i.e.; Odyssey or normal memory chip
  *
- * @return Pointer to the pdbg target for proc
+ * @return Pointer to the pdbg target
  *
  * Exceptions: PDBG_TARGET_NOT_OPERATIONAL if target is not available
  */
-struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
+struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
+					   const int sbeTypeId)
 {
-	struct pdbg_target* proc = NULL;
+	// Find if the given chip is in our known list.
+	auto chip = chipHWPSMap.find(sbeTypeId);
+	if (chip == chipHWPSMap.end())
+	{
+		log(level::ERROR, "Chip ID %d is not recognized", sbeTypeId);
+		throw sbeError_t(exception::HWP_EXECUTION_FAILED);
+	}
+	
+	struct pdbg_target* dumpTarget = nullptr;
 	struct pdbg_target* target;
-	pdbg_for_each_class_target("proc", target)
+
+	pdbg_for_each_class_target(chip->second->chip_type_string.c_str(), target)
 	{
 		if (pdbg_target_index(target) != failingUnit) {
 			continue;
@@ -326,16 +336,16 @@ struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
 		if (pdbg_target_probe(target) != PDBG_TARGET_ENABLED) {
 			break;
 		}
-		proc = target;
+		dumpTarget = target;
 	}
-	if (proc == NULL) {
+	if (!dumpTarget) {
 		log(level::ERROR,
-		    "No Proc target found to execute the dump for failing "
-		    "unit=%d",
-		    failingUnit);
+		    "No SBE target found to execute the dump for failing "
+		    "unit=%d, sbeType=%s",
+		    failingUnit, chip->second->chip_type_string);
 		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
-	return proc;
+	return dumpTarget;
 }
 
 /**
@@ -377,14 +387,24 @@ void writeSbeData(const std::filesystem::path& dumpPath, uint32_t reasonCode,
 /**
  * @brief Initialize the PDBG and SBE to start collection
  * @param[in] failingUnit Position of the proc containing the failed SBE
+ * @param[in] sbeTypeId SBE target type i.e.; Odyssey or normal memory chip
  *
  * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
  *             PDBG_TARGET_NOT_OPERATIONAL for invalid failing unit
  *             HWP_EXECUTION_FAILED if the extract rc procedure is failing
  */
 struct pdbg_target* preCollection(const uint32_t failingUnit,
-				  const std::filesystem::path& dumpPath)
+				  const std::filesystem::path& dumpPath,
+				  const int sbeTypeId)
 {
+	// Find if the given chip is in our known list.
+	auto chip = chipHWPSMap.find(sbeTypeId);
+	if (chip == chipHWPSMap.end())
+	{
+		log(level::ERROR, "Chip ID %d is not recognized", sbeTypeId);
+		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+
 	// Initialize PDBG with KERNEL backend
 	pdbg::init(PDBG_BACKEND_KERNEL);
 
@@ -392,53 +412,64 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 		log(level::ERROR, "libekb_init failed");
 		throw std::runtime_error("libekb initialization failed");
 	}
-
-	// FSI and PIB targets for executing HWP
-	struct pdbg_target *fsi, *pib;
-	char path[16];
-
-	// Find the proc target from the failing unit id
-	struct pdbg_target* proc = getProcFromFailingId(failingUnit);
-
+	// Find the target from the failing unit id
+	struct pdbg_target* target =
+	    getTargetFromFailingId(failingUnit, sbeTypeId);
 
 	// Probe FSI for HWP execution
-	sprintf(path, "/proc%d/fsi", pdbg_target_index(proc));
-	fsi = pdbg_target_from_path(NULL, path);
-	if (fsi == nullptr) {
-		log(level::ERROR, "Failed to get FSI target for(%s)",
-		    pdbg_target_path(proc));
-		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
-	}
+	struct pdbg_target* fsi = nullptr;
+	struct pdbg_target* pib = nullptr;
+	char path[16];
 
-	// Probe PIB for HWP execution
-	sprintf(path, "/proc%d/pib", pdbg_target_index(proc));
-	pib = pdbg_target_from_path(NULL, path);
-	if (pib == nullptr) {
-		log(level::ERROR, "Failed to get PIB target for(%s)",
-		    pdbg_target_path(proc));
-		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
-	}
+	if (sbeTypeId == ODYSSEY_SBE_DUMP) {
+		// Blank till we have full working implementation in PDBG for
+		// OCMB OdySsey
+		;
+	} else {
+		sprintf(path, "/proc%d/fsi", pdbg_target_index(target));
+		fsi = pdbg_target_from_path(NULL, path);
+		if (fsi == nullptr) {
+			log(level::ERROR, "Failed to get FSI target for(%s)",
+			    pdbg_target_path(target));
+			throw dumpError_t(
+			    exception::PDBG_TARGET_NOT_OPERATIONAL);
+		}
 
-	if ((pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED ||
-	     pdbg_target_probe(pib) != PDBG_TARGET_ENABLED)) {
-		log(level::ERROR, "Failed to prob PIB or FSI");
-		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
-	}
+		// Probe PIB for HWP execution
+		sprintf(path, "/proc%d/pib", pdbg_target_index(target));
+		pib = pdbg_target_from_path(NULL, path);
+		if (pib == nullptr) {
+			log(level::ERROR, "Failed to get PIB target for(%s)",
+			    pdbg_target_path(target));
+			throw dumpError_t(
+			    exception::PDBG_TARGET_NOT_OPERATIONAL);
+		}
 
-	enum sbe_state state;
+		if ((pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED ||
+		     pdbg_target_probe(pib) != PDBG_TARGET_ENABLED)) {
+			log(level::ERROR, "Failed to prob PIB or FSI");
+			throw dumpError_t(
+			    exception::PDBG_TARGET_NOT_OPERATIONAL);
+		}
 
-	// If the SBE dump is already collected return error
-	if (sbe_get_state(pib, &state)) {
-		log(level::ERROR, "Failed to read SBE state information (%s)",
-				pdbg_target_path(proc));
-		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
-	
-	}
+		enum sbe_state state;
 
-	if (state == SBE_STATE_FAILED) {
-		log(level::ERROR, "Dump is already collected from the "
-				"SBE on (%s)", pdbg_target_path(proc));
-		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
+		// If the SBE dump is already collected return error
+		if (sbe_get_state(pib, &state)) {
+			log(level::ERROR,
+			    "Failed to read SBE state information (%s)",
+			    pdbg_target_path(target));
+			throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+		}
+
+		if (state == SBE_STATE_FAILED) {
+			log(level::ERROR,
+			    "Dump is already collected from the "
+			    "SBE on (%s)",
+			    pdbg_target_path(target));
+			throw sbeError_t(
+			    exception::SBE_DUMP_IS_ALREADY_COLLECTED);
+		}
 	}
 
 	// Execute SBE extract rc to set up sdb bit for pibmem dump to work
@@ -448,15 +479,15 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 
 	// p10_extract_sbe_rc is returning the error along with
 	// recovery action, so not checking the fapirc.
-	fapiRc = p10_extract_sbe_rc(proc, recovAction, true);
+	fapiRc = chip->second->getSbeExtractRc(target, recovAction, true);
 	log(level::INFO,
 	    "p10_extract_sbe_rc for proc=%s returned rc=0x%08X and SBE "
 	    "Recovery Action=0x%08X",
-	    pdbg_target_path(proc), fapiRc, recovAction);
+	    pdbg_target_path(target), fapiRc, recovAction);
 
 	writeSbeData(dumpPath, fapiRc, recovAction);
 
-	return proc;
+	return target;
 }
 
 /**
@@ -494,26 +525,27 @@ void writeDumpFile(char* data, size_t len, std::filesystem::path& dumpPath)
 void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		    const std::filesystem::path& dumpPath, const int sbeTypeId)
 {
-	if (sbeTypeId != static_cast<uint16_t>(10))
-		throw dumpError_t(exception::HWP_EXECUTION_FAILED);
-
 	log(level::INFO,
-		"Collecting SBE dump: path=%s, id=%d, chip position=%d",
-		dumpPath.string().c_str(), id, failingUnit);
+	    "Collecting SBE dump: path=%s, id=%d, chip position=%d",
+	    dumpPath.string().c_str(), id, failingUnit);
+
+	// Execute pre-collection and get proc corresponding to failing unit
+	struct pdbg_target* target =
+	    preCollection(failingUnit, dumpPath, sbeTypeId);
+
+	//Don't check here for iterator validation. That's been done already in preCollection
+	auto chip = chipHWPSMap.find(sbeTypeId);
 
 	std::stringstream ss;
 	ss << std::setw(8) << std::setfill('0') << id;
 
 	// Filename format
-	// <dumpID>.<nodeNUM>_<procNum>.Sbedata_p10_<HWP name>
+	// <dumpID>.<nodeNUM>_<procNum>.Sbedata_Ody_/Sbedata_p10_<HWP name>
 	std::string baseFilename =
-	    ss.str() + ".0_" + std::to_string(failingUnit) + "_SbeData_p10_";
-
-	// Execute pre-collection and get proc corresponding to failing unit
-	struct pdbg_target* proc = preCollection(failingUnit, dumpPath);
+	    ss.str() + ".0_" + std::to_string(failingUnit) + chip->second->dump_file_name_string;
 
 	// Get pib for the proc
-	struct pdbg_target* pib = getPibTarget(proc);
+	struct pdbg_target* pib = chip->second->get_pib_target_common(target);
 
 	// Set SBE state to SBE_STATE_DEBUG_MODE
 	if (0 > sbe_set_state(pib, SBE_STATE_DEBUG_MODE)) {
@@ -523,24 +555,24 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	}
 
 	fapi2::ReturnCode fapiRc;
-
 	try {
 		// Collect SBE local register dump
 		std::vector<SBESCOMRegValue_t> sbeScomRegValue;
-		fapiRc = p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
+		std::string hwpName = chip->second->sbe_localreg_dump_string;
+
+		fapiRc = chip->second->getSbeLocalRegDump(target, true, sbeScomRegValue);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
-			    "Failed in p10_sbe_localreg_dump for proc=%s, "
+			    "Failed in %s for target=%s, "
 			    "rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
+			    hwpName, pdbg_target_path(target), fapiRc);
 		} else {
 			std::vector<DumpSBERegVal> dumpRegs;
 			for (auto& reg : sbeScomRegValue) {
 				dumpRegs.emplace_back(reg.reg.number,
 						      reg.reg.name, reg.value);
 			}
-			std::string dumpFilename =
-			    baseFilename + "p10_sbe_localreg_dump";
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 
@@ -551,10 +583,10 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    basePath);
 			} catch (const dumpError_t& e) {
 				log(level::ERROR,
-				    "Error in writing p10_sbe_localreg_dump "
+				    "Error in writing %s "
 				    "file "
 				    "errorMsg=%s",
-				    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -562,18 +594,20 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		// Dump contents of various PIB Masters and Slaves internal
 		// registers
 		std::vector<sRegV> pibmsRegSet;
+		hwpName = chip->second->pibms_reg_dump_string;
+
 		for (auto& reg : pibms_regs_2dump) {
 			sRegV regv;
 			regv.reg = reg;
 			pibmsRegSet.emplace_back(regv);
 		}
 
-		fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
+		fapiRc = chip->second->getPibmsRegDump(target, pibmsRegSet);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
-			    "Failed in p10_pibms_reg_dump for proc=%s, "
+			    "Failed in %s for target=%s, "
 			    "rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
+			    hwpName.c_str(), pdbg_target_path(target), fapiRc);
 		} else {
 			std::vector<DumpPIBMSRegVal> dumpRegs;
 			for (sRegV& regs : pibmsRegSet) {
@@ -581,8 +615,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    regs.reg.addr, regs.reg.name, regs.reg.attr,
 				    regs.value);
 			}
-			std::string dumpFilename =
-			    baseFilename + "p10_pibms_reg_dump";
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 			try {
@@ -592,9 +625,9 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    basePath);
 			} catch (const dumpError_t& e) {
 				log(level::ERROR,
-				    "Error in writing p10_pibms_reg_dump file, "
+				    "Error in writing %s file, "
 				    "errorMsg=%s",
-				    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -606,21 +639,19 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		// Number of bytes to be read from PIBMEM
 		static constexpr uint32_t pibmemDumpNumOfByte = 0x7D400;
 		user_options userOptions = INTERMEDIATE_TILL_INTERMEDIATE;
-
-		fapiRc = p10_pibmem_dump(proc, pibmemDumpStartByte,
-					 pibmemDumpNumOfByte, userOptions,
-					 pibmemContents, eccEnable);
+		hwpName = chip->second->pibmem_dump_string;
+		
+		fapiRc = chip->second->getPibmemDump(target, pibmemDumpStartByte, pibmemDumpNumOfByte, userOptions, pibmemContents, eccEnable);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
-			    "Failed in p10_pibmem_dump for proc=%s, rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
+			    "Failed in %s for target=%s, rc=0x%08X",
+			    hwpName.c_str(), pdbg_target_path(target), fapiRc);
 		} else {
 			std::vector<uint64_t> dumpData;
 			for (auto& data : pibmemContents) {
 				dumpData.push_back(data.read_data);
 			}
-			std::string dumpFilename =
-			    baseFilename + "p10_pibmem_dump";
+			std::string dumpFilename = baseFilename + hwpName;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 			try {
@@ -630,9 +661,9 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    basePath);
 			} catch (const dumpError_t& e) {
 				log(level::ERROR,
-				    "Error in writing p10_pibmem_dump file "
+				    "Error in writing %s file "
 				    "errorMsg=%s",
-				    e.what());
+				    hwpName.c_str(), e.what());
 				throw;
 			}
 		}
@@ -645,13 +676,11 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		std::vector<Reg32Value_t> ppeXirsValue;
 		PPE_TYPES type = PPE_TYPE_SBE;
 
-		fapiRc =
-		    p10_ppe_state(proc, type, instanceNum, mode, ppeGprsValue,
-				  ppeSprsValue, ppeXirsValue);
+		fapiRc = chip->second->getPpeState(target, type, instanceNum, mode, ppeGprsValue, ppeSprsValue, ppeXirsValue);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
-			    "Failed in p10_ppe_state for proc=%s, rc=0x%08X",
-			    pdbg_target_path(proc), fapiRc);
+			    "Failed in p10_ppe_state for target=%s, rc=0x%08X",
+			    pdbg_target_path(target), fapiRc);
 		} else {
 			std::vector<DumpPPERegValue> ppeState;
 			for (auto& spr : ppeSprsValue) {
@@ -665,7 +694,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 			}
 
 			std::string dumpFilename =
-			    baseFilename + "p10_ppe_state";
+			    baseFilename + chip->second->ppe_state_string;
 			std::filesystem::path basePath =
 			    dumpPath / dumpFilename;
 			try {
@@ -675,8 +704,8 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 				    basePath);
 			} catch (const dumpError_t& e) {
 				log(level::ERROR,
-				    "Error in writing p10_ppe_state file, "
-				    "errorMsg=%s",
+				    "Error in writing %s, "
+				    "errorMsg=%s", chip->second->ppe_state_string,
 				    e.what());
 				throw;
 			}
