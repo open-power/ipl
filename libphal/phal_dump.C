@@ -113,23 +113,22 @@ static constexpr int PROC_SBE_DUMP = 0xA;
 static constexpr int ODYSSEY_SBE_DUMP = 0xB;
 
 // Make a common abstrac base class for different chip types' HWPs
-struct chip_hwps
-{
+struct chip_hwps {
 	chip_hwps(const std::string& sbeRcExtractString,
-				const std::string& sbeLocalRegDumpString,
-				const std::string& pibmsRegDumpString,
-				const std::string& pibmemDumpString,
-				const std::string& ppeStateString,
-				const std::string& chipTypeString,
-				const std::string& dumpFileNameString)
-		: sbe_extract_rc_string(sbeRcExtractString)
-		, sbe_localreg_dump_string(sbeLocalRegDumpString)
-		, pibms_reg_dump_string(pibmsRegDumpString)
-		, pibmem_dump_string(pibmemDumpString)
-		, ppe_state_string(ppeStateString)
-		, chip_type_string(chipTypeString)
-		, dump_file_name_string(dumpFileNameString)
-	{}
+		  const std::string& sbeLocalRegDumpString,
+		  const std::string& pibmsRegDumpString,
+		  const std::string& pibmemDumpString,
+		  const std::string& ppeStateString,
+		  const std::string& chipTypeString,
+		  const std::string& dumpFileNameString) :
+	    sbe_extract_rc_string(sbeRcExtractString),
+	    sbe_localreg_dump_string(sbeLocalRegDumpString),
+	    pibms_reg_dump_string(pibmsRegDumpString),
+	    pibmem_dump_string(pibmemDumpString),
+	    ppe_state_string(ppeStateString), chip_type_string(chipTypeString),
+	    dump_file_name_string(dumpFileNameString)
+	{
+	}
 	chip_hwps() = default;
 	virtual ~chip_hwps() = default;
 	chip_hwps(const chip_hwps& rhs) = default;
@@ -137,12 +136,26 @@ struct chip_hwps
 	chip_hwps(chip_hwps&& rhs) = default;
 	chip_hwps& operator=(chip_hwps&& rhs) = default;
 
-	inline virtual fapi2::ReturnCode getSbeLocalRegDump(pdbg_target*, const uint16_t, std::vector<SBESCOMRegValue_t>&) = 0;
-	inline virtual fapi2::ReturnCode getPibmsRegDump(pdbg_target*, std::vector<sRegV>&) = 0;
-	inline virtual fapi2::ReturnCode getPibmemDump(pdbg_target*, const uint32_t, const uint32_t, const user_options, std::vector<array_data_t>&, const bool) = 0;
-	inline virtual fapi2::ReturnCode getPpeState(pdbg_target*, enum PPE_TYPES, uint32_t, const PPE_DUMP_MODE, std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&) = 0;
+	inline virtual fapi2::ReturnCode
+	    getSbeLocalRegDump(pdbg_target*, const uint16_t,
+			       std::vector<SBESCOMRegValue_t>&) = 0;
+	inline virtual fapi2::ReturnCode
+	    getPibmsRegDump(pdbg_target*, std::vector<sRegV>&) = 0;
+	inline virtual fapi2::ReturnCode
+	    getPibmemDump(pdbg_target*, const uint32_t, const uint32_t,
+			  const user_options, std::vector<array_data_t>&,
+			  const bool) = 0;
+	inline virtual fapi2::ReturnCode
+	    getPpeState(pdbg_target*, enum PPE_TYPES, uint32_t,
+			const PPE_DUMP_MODE, std::vector<Reg32Value_t>&,
+			std::vector<Reg32Value_t>&,
+			std::vector<Reg32Value_t>&) = 0;
 	inline virtual pdbg_target* get_pib_target_common(pdbg_target*) = 0;
-	inline virtual fapi2::ReturnCode getSbeExtractRc(pdbg_target* target, P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action, bool i_set_sdb = false, bool i_unsecure_mode = false) = 0;
+	inline virtual fapi2::ReturnCode
+	    getSbeExtractRc(pdbg_target* target,
+			    P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action,
+			    bool i_set_sdb = false,
+			    bool i_unsecure_mode = false) = 0;
 
 	std::string sbe_extract_rc_string;
 	std::string sbe_localreg_dump_string;
@@ -154,11 +167,13 @@ struct chip_hwps
 };
 
 // Structure for p10 Chip and its related HWPs
-static struct p10_chip_hwps : public chip_hwps
-{
-	p10_chip_hwps()
-		: chip_hwps("p10_extract_sbe_rc", "p10_sbe_localreg_dump", "p10_pibms_reg_dump", "p10_pibmem_dump", "p10_ppe_state", "proc", "_SbeData_p10_")
-	{}
+static struct p10_chip_hwps : public chip_hwps {
+	p10_chip_hwps() :
+	    chip_hwps("p10_extract_sbe_rc", "p10_sbe_localreg_dump",
+		      "p10_pibms_reg_dump", "p10_pibmem_dump", "p10_ppe_state",
+		      "proc", "_SbeData_p10_")
+	{
+	}
 
 	~p10_chip_hwps() = default;
 	p10_chip_hwps(const p10_chip_hwps& rhs) = default;
@@ -166,69 +181,92 @@ static struct p10_chip_hwps : public chip_hwps
 	p10_chip_hwps(p10_chip_hwps&& rhs) = default;
 	p10_chip_hwps& operator=(p10_chip_hwps&& rhs) = default;
 
-	inline fapi2::ReturnCode getSbeLocalRegDump(pdbg_target* target, const uint16_t force_halt, std::vector<SBESCOMRegValue_t>& v_sbe_local_reg_value) override
+	inline fapi2::ReturnCode getSbeLocalRegDump(
+	    pdbg_target* target, const uint16_t force_halt,
+	    std::vector<SBESCOMRegValue_t>& v_sbe_local_reg_value) override
 	{
-		return sbe_localreg_dump(target, force_halt, v_sbe_local_reg_value);
+		return sbe_localreg_dump(target, force_halt,
+					 v_sbe_local_reg_value);
 	}
-	inline fapi2::ReturnCode getPibmsRegDump(pdbg_target* target, std::vector<sRegV>& regv_set) override
+	inline fapi2::ReturnCode
+	    getPibmsRegDump(pdbg_target* target,
+			    std::vector<sRegV>& regv_set) override
 	{
 		return pibms_reg_dump(target, regv_set);
 	}
-	inline fapi2::ReturnCode getPibmemDump(pdbg_target* target,
-		const uint32_t start_byte,
-		const uint32_t num_of_byte,
-		const user_options input_switches,
-		std::vector<array_data_t>& pibmem_contents,
-		const bool ecc_enable) override
+	inline fapi2::ReturnCode
+	    getPibmemDump(pdbg_target* target, const uint32_t start_byte,
+			  const uint32_t num_of_byte,
+			  const user_options input_switches,
+			  std::vector<array_data_t>& pibmem_contents,
+			  const bool ecc_enable) override
 	{
-		return pibmem_dump(target, start_byte, num_of_byte, input_switches, pibmem_contents, ecc_enable);
+		return pibmem_dump(target, start_byte, num_of_byte,
+				   input_switches, pibmem_contents, ecc_enable);
 	}
-	inline fapi2::ReturnCode getPpeState(pdbg_target* target,
-			enum PPE_TYPES type,
-			uint32_t instanceNum,
-			const PPE_DUMP_MODE mode,
+	inline fapi2::ReturnCode
+	    getPpeState(pdbg_target* target, enum PPE_TYPES type,
+			uint32_t instanceNum, const PPE_DUMP_MODE mode,
 			std::vector<Reg32Value_t>& ppeGprsValue,
 			std::vector<Reg32Value_t>& ppeSprsValue,
 			std::vector<Reg32Value_t>& ppeXirsValue) override
 	{
-		return ppe_state(target, type, instanceNum, mode, ppeGprsValue, ppeSprsValue, ppeXirsValue);
+		return ppe_state(target, type, instanceNum, mode, ppeGprsValue,
+				 ppeSprsValue, ppeXirsValue);
 	}
 
 	inline pdbg_target* get_pib_target_common(pdbg_target* target) override
 	{
 		return get_pib_target(target);
 	}
-	inline fapi2::ReturnCode getSbeExtractRc(pdbg_target* target, P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action, bool i_set_sdb = false, bool i_unsecure_mode = false) override
+	inline fapi2::ReturnCode
+	    getSbeExtractRc(pdbg_target* target,
+			    P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action,
+			    bool i_set_sdb = false,
+			    bool i_unsecure_mode = false) override
 	{
-		return sbe_extract_rc(target, o_return_action, i_set_sdb, i_unsecure_mode);
+		return sbe_extract_rc(target, o_return_action, i_set_sdb,
+				      i_unsecure_mode);
 	}
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
-	P10_EXTRACT_SBE_RC::RETURN_ACTION&, bool, bool)> sbe_extract_rc = p10_extract_sbe_rc;
+	std::function<fapi2::ReturnCode(
+	    const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
+	    P10_EXTRACT_SBE_RC::RETURN_ACTION&, bool, bool)>
+	    sbe_extract_rc = p10_extract_sbe_rc;
 
 	std::function<pdbg_target*(pdbg_target*)> get_pib_target = getPibTarget;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
-	const uint16_t, std::vector<SBESCOMRegValue_t>&)> sbe_localreg_dump = p10_sbe_localreg_dump;
+	std::function<fapi2::ReturnCode(
+	    const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&, const uint16_t,
+	    std::vector<SBESCOMRegValue_t>&)>
+	    sbe_localreg_dump = p10_sbe_localreg_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
-	std::vector<sRegV>&)> pibms_reg_dump = p10_pibms_reg_dump;
+	std::function<fapi2::ReturnCode(
+	    const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
+	    std::vector<sRegV>&)>
+	    pibms_reg_dump = p10_pibms_reg_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
-	const uint32_t, const uint32_t, const user_options, std::vector<array_data_t>&,
-	const bool)> pibmem_dump = p10_pibmem_dump;
+	std::function<fapi2::ReturnCode(
+	    const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&, const uint32_t,
+	    const uint32_t, const user_options, std::vector<array_data_t>&,
+	    const bool)>
+	    pibmem_dump = p10_pibmem_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&,
-	enum PPE_TYPES, uint32_t, const PPE_DUMP_MODE, std::vector<Reg32Value_t>&,
-	std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&)> ppe_state = p10_ppe_state;
+	std::function<fapi2::ReturnCode(
+	    const fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP>&, enum PPE_TYPES,
+	    uint32_t, const PPE_DUMP_MODE, std::vector<Reg32Value_t>&,
+	    std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&)>
+	    ppe_state = p10_ppe_state;
 } P10_CHIP_HWPS;
 
 // Structure for OdySsey Chip and its related HWPs
-static struct odyssey_chip_hwps : public chip_hwps
-{
-	odyssey_chip_hwps()
-		: chip_hwps("ody_extract_sbe_rc", "ody_sbe_localreg_dump", "ody_pibms_reg_dump", "ody_pibmem_dump", "ody_ppe_state", "ocmb", "_SbeData_ody_")
-	{}
+static struct odyssey_chip_hwps : public chip_hwps {
+	odyssey_chip_hwps() :
+	    chip_hwps("ody_extract_sbe_rc", "ody_sbe_localreg_dump",
+		      "ody_pibms_reg_dump", "ody_pibmem_dump", "ody_ppe_state",
+		      "ocmb", "_SbeData_ody_")
+	{
+	}
 
 	~odyssey_chip_hwps() = default;
 	odyssey_chip_hwps(const odyssey_chip_hwps& rhs) = default;
@@ -236,35 +274,41 @@ static struct odyssey_chip_hwps : public chip_hwps
 	odyssey_chip_hwps(odyssey_chip_hwps&& rhs) = default;
 	odyssey_chip_hwps& operator=(odyssey_chip_hwps&& rhs) = default;
 
-	inline fapi2::ReturnCode getSbeLocalRegDump(pdbg_target* target, const uint16_t force_halt, std::vector<SBESCOMRegValue_t>& v_sbe_local_reg_value) override
+	inline fapi2::ReturnCode getSbeLocalRegDump(
+	    pdbg_target* target, const uint16_t force_halt,
+	    std::vector<SBESCOMRegValue_t>& v_sbe_local_reg_value) override
 	{
-		//return sbe_localreg_dump(target, force_halt, v_sbe_local_reg_value);
+		// return sbe_localreg_dump(target, force_halt,
+		// v_sbe_local_reg_value);
 		return fapi2::ReturnCode();
 	}
-	inline fapi2::ReturnCode getPibmsRegDump(pdbg_target* target, std::vector<sRegV>& regv_set) override
+	inline fapi2::ReturnCode
+	    getPibmsRegDump(pdbg_target* target,
+			    std::vector<sRegV>& regv_set) override
 	{
-		//return pibms_reg_dump(target, regv_set);
+		// return pibms_reg_dump(target, regv_set);
 		return fapi2::ReturnCode();
 	}
-	inline fapi2::ReturnCode getPibmemDump(pdbg_target* target,
-		const uint32_t start_byte,
-		const uint32_t num_of_byte,
-		const user_options input_switches,
-		std::vector<array_data_t>& pibmem_contents,
-		const bool ecc_enable) override
+	inline fapi2::ReturnCode
+	    getPibmemDump(pdbg_target* target, const uint32_t start_byte,
+			  const uint32_t num_of_byte,
+			  const user_options input_switches,
+			  std::vector<array_data_t>& pibmem_contents,
+			  const bool ecc_enable) override
 	{
-		//return pibmem_dump(target, start_byte, num_of_byte, input_switches, pibmem_contents, ecc_enable);
+		// return pibmem_dump(target, start_byte, num_of_byte,
+		// input_switches, pibmem_contents, ecc_enable);
 		return fapi2::ReturnCode();
 	}
-	inline fapi2::ReturnCode getPpeState(pdbg_target* target,
-			enum PPE_TYPES type,
-			uint32_t instanceNum,
-			const PPE_DUMP_MODE mode,
+	inline fapi2::ReturnCode
+	    getPpeState(pdbg_target* target, enum PPE_TYPES type,
+			uint32_t instanceNum, const PPE_DUMP_MODE mode,
 			std::vector<Reg32Value_t>& ppeGprsValue,
 			std::vector<Reg32Value_t>& ppeSprsValue,
 			std::vector<Reg32Value_t>& ppeXirsValue) override
 	{
-		//return ppe_state(target, type, instanceNum, mode, ppeGprsValue, ppeSprsValue, ppeXirsValue);
+		// return ppe_state(target, type, instanceNum, mode,
+		// ppeGprsValue, ppeSprsValue, ppeXirsValue);
 		return fapi2::ReturnCode();
 	}
 
@@ -273,36 +317,49 @@ static struct odyssey_chip_hwps : public chip_hwps
 		return get_pib_target(target);
 	}
 
-	inline fapi2::ReturnCode getSbeExtractRc(pdbg_target* target, P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action, bool i_set_sdb = false, bool i_unsecure_mode = false) override
+	inline fapi2::ReturnCode
+	    getSbeExtractRc(pdbg_target* target,
+			    P10_EXTRACT_SBE_RC::RETURN_ACTION& o_return_action,
+			    bool i_set_sdb = false,
+			    bool i_unsecure_mode = false) override
 	{
-		//return sbe_extract_rc(target, o_return_action, i_set_sdb, i_unsecure_mode);
+		// return sbe_extract_rc(target, o_return_action, i_set_sdb,
+		// i_unsecure_mode);
 		return fapi2::ReturnCode();
 	}
 
-	/* std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
-	P10_EXTRACT_SBE_RC::RETURN_ACTION&, bool, bool)> sbe_extract_rc = ody_extract_sbe_rc;
+	/* std::function<fapi2::ReturnCode(const
+	fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
+	P10_EXTRACT_SBE_RC::RETURN_ACTION&, bool, bool)> sbe_extract_rc =
+	ody_extract_sbe_rc;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
-	const uint16_t, std::vector<SBESCOMRegValue_t>&)> sbe_localreg_dump = ody_sbe_localreg_dump;
+	std::function<fapi2::ReturnCode(const
+	fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&, const uint16_t,
+	std::vector<SBESCOMRegValue_t>&)> sbe_localreg_dump =
+	ody_sbe_localreg_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
-	std::vector<sRegV>&)> pibms_reg_dump = ody_pibms_reg_dump;
+	std::function<fapi2::ReturnCode(const
+	fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&, std::vector<sRegV>&)>
+	pibms_reg_dump = ody_pibms_reg_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
-	const uint32_t, const uint32_t, const user_options, std::vector<array_data_t>&,
-	const bool)> pibmem_dump = ody_pibmem_dump;
+	std::function<fapi2::ReturnCode(const
+	fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&, const uint32_t, const
+	uint32_t, const user_options, std::vector<array_data_t>&, const bool)>
+	pibmem_dump = ody_pibmem_dump;
 
-	std::function<fapi2::ReturnCode(const fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&,
-	enum PPE_TYPES, uint32_t, const PPE_DUMP_MODE, std::vector<Reg32Value_t>&,
-	std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&)> ppe_state = p10_ppe_state; */
+	std::function<fapi2::ReturnCode(const
+	fapi2::Target<fapi2::TARGET_TYPE_OCMB_CHIP>&, enum PPE_TYPES, uint32_t,
+	const PPE_DUMP_MODE, std::vector<Reg32Value_t>&,
+	std::vector<Reg32Value_t>&, std::vector<Reg32Value_t>&)> ppe_state =
+	p10_ppe_state; */
 
-	std::function<pdbg_target*(pdbg_target*)> get_pib_target = get_ody_pib_target;
+	std::function<pdbg_target*(pdbg_target*)> get_pib_target =
+	    get_ody_pib_target;
 } ODYSSEY_CHIP_HWPS;
 
 // Make a map of the structures
-static std::map<const int, chip_hwps*> chipHWPSMap =
-	{ 	{ PROC_SBE_DUMP, &P10_CHIP_HWPS },
-		{ ODYSSEY_SBE_DUMP, &ODYSSEY_CHIP_HWPS } };
+static std::map<const int, chip_hwps*> chipHWPSMap = {
+    {PROC_SBE_DUMP, &P10_CHIP_HWPS}, {ODYSSEY_SBE_DUMP, &ODYSSEY_CHIP_HWPS}};
 
 /**
  * @brief Return the proc target corresponding to failing unit
@@ -318,16 +375,16 @@ struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
 {
 	// Find if the given chip is in our known list.
 	auto chip = chipHWPSMap.find(sbeTypeId);
-	if (chip == chipHWPSMap.end())
-	{
+	if (chip == chipHWPSMap.end()) {
 		log(level::ERROR, "Chip ID %d is not recognized", sbeTypeId);
 		throw sbeError_t(exception::HWP_EXECUTION_FAILED);
 	}
-	
+
 	struct pdbg_target* dumpTarget = nullptr;
 	struct pdbg_target* target;
 
-	pdbg_for_each_class_target(chip->second->chip_type_string.c_str(), target)
+	pdbg_for_each_class_target(chip->second->chip_type_string.c_str(),
+				   target)
 	{
 		if (pdbg_target_index(target) != failingUnit) {
 			continue;
@@ -399,8 +456,7 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 {
 	// Find if the given chip is in our known list.
 	auto chip = chipHWPSMap.find(sbeTypeId);
-	if (chip == chipHWPSMap.end())
-	{
+	if (chip == chipHWPSMap.end()) {
 		log(level::ERROR, "Chip ID %d is not recognized", sbeTypeId);
 		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
@@ -533,7 +589,8 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	struct pdbg_target* target =
 	    preCollection(failingUnit, dumpPath, sbeTypeId);
 
-	//Don't check here for iterator validation. That's been done already in preCollection
+	// Don't check here for iterator validation. That's been done already in
+	// preCollection
 	auto chip = chipHWPSMap.find(sbeTypeId);
 
 	std::stringstream ss;
@@ -541,8 +598,9 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 
 	// Filename format
 	// <dumpID>.<nodeNUM>_<procNum>.Sbedata_Ody_/Sbedata_p10_<HWP name>
-	std::string baseFilename =
-	    ss.str() + ".0_" + std::to_string(failingUnit) + chip->second->dump_file_name_string;
+	std::string baseFilename = ss.str() + ".0_" +
+				   std::to_string(failingUnit) +
+				   chip->second->dump_file_name_string;
 
 	// Get pib for the proc
 	struct pdbg_target* pib = chip->second->get_pib_target_common(target);
@@ -560,7 +618,8 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		std::vector<SBESCOMRegValue_t> sbeScomRegValue;
 		std::string hwpName = chip->second->sbe_localreg_dump_string;
 
-		fapiRc = chip->second->getSbeLocalRegDump(target, true, sbeScomRegValue);
+		fapiRc = chip->second->getSbeLocalRegDump(target, true,
+							  sbeScomRegValue);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
 			    "Failed in %s for target=%s, "
@@ -640,8 +699,10 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		static constexpr uint32_t pibmemDumpNumOfByte = 0x7D400;
 		user_options userOptions = INTERMEDIATE_TILL_INTERMEDIATE;
 		hwpName = chip->second->pibmem_dump_string;
-		
-		fapiRc = chip->second->getPibmemDump(target, pibmemDumpStartByte, pibmemDumpNumOfByte, userOptions, pibmemContents, eccEnable);
+
+		fapiRc = chip->second->getPibmemDump(
+		    target, pibmemDumpStartByte, pibmemDumpNumOfByte,
+		    userOptions, pibmemContents, eccEnable);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
 			    "Failed in %s for target=%s, rc=0x%08X",
@@ -676,7 +737,9 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		std::vector<Reg32Value_t> ppeXirsValue;
 		PPE_TYPES type = PPE_TYPE_SBE;
 
-		fapiRc = chip->second->getPpeState(target, type, instanceNum, mode, ppeGprsValue, ppeSprsValue, ppeXirsValue);
+		fapiRc = chip->second->getPpeState(target, type, instanceNum,
+						   mode, ppeGprsValue,
+						   ppeSprsValue, ppeXirsValue);
 		if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 			log(level::ERROR,
 			    "Failed in p10_ppe_state for target=%s, rc=0x%08X",
@@ -705,8 +768,8 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 			} catch (const dumpError_t& e) {
 				log(level::ERROR,
 				    "Error in writing %s, "
-				    "errorMsg=%s", chip->second->ppe_state_string,
-				    e.what());
+				    "errorMsg=%s",
+				    chip->second->ppe_state_string, e.what());
 				throw;
 			}
 		}
