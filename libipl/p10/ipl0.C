@@ -477,6 +477,41 @@ static void process_guard_records()
 	}
 }
 
+//@Brief Function will mark targets as non present in the devtree
+//if it is marked UNUSED in the MRW. This is a workaround for
+//handling unused IOHS targets in Bonnell.
+static bool process_unused_targets()
+{
+	struct pdbg_target *iohs_target;
+
+	pdbg_for_each_class_target("iohs", iohs_target)
+	{
+		ATTR_IOHS_CONFIG_MODE_Type iohs_config;
+		if (!pdbg_target_get_attribute(iohs_target,
+                                               "ATTR_IOHS_CONFIG_MODE",
+                                               1,
+					       1, &iohs_config)) {
+			ipl_log(IPL_ERROR,
+				"Attribute ATTR_IOHS_CONFIG_MODE read failed"
+				" for iohs '%s' \n",
+				pdbg_target_path(iohs_target));
+			ipl_plat_procedure_error_handler(
+			    IPL_ERR_ATTR_READ_FAIL);
+			return false;
+		}
+		if (iohs_config == ENUM_ATTR_IOHS_CONFIG_MODE_UNUSED) {
+			ipl_log(IPL_INFO,
+				"iohs(%s) setting to non functional \n",
+				pdbg_target_path(iohs_target));
+			if (!set_or_clear_state(iohs_target, false)) {
+				return false;
+			}
+			continue;
+		}
+	}
+	return true;
+}
+
 /*
  * @Brief Function will check if the FCO state is set for hardware units
  * consumed by sbe or not. If FCO override bit is set for such hardware
@@ -753,6 +788,12 @@ static int ipl_updatehwmodel(void)
 	if ((ipl_type() == IPL_TYPE_MPIPL) ||
 	    (!fs::exists(BOOTTIME_GUARD_INDICATOR)))
 		apply_fco_override();
+
+        if (!process_unused_targets()) {
+		ipl_log(IPL_ERROR, "Failed to mark unused targets as "
+				   "non-functional \n");
+		return 1;
+	}
 
 	process_guard_records();
 
