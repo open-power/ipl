@@ -129,7 +129,7 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
  * The dump data must be freed by caller. It is allocated using malloc() and
  * must be freed using free().
  *
- * @param[in] proc  proc target to operate on
+ * @param[in] chip proc or OCMB target to operate on
  * @param[in] type Type of dump
  * @param[in] clock Clock on or off
  * @param[in] faCollect Fast Array collection (0 off, 1 on)
@@ -138,7 +138,7 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen);
  *
  * Exceptions: SbeError with failure reason code
  */
-void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
+void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen);
 
 /**
@@ -150,6 +150,16 @@ void getDump(struct pdbg_target *proc, const uint8_t type, const uint8_t clock,
  *             std::runtime_error - for file operation failure.
  */
 void threadStopProc(struct pdbg_target *proc);
+
+
+/**
+ * @brief Check whether the input target is an Odyssey OCMB
+ * 
+ * @param target Pointer to the chip tartget
+ * 
+ * @return True if Odyssey OCMB chip else false
+*/
+bool is_ody_ocmb_chip(struct pdbg_target *target);
 
 } // namespace sbe
 
