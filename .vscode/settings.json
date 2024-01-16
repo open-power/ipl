@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "phal_sbe.C": "cpp",
-        "phal_pdbg.C": "cpp"
-    }
-}
