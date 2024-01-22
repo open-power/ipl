@@ -19,6 +19,12 @@ extern "C" {
 #include <ekb/chips/p10/procedures/hwp/lib/p10_ppe_state.H>
 #include <ekb/chips/p10/procedures/hwp/lib/p10_sbe_localreg_dump.H>
 #include <ekb/chips/p10/procedures/hwp/perv/p10_extract_sbe_rc.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/utils/ody_sbe_localreg_dump.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/utils/ody_pibms_regs2dump.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/utils/ody_pibmem_dump.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/utils/ody_pibms_reg_dump.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/utils/ody_ppe_state.H>
+#include <ekb/chips/ocmb/odyssey/procedures/hwp/perv/ody_extract_sbe_rc.H>
 
 #include <filesystem>
 #include <fstream>
@@ -32,7 +38,6 @@ namespace dump
 
 using namespace openpower::phal::logging;
 using namespace openpower::phal::utils::pdbg;
-using namespace fapi2;
 
 /* SBE register number and name for writing
  * to the file */
@@ -99,37 +104,82 @@ struct DumpPPERegValue {
 	}
 } __attribute__((packed));
 
+// Define the chip types numbers
+static constexpr int PROC_SBE_DUMP = 0xA;
+static constexpr int ODYSSEY_SBE_DUMP = 0xB;
+
 /**
- * @brief Return the proc target corresponding to failing unit
- * @param[in] failingUnit Position of the proc containing the failed SBE
+ * @brief Get the Fapi Unit Pos object for OCMB
  *
- * @return Pointer to the pdbg target for proc
+ * @param target The target
+ * @return uint8_t The position
+ */
+uint32_t getFapiUnitPos(pdbg_target* target)
+{
+	uint32_t fapiUnitPos = 0; // chip unit position
+	if (!pdbg_target_get_attribute(target, "ATTR_FAPI_POS", 4, 1,
+				       &fapiUnitPos))
+		log(level::ERROR, "ATTR_FAPI_POS Attribute get failed");
+
+	return fapiUnitPos;
+}
+
+/**
+ * @brief Return the chip target corresponding to failing unit
+ * @param[in] failingUnit Position of the ocmb containing the failed SBE
+ * @param sbeTypeId The chip type number
+ *
+ * @return Pointer to the pdbg target for retreived chip
  *
  * Exceptions: PDBG_TARGET_NOT_OPERATIONAL if target is not available
  */
-struct pdbg_target* getProcFromFailingId(const uint32_t failingUnit)
+struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
+					   const int sbeTypeId)
 {
-	struct pdbg_target* proc = NULL;
-	struct pdbg_target* target;
-	pdbg_for_each_class_target("proc", target)
+	struct pdbg_target* chip = nullptr;
+	struct pdbg_target* target = nullptr;
+	std::string chipTypeString;
+
+	if (sbeTypeId == ODYSSEY_SBE_DUMP)
+		chipTypeString = "ocmb";
+	else if (sbeTypeId == PROC_SBE_DUMP)
+		chipTypeString = "proc";
+
+	pdbg_for_each_class_target(chipTypeString.c_str(), target)
 	{
-		if (pdbg_target_index(target) != failingUnit) {
+		uint8_t targetIdx = 0;
+		if (sbeTypeId == ODYSSEY_SBE_DUMP)
+			targetIdx = getFapiUnitPos(target);
+		else if (sbeTypeId == PROC_SBE_DUMP)
+			targetIdx = pdbg_target_index(target);
+
+		if (targetIdx != failingUnit) {
 			continue;
 		}
-
+		if (sbeTypeId == ODYSSEY_SBE_DUMP) {
+			if (!openpower::phal::sbe::is_ody_ocmb_chip(target)) {
+				log(level::ERROR,
+				    "No ocmb target found to execute the dump "
+				    "for failing unit=%d",
+				    failingUnit);
+				throw sbeError_t(
+				    exception::PDBG_TARGET_NOT_OPERATIONAL);
+			}
+		}
 		if (pdbg_target_probe(target) != PDBG_TARGET_ENABLED) {
 			break;
 		}
-		proc = target;
+		chip = target;
+		break;
 	}
-	if (proc == NULL) {
+	if (!chip) {
 		log(level::ERROR,
-		    "No Proc target found to execute the dump for failing "
+		    "No chip target found to execute the dump for failing "
 		    "unit=%d",
 		    failingUnit);
 		throw sbeError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
 	}
-	return proc;
+	return chip;
 }
 
 /**
@@ -169,14 +219,14 @@ void writeSbeData(const std::filesystem::path& dumpPath, uint32_t reasonCode,
 }
 
 /**
- * @brief Initializes the PDBG and LIBEKB environments.
- *
- * @throw std::runtime_error Throws if either PDBG or LIBEKB initialization
- * fails.
+ * @brief Initializes PDBG backend with KERNEL mode and libekb
+ * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
  */
 void initializePdbgLibEkb()
 {
+	// Initialize PDBG with KERNEL backend
 	pdbg::init(PDBG_BACKEND_KERNEL);
+
 	if (libekb_init()) {
 		log(level::ERROR, "libekb_init failed");
 		throw std::runtime_error("libekb initialization failed");
@@ -184,458 +234,510 @@ void initializePdbgLibEkb()
 }
 
 /**
- * @brief Probes a target (FSI or PIB) for the given processor target.
- * @param[in] proc The processor target to probe the FSI/PIB target for.
- * @param[in] targetType The type of target to probe ("fsi" or "pib").
- * @return Pointer to the probed pdbg target. If the target is not operational,
- *         the function throws an exception.
+ * @brief Checks the SBE state
  *
- * @throw dumpError_t Throws if the target is not found or not operational.
- */
-struct pdbg_target* probeTarget(struct pdbg_target* proc,
-				const char* targetType)
-{
-	char path[16];
-	sprintf(path, "/proc%d/%s", pdbg_target_index(proc), targetType);
-	struct pdbg_target* target = pdbg_target_from_path(NULL, path);
-	if (!target || pdbg_target_probe(target) != PDBG_TARGET_ENABLED) {
-		log(level::ERROR, "Failed to get or probe %s target for (%s)",
-		    targetType, pdbg_target_path(proc));
-		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
-	}
-	return target;
-}
-
-/**
- * @brief Checks the state of the SBE on the given PIB target.
- * @param[in] pib The PIB target to check the SBE state of.
- *
- * @throw sbeError_t Throws if the SBE state is 'FAILED' (indicating a dump
- *        has already been collected) or if there is a failure in reading the
- * SBE state.
+ * @param pib The pib target
+ * @param target The target (OCMB or proc)
  */
 void checkSbeState(struct pdbg_target* pib)
 {
 	enum sbe_state state;
+
+	// If the SBE dump is already collected return error
 	if (sbe_get_state(pib, &state)) {
 		log(level::ERROR, "Failed to read SBE state information (%s)",
 		    pdbg_target_path(pib));
 		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
 	}
+
 	if (state == SBE_STATE_FAILED) {
 		log(level::ERROR,
-		    "Dump is already collected from the SBE on (%s)",
+		    "Dump is already collected from the "
+		    "SBE on (%s)",
 		    pdbg_target_path(pib));
 		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
-	}
+	};
 }
 
 /**
- * @brief Executes the SBE extract RC and writes recovery action data.
- * @param[in] proc The processor target on which to execute the SBE extract RC.
- * @param[in] dumpPath The filesystem path where the SBE data and recovery
- * action information will be written.
+ * @brief Extracts SBE RC from the corrupted chip and writes the info into a
+ * dump file
  *
- * @throw std::runtime_error Throws if the SBE extract RC operation fails.
+ * @param target The chip target
+ * @param dumpPath The path of the dump file
+ * @param sbeTypeId The chip type, i.e.; proc or OCMB
  */
-void executeSbeExtractRc(struct pdbg_target* proc,
-			 const std::filesystem::path& dumpPath)
+void extractSbeRc(struct pdbg_target* target,
+		  const std::filesystem::path& dumpPath, const int sbeTypeId)
 {
-	P10_EXTRACT_SBE_RC::RETURN_ACTION recovAction;
-	fapi2::ReturnCode fapiRc = p10_extract_sbe_rc(proc, recovAction, true);
-	log(level::INFO,
-	    "p10_extract_sbe_rc for proc=%s returned rc=0x%08X and SBE "
-	    "Recovery Action=0x%08X",
-	    pdbg_target_path(proc), fapiRc, recovAction);
+	// Execute SBE extract rc to set up sdb bit for pibmem dump to work
+	fapi2::ReturnCode fapiRc;
+	P10_EXTRACT_SBE_RC::RETURN_ACTION recovAction = {};
+	std::string targetTypeString;
+
+	if (ODYSSEY_SBE_DUMP == sbeTypeId) {
+		// ody_extract_sbe_rc is returning the error.
+		fapiRc = ody_extract_sbe_rc(target);
+		targetTypeString = "ocmb";
+	} else if (PROC_SBE_DUMP == sbeTypeId) {
+		// p10_extract_sbe_rc is returning the error along with
+		// recovery action, so not checking the fapirc.
+		fapiRc = p10_extract_sbe_rc(target, recovAction, true);
+		targetTypeString = "proc";
+	}
+	log(level::INFO, "extract_sbe_rc for %s=%s returned rc=0x%08X ",
+	    targetTypeString, pdbg_target_path(target), fapiRc);
+
 	writeSbeData(dumpPath, fapiRc, recovAction);
 }
 
 /**
- * @brief Writes SBE register values to a file.
- * @param[in] dumpRegs A vector of `DumpSBERegVal` structures containing the SBE
- * register values to be written.
- * @param[in] basePath The filesystem path of the file to which the data is to
- * be written.
+ * @brief Probes and returns the corresponding PIB target of the chip
  *
- * @throw std::runtime_error Throws if there is an error opening the file or
- * during the file write operation.
+ * @param target The target chip
+ * @param sbeTypeId The chip type number
+ * @return struct pdbg_target* The pib target obtained
  */
-void writeSBERegValuesToFile(const std::vector<DumpSBERegVal>& dumpRegs,
-			     const std::filesystem::path& basePath)
+struct pdbg_target* probePibTarget(struct pdbg_target* target,
+				   const int sbeTypeId)
+{
+	// PIB target for executing HWP
+	struct pdbg_target* pib = nullptr;
+	if (sbeTypeId == PROC_SBE_DUMP) {
+		char path[16];
+		sprintf(path, "/proc%d/pib", pdbg_target_index(target));
+		pib = pdbg_target_from_path(nullptr, path);
+	} else if (sbeTypeId == ODYSSEY_SBE_DUMP) {
+		pib = get_ody_pib_target(target);
+	}
+	if (!pib) {
+		log(level::ERROR, "Failed to get PIB target for(%s)",
+		    pdbg_target_path(target));
+		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+	// Probe PIB for HWP execution
+	if (pdbg_target_probe(pib) != PDBG_TARGET_ENABLED) {
+		log(level::ERROR, "Failed to prob PIB");
+		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+	return pib;
+}
+
+/**
+ * @brief Initialize the PDBG and SBE to start collection
+ * @param[in] failingUnit Position of the proc containing the failed SBE
+ * @param[in] sbeTypeId The chip type number
+ *
+ * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
+ *             PDBG_TARGET_NOT_OPERATIONAL for invalid failing unit
+ *             HWP_EXECUTION_FAILED if the extract rc procedure is failing
+ */
+struct pdbg_target* preCollection(const uint32_t failingUnit,
+				  const std::filesystem::path& dumpPath,
+				  const int sbeTypeId)
+{
+	initializePdbgLibEkb();
+	// Find the proc target from the failing unit id
+	auto chip = getTargetFromFailingId(failingUnit, sbeTypeId);
+	auto pib = probePibTarget(chip, sbeTypeId);
+	checkSbeState(pib);
+	extractSbeRc(chip, dumpPath, sbeTypeId);
+	return chip;
+}
+
+/**
+ * @brief Write the dump file to the path
+ * @param[in] data Pointer to the data buffer
+ * @param[in] len Length of the buffer
+ * @param[in] dumpPath Path of the file
+ *
+ * Throws FILE_OPERATION_FAILED in the case of error
+ */
+void writeDumpFile(char* data, size_t len, std::filesystem::path& dumpPath)
+{
+	log(level::INFO, "writng dump data to file");
+	std::ofstream outfile{dumpPath, std::ios::out | std::ios::binary};
+	if (!outfile.good()) {
+		int err = errno;
+		log(level::ERROR,
+		    "Failed to open the dump file for writing err=%d", err);
+		throw dumpError_t(exception::FILE_OPERATION_FAILED);
+	}
+	outfile.exceptions(std::ifstream::failbit | std::ifstream::badbit |
+			   std::ifstream::eofbit);
+	try {
+		outfile.write(data, len);
+	} catch (const std::ofstream::failure& oe) {
+		int err = errno;
+		log(level::ERROR,
+		    "Failed to write to dump file err=%d error message=%s", err,
+		    oe.what());
+		throw dumpError_t(exception::FILE_OPERATION_FAILED);
+	}
+	outfile.close();
+}
+
+/**
+ * @brief Writes the dump data contents in the register into the dump file
+ *
+ * @tparam DumpRegVal A templated vector of various possible dump type registers
+ * @param dumpRegs Dump register
+ * @param basePath File base path
+ * @param dumpType Type of dump, e.g; pibms/pibmem/sbe local reg etc
+ */
+template <typename DumpRegVal>
+void writeDumpFileForDumpContents(std::vector<DumpRegVal>& dumpRegs,
+				  std::filesystem::path& basePath,
+				  const std::string_view dumpType)
 {
 	try {
-		std::ofstream outfile{basePath,
-				      std::ios::out | std::ios::binary};
-		if (!outfile.good()) {
-			throw std::runtime_error(
-			    "Failed to open file for writing");
-		}
-		outfile.write(reinterpret_cast<const char*>(dumpRegs.data()),
-			      sizeof(DumpSBERegVal) * dumpRegs.size());
-	} catch (const std::exception& e) {
+		writeDumpFile(reinterpret_cast<char*>(&dumpRegs[0]),
+			      sizeof(DumpRegVal) * dumpRegs.size(), basePath);
+	} catch (const dumpError_t& e) {
 		log(level::ERROR,
-		    "Error writing SBE register values to file: %s", e.what());
+		    "Error in writing %s "
+		    "file "
+		    "errorMsg=%s",
+		    dumpType.data(), e.what());
 		throw;
 	}
 }
 
 /**
- * @brief Collects and writes local register dump data for a given processor
- * target.
+ * @brief Collects the PPE state data for both p10 and Odyssey
  *
- * This function is responsible for collecting the local register dump from the
- * specified processor target and writing this data to a file. It forms the
- * complete file path using the provided base filename and dump path. If the
- * function encounters any errors during the data collection or file writing
- * process, it throws an exception.
- *
- * @param[in] proc The processor target from which to collect the local register
- * dump.
- * @param[in] dumpPath The filesystem path where the dump file will be written.
- * @param[in] baseFilename The base filename to use for the dump file. This name
- * will be used to form the complete file path along with the dumpPath.
- *
- * @throw std::runtime_error Throws if there is an error in collecting the local
- * register dump or writing to the file.
+ * @param failingUnit Position of the proc containing the failed SBE
+ * @param baseFilename Base file name of the dump
+ * @param dumpPath The dump path
+ * @param sbeTypeId The type of failed SBE chip, i.e.; p10 or Odyssey
  */
-void collectLocalRegDump(struct pdbg_target* proc,
+void collectPPEStateData(struct pdbg_target* target,
+			 const std::string& baseFilename,
 			 const std::filesystem::path& dumpPath,
-			 const std::string& baseFilename)
+			 const int sbeTypeId)
 {
-	std::vector<SBESCOMRegValue_t> sbeScomRegValue;
-	ReturnCode fapiRc = p10_sbe_localreg_dump(proc, true, sbeScomRegValue);
+	// Dump the PPE state based on the based base address
+	//Output registers for P10
+	std::vector<Reg32Value_t> ppeGprsValue;
+	std::vector<Reg32Value_t> ppeSprsValue;
+	std::vector<Reg32Value_t> ppeXirsValue;
 
-	if (fapiRc != FAPI2_RC_SUCCESS) {
+	//Output registers for Odyssey	
+	std::vector<Reg32Val_t> ppeGprsValueOdy;
+	std::vector<Reg32Val_t> ppeSprsValueOdy;
+	std::vector<Reg32Val_t> ppeXirsValueOdy;
+
+	PPE_TYPES type = PPE_TYPE_SBE; // Common for both Odyssey and P10
+	uint32_t instanceNum = 0;      // By default it is for p10 chip type
+	fapi2::ReturnCode fapiRc;
+	std::string hwpName;
+
+	if (sbeTypeId == ODYSSEY_SBE_DUMP) {
+		ODY_PPE_DUMP_MODE modeOdy = O_SNAPSHOT;
+		instanceNum = getFapiUnitPos(target);
+		hwpName = "ody_ppe_state";
+		fapiRc = ody_ppe_state(target, type, instanceNum, modeOdy, ppeGprsValueOdy,
+				    ppeSprsValueOdy, ppeXirsValueOdy);
+	}
+	else if (sbeTypeId == PROC_SBE_DUMP)
+	{
+		hwpName = "p10_ppe_state";
+		PPE_DUMP_MODE mode = SNAPSHOT;
+		fapiRc = p10_ppe_state(target, type, instanceNum, mode, ppeGprsValue,
+						ppeSprsValue, ppeXirsValue);
+	}
+
+	if (fapiRc != fapi2::FAPI2_RC_SUCCESS) {
 		log(level::ERROR,
-		    "Failed in p10_sbe_localreg_dump for proc=%s, rc=0x%08X",
-		    pdbg_target_path(proc), fapiRc);
-		throw std::runtime_error("p10_sbe_localreg_dump failed");
-	}
-
-	std::vector<DumpSBERegVal> dumpRegs;
-	for (auto& reg : sbeScomRegValue) {
-		dumpRegs.emplace_back(reg.reg.number, reg.reg.name, reg.value);
-	}
-	std::string dumpFilename = baseFilename + "p10_sbe_localreg_dump";
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
-	// Writing the SBE register values to a file
-	writeSBERegValuesToFile(dumpRegs, basePath);
-}
-
-/**
- * @brief Writes PIBMS register values to a file.
- * @param[in] dumpRegs A vector of `DumpPIBMSRegVal` structures containing the
- * PIBMS register values to be written.
- * @param[in] basePath The filesystem path of the file to which the data is to
- * be written.
- *
- * @throw std::runtime_error Throws if there is an error opening the file or
- * during the file write operation.
- */
-void writePIBMSRegValuesToFile(const std::vector<DumpPIBMSRegVal>& dumpRegs,
-			       const std::filesystem::path& basePath)
-{
-	try {
-		std::ofstream outfile{basePath,
-				      std::ios::out | std::ios::binary};
-		if (!outfile.good()) {
-			throw std::runtime_error(
-			    "Failed to open file for writing");
+			"Failed in %s for ocmb=%s, rc=0x%08X",
+			hwpName, pdbg_target_path(target), fapiRc);
+	} else {
+		std::vector<DumpPPERegValue> ppeState;
+		//At any given point of time either the request for P10 or Odyssey but not both. Thus...
+		if (sbeTypeId == PROC_SBE_DUMP)
+		{
+			for (auto& spr : ppeSprsValue) {
+			ppeState.emplace_back(spr.number, spr.value);
+			}
+			for (auto& xir : ppeXirsValue) {
+				ppeState.emplace_back(xir.number, xir.value);
+			}
+			for (auto& gpr : ppeGprsValue) {
+				ppeState.emplace_back(gpr.number, gpr.value);
+			}
 		}
-		outfile.write(reinterpret_cast<const char*>(dumpRegs.data()),
-			      sizeof(DumpPIBMSRegVal) * dumpRegs.size());
-	} catch (const std::exception& e) {
-		log(level::ERROR,
-		    "Error writing PIBMS register values to file: %s",
-		    e.what());
-		throw;
+		else if (sbeTypeId == ODYSSEY_SBE_DUMP)
+		{
+			for (auto& spr : ppeSprsValueOdy) {
+			ppeState.emplace_back(spr.number, spr.value);
+			}
+			for (auto& xir : ppeXirsValueOdy) {
+				ppeState.emplace_back(xir.number, xir.value);
+			}
+			for (auto& gpr : ppeGprsValueOdy) {
+				ppeState.emplace_back(gpr.number, gpr.value);
+			}
+		}
+		std::string dumpFilename =
+		    baseFilename + hwpName;
+		std::filesystem::path basePath = dumpPath / dumpFilename;
+		writeDumpFileForDumpContents(ppeState, basePath, hwpName);
 	}
 }
 
 /**
- * @brief Collects and writes PIBMS register dump data for a given processor
- * target.
- * @param[in] proc The processor target from which to collect the PIBMS register
- * dump.
- * @param[in] dumpPath The filesystem path where the dump file will be written.
- * @param[in] baseFilename The base filename to use for the dump file. This name
- * will be used to form the complete file path along with the dumpPath.
- *
- * @throw std::runtime_error Throws if there is an error in collecting the PIBMS
- * register dump or writing to the file.
+ * @brief Collects SBE local registers dump data
+ * 		  and writes into the dump file if successful
+ * 
+ * @param target The chip target
+ * @param baseFilename The base file name for the dump
+ * @param dumpPath The path to the dump file
+ * @param sbeTypeId Chip type ID
  */
-void collectPIBMSRegDump(struct pdbg_target* proc,
+void collectSbeLocalRegDumpData(struct pdbg_target* target,
+			 const std::string& baseFilename,
 			 const std::filesystem::path& dumpPath,
-			 const std::string& baseFilename)
+			 const int sbeTypeId)
 {
-	std::vector<sRegV> pibmsRegSet;
-	for (auto& reg : pibms_regs_2dump) {
-		sRegV regv;
-		regv.reg = reg;
-		pibmsRegSet.emplace_back(regv);
+	// Collect SBE local register dump
+	std::vector<SBE_SCOMReg_Value_t> sbeScomRegValueOdy;
+	std::vector<SBESCOMRegValue_t> sbeScomRegValueP10;
+	sbeScomRegValueP10.resize(0);
+	sbeScomRegValueOdy.resize(0);
+	std::string hwpName;
+	fapi2::ReturnCode fapiRc;
+
+	if (ODYSSEY_SBE_DUMP == sbeTypeId)
+	{
+		hwpName = "ody_sbe_localreg_dump";
+		fapiRc = ody_sbe_localreg_dump(target, true, sbeScomRegValueOdy);
 	}
-
-	ReturnCode fapiRc = p10_pibms_reg_dump(proc, pibmsRegSet);
-	if (fapiRc != FAPI2_RC_SUCCESS) {
-		log(level::ERROR,
-		    "Failed in p10_pibms_reg_dump for proc=%s, rc=0x%08X",
-		    pdbg_target_path(proc), fapiRc);
-		throw std::runtime_error("p10_pibms_reg_dump failed");
+	else if (PROC_SBE_DUMP == sbeTypeId)
+	{
+		hwpName = "p10_sbe_localreg_dump";
+		fapiRc = p10_sbe_localreg_dump(target, true, sbeScomRegValueP10);
 	}
-	std::vector<DumpPIBMSRegVal> dumpRegs;
-	for (auto& reg : pibmsRegSet) {
-		dumpRegs.emplace_back(reg.reg.addr, reg.reg.name, reg.reg.attr,
-				      reg.value);
-	}
-
-	std::string dumpFilename = baseFilename + "p10_pibms_reg_dump";
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
-	// Writing the PIBMS register values to a file
-	writePIBMSRegValuesToFile(dumpRegs, basePath);
-}
-
-/**
- * @brief Writes PIBMEM data to a file.
- * @param[in] dumpData A vector of uint64_t values representing the PIBMEM data
- * to be written.
- * @param[in] basePath The filesystem path of the file to which the data will be
- * written.
- *
- * @throw std::runtime_error Throws if there is an error opening the file or
- * during the file write operation.
- */
-void writePIBMEMDataToFile(const std::vector<uint64_t>& dumpData,
-			   const std::filesystem::path& basePath)
-{
-	try {
-		std::ofstream outfile{basePath,
-				      std::ios::out | std::ios::binary};
-		if (!outfile.good()) {
-			throw std::runtime_error(
-			    "Failed to open file for writing");
+	//As both sbeScomRegValueOdy and sbeScomRegValueP10 can not have data at the same time thus
+	if (fapiRc == fapi2::FAPI2_RC_SUCCESS)
+	{
+		std::vector<DumpSBERegVal> dumpRegs;
+		if (!sbeScomRegValueOdy.empty())
+		{
+			for (auto& reg : sbeScomRegValueOdy)
+				dumpRegs.emplace_back(reg.reg.number, reg.reg.name, reg.value);
 		}
-		outfile.write(reinterpret_cast<const char*>(dumpData.data()),
-			      sizeof(uint64_t) * dumpData.size());
-	} catch (const std::exception& e) {
-		log(level::ERROR, "Error writing PIBMEM data to file: %s",
-		    e.what());
-		throw;
-	}
-}
-
-/**
- * @brief Collects and writes PIBMEM dump data for a given processor target.
- * @param[in] proc The processor target from which to collect the PIBMEM dump
- * data.
- * @param[in] dumpPath The filesystem path where the dump file will be written.
- * @param[in] baseFilename The base filename to use for the dump file. This name
- * will be used to form the complete file path along with the dumpPath.
- *
- * @throw std::runtime_error Throws if there is an error in collecting the
- * PIBMEM dump data or writing to the file.
- */
-void collectPIBMEMDump(struct pdbg_target* proc,
-		       const std::filesystem::path& dumpPath,
-		       const std::string& baseFilename)
-{
-	// Define these constants and types as per your requirement
-	const uint32_t pibmemDumpStartByte = 0;	      // Starting byte for dump
-	const uint32_t pibmemDumpNumOfByte = 0x7D400; // Number of bytes to read
-	const user_options userOptions =
-	    INTERMEDIATE_TILL_INTERMEDIATE; // User options, define as per your
-					    // code
-	const bool eccEnable = false; // ECC enabled/disabled
-
-	std::vector<array_data_t>
-	    pibmemContents; // Type array_data_t should be defined in your code
-
-	ReturnCode fapiRc =
-	    p10_pibmem_dump(proc, pibmemDumpStartByte, pibmemDumpNumOfByte,
-			    userOptions, pibmemContents, eccEnable);
-	if (fapiRc != FAPI2_RC_SUCCESS) {
-		log(level::ERROR,
-		    "Failed in p10_pibmem_dump for proc=%s, rc=0x%08X",
-		    pdbg_target_path(proc), fapiRc);
-		throw std::runtime_error("p10_pibmem_dump failed");
-	}
-	std::vector<uint64_t> dumpData;
-	for (auto& data : pibmemContents) {
-		dumpData.push_back(data.read_data);
-	}
-
-	std::string dumpFilename = baseFilename + "p10_pibmem_dump";
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
-	// Writing the PIBMEM data to a file
-	writePIBMEMDataToFile(dumpData, basePath);
-}
-
-/**
- * @brief Writes PPE (Programmable Processing Element) state data to a file.
- * @param[in] ppeState A vector of `DumpPPERegValue` structures containing the
- * PPE state data to be written.
- * @param[in] basePath The filesystem path of the file to which the data will be
- * written.
- *
- * @throw std::runtime_error Throws if there is an error opening the file or
- * during the file write operation.
- */
-void writePPEStateToFile(const std::vector<DumpPPERegValue>& ppeState,
-			 const std::filesystem::path& basePath)
-{
-	try {
-		std::ofstream outfile{basePath,
-				      std::ios::out | std::ios::binary};
-		if (!outfile.good()) {
-			throw std::runtime_error(
-			    "Failed to open file for writing");
+		else if (!sbeScomRegValueP10.empty())
+		{
+			for (auto& reg : sbeScomRegValueP10)
+				dumpRegs.emplace_back(reg.reg.number, reg.reg.name, reg.value);
 		}
-		outfile.write(reinterpret_cast<const char*>(ppeState.data()),
-			      sizeof(DumpPPERegValue) * ppeState.size());
-	} catch (const std::exception& e) {
-		log(level::ERROR, "Error writing PPE state data to file: %s",
-		    e.what());
-		throw;
+		std::string dumpFilename =
+				baseFilename + hwpName;
+		std::filesystem::path basePath = dumpPath / dumpFilename;
+
+		writeDumpFileForDumpContents(dumpRegs, basePath, hwpName);
 	}
-}
-
-/**
- * @brief Collects and writes the state of the Programmable Processing Element
- * (PPE).
- * @param[in] proc The processor target from which to collect the PPE state.
- * @param[in] dumpPath The filesystem path where the dump file will be written.
- * @param[in] baseFilename The base filename to use for the dump file. This name
- * will be used to form the complete file path along with the dumpPath.
- *
- * @throw std::runtime_error Throws if there is an error in collecting the PPE
- * state or writing to the file.
- */
-void collectPPEState(struct pdbg_target* proc,
-		     const std::filesystem::path& dumpPath,
-		     const std::string& baseFilename)
-{
-	PPE_DUMP_MODE mode = SNAPSHOT; // Define as per your requirement
-	uint32_t instanceNum = 0;      // Instance number, set as needed
-	PPE_TYPES type =
-	    PPE_TYPE_SBE; // Set the PPE type as per your requirement
-
-	std::vector<Reg32Value_t> ppeGprsValue, ppeSprsValue, ppeXirsValue;
-
-	ReturnCode fapiRc =
-	    p10_ppe_state(proc, type, instanceNum, mode, ppeGprsValue,
-			  ppeSprsValue, ppeXirsValue);
-	if (fapiRc != FAPI2_RC_SUCCESS) {
+	else
+	{
 		log(level::ERROR,
-		    "Failed in p10_ppe_state for proc=%s, rc=0x%08X",
-		    pdbg_target_path(proc), fapiRc);
-		throw std::runtime_error("p10_ppe_state failed");
+				"Failed in %s for target=%s, "
+				"rc=0x%08X",
+				hwpName, pdbg_target_path(target), fapiRc);
 	}
-
-	std::vector<DumpPPERegValue> ppeState;
-	for (auto& spr : ppeSprsValue) {
-		ppeState.emplace_back(spr.number, spr.value);
-	}
-	for (auto& xir : ppeXirsValue) {
-		ppeState.emplace_back(xir.number, xir.value);
-	}
-	for (auto& gpr : ppeGprsValue) {
-		ppeState.emplace_back(gpr.number, gpr.value);
-	}
-
-	std::string dumpFilename = baseFilename + "p10_ppe_state";
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
-	// Writing the PPE state data to a file
-	writePPEStateToFile(ppeState, basePath);
 }
 
-/**
- * @brief Finalizes the collection process.
- * @param[in] pib The PIB target for which the collection is being finalized.
- * @param[in] dumpPath The filesystem path where the dump was written. Used for
- * cleanup in case of failure.
- * @param[in] isSuccess A boolean flag indicating whether the preceding
- * collection steps were successful.
- */
-void finalizeCollection(struct pdbg_target* pib,
-			const std::filesystem::path& dumpPath, bool isSuccess)
+void collectPibMasterAndSlaveRegData(struct pdbg_target* target,
+			 const std::string& baseFilename,
+			 const std::filesystem::path& dumpPath,
+			 const int sbeTypeId)
 {
-	// Attempt to set the SBE state to the final state (e.g., FAILED)
-	if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
-		log(level::ERROR, "Failed to set SBE state to FAILED");
-		// Handle error if needed
-	}
+	// Dump contents of various PIB Masters and Slaves internal
+	// registers
+	std::string hwpName;
+	std::vector<sRegVOdy> pibmsRegSetOdy;
+	std::vector<sRegV> pibmsRegSetP10;
+	pibmsRegSetOdy.resize(0);
+	pibmsRegSetP10.resize(0);
+	fapi2::ReturnCode fapiRc;
 
-	// If the collection was not successful, clean up partial data
-	if (!isSuccess) {
-		try {
-			std::filesystem::remove_all(dumpPath);
-			log(level::INFO, "Cleaned up partial dump data due to "
-					 "collection failure");
-		} catch (const std::exception& e) {
-			log(level::ERROR,
-			    "Error cleaning up partial dump data: %s",
-			    e.what());
+	if (ODYSSEY_SBE_DUMP == sbeTypeId)
+	{
+		hwpName = "ody_pibms_reg_dump";
+		for (auto& reg : pibms_regs_2dump_ody) {
+			sRegVOdy regv;
+			regv.reg = reg;
+			pibmsRegSetOdy.emplace_back(regv);
 		}
+		fapiRc = ody_pibms_reg_dump(target, pibmsRegSetOdy);
 	}
+	else if (PROC_SBE_DUMP == sbeTypeId)
+	{
+		hwpName = "p10_pibms_reg_dump";
+		for (auto& reg : pibms_regs_2dump) {
+			sRegV regv;
+			regv.reg = reg;
+			pibmsRegSetP10.emplace_back(regv);
+		}
+		fapiRc = p10_pibms_reg_dump(target, pibmsRegSetP10);
+	}
+	//As both pibmsRegSetOdy and pibmsRegSetP10 can not have data at the same time thus
+	if (fapiRc == fapi2::FAPI2_RC_SUCCESS)
+	{
+		std::vector<DumpPIBMSRegVal> dumpRegs;
+		if (!pibmsRegSetOdy.empty())
+		{
+			for (auto& regs : pibmsRegSetOdy) {
+				dumpRegs.emplace_back(regs.reg.addr, regs.reg.name,
+							regs.reg.attr, regs.value);
+			}
+		}
+		else if (!pibmsRegSetP10.empty())
+		{
+			for (auto& regs : pibmsRegSetP10) {
+				dumpRegs.emplace_back(regs.reg.addr, regs.reg.name,
+							regs.reg.attr, regs.value);
+			}
+		}
+		std::string dumpFilename =
+				baseFilename + hwpName;
+		std::filesystem::path basePath = dumpPath / dumpFilename;
 
-	log(level::INFO, "Collection process completed");
+		writeDumpFileForDumpContents(dumpRegs, basePath, hwpName);
+	}
+	else
+	{
+		log(level::ERROR,
+				"Failed in %s for target=%s, "
+				"rc=0x%08X",
+				hwpName, pdbg_target_path(target), fapiRc);
+	}
+}
+
+void collectPibMemDumpData(struct pdbg_target* target,
+			 const std::string& baseFilename,
+			 const std::filesystem::path& dumpPath,
+			 const int sbeTypeId)
+{
+	// Dump the PIBMEM Array based on starting and number of address
+	std::vector<pibmem_array_data_t> pibmemContentsOdy;
+	std::vector<array_data_t> pibmemContentsP10;
+	pibmemContentsOdy.resize(0);
+	pibmemContentsP10.resize(0);
+	auto eccEnable = false;
+	uint32_t pibmemDumpStartByte = 0;
+	// Number of bytes to be read from PIBMEM
+	static constexpr uint32_t pibmemDumpNumOfByte = 0x7D400;
+	fapi2::ReturnCode fapiRc;
+	std::string hwpName;
+	if (ODYSSEY_SBE_DUMP == sbeTypeId)
+	{
+		usr_options userOptions = INTERMEDIATE_TO_INTERMEDIATE;
+		hwpName = "ody_pibmem_dump";
+		fapiRc = ody_pibmem_dump(target, pibmemDumpStartByte, pibmemDumpNumOfByte, userOptions, eccEnable, pibmemContentsOdy);
+	}
+	else if (PROC_SBE_DUMP == sbeTypeId)
+	{
+		user_options userOptions =
+			INTERMEDIATE_TILL_INTERMEDIATE;
+		hwpName = "p10_pibmem_dump";
+		fapiRc = p10_pibmem_dump(
+			target, pibmemDumpStartByte, pibmemDumpNumOfByte,
+			userOptions, pibmemContentsP10, eccEnable);
+	}
+	//As both pibmemContentsOdy and pibmemContentsP10 can not have data at the same time thus
+	if (fapiRc == fapi2::FAPI2_RC_SUCCESS)
+	{
+		std::vector<uint64_t> dumpData;
+		if (!pibmemContentsOdy.empty())
+		{
+			for (auto& data : pibmemContentsOdy)
+				dumpData.push_back(data.rd_data);
+		}
+		else if (!pibmemContentsP10.empty())
+		{
+			for (auto& data : pibmemContentsP10)
+				dumpData.push_back(data.read_data);
+		}
+		std::string dumpFilename = baseFilename + hwpName;
+		std::filesystem::path basePath = dumpPath / dumpFilename;
+		writeDumpFileForDumpContents(dumpData, basePath, hwpName);
+	}
+	else
+	{
+		log(level::ERROR,
+			"Failed in %s for proc=%s, "
+			"rc=0x%08X",
+			hwpName, pdbg_target_path(target), fapiRc);
+	}
 }
 
 void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		    const std::filesystem::path& dumpPath, const int sbeTypeId)
 {
-	if (sbeTypeId != static_cast<uint16_t>(10)) {
-		throw dumpError_t(exception::HWP_EXECUTION_FAILED);
-	}
-
 	log(level::INFO,
 	    "Collecting SBE dump: path=%s, id=%d, chip position=%d",
 	    dumpPath.string().c_str(), id, failingUnit);
 
 	std::stringstream ss;
 	ss << std::setw(8) << std::setfill('0') << id;
-	std::string baseFilename =
-	    ss.str() + ".0_" + std::to_string(failingUnit) + "_SbeData_p10_";
 
-	struct pdbg_target* proc = nullptr;
-	struct pdbg_target* pib = nullptr;
+	// Filename format
+	// <dumpID>.<nodeNUM>_<procNum>.Sbedata_p10_<HWP name>
+	
+	std::string sbeChipType;
+	if (PROC_SBE_DUMP == sbeTypeId)
+		sbeChipType = "_p10_";
+	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
+		sbeChipType = "_ody_";
+
+	std::string baseFilename =
+	    ss.str() + ".0_" + std::to_string(failingUnit) + "_SbeData" + sbeChipType;
+
+	// Execute pre-collection and get chip corresponding to failing unit
+	auto chip = preCollection(failingUnit, dumpPath, sbeTypeId);
+
+	// Get pib for the chip
+	auto pib = probePibTarget(chip, sbeTypeId);
+
+	// Set SBE state to SBE_STATE_DEBUG_MODE
+	if (0 > sbe_set_state(pib, SBE_STATE_DEBUG_MODE)) {
+		log(level::ERROR, "Setting SBE state to debug mode failed");
+		throw std::runtime_error(
+		    "Setting SBE state to debug mode failed");
+	}
 
 	try {
-		// Execute pre-collection steps and get the proc target
-		initializePdbgLibEkb();
+		// Collect SBE local register dump
+		collectSbeLocalRegDumpData(chip, baseFilename, dumpPath, sbeTypeId);
 
-		proc = getProcFromFailingId(failingUnit);
-		probeTarget(proc, "fsi");
-		pib = probeTarget(proc, "pib");
+		// Dump contents of various PIB Masters and Slaves
+		// internal registers
+		collectPibMasterAndSlaveRegData(chip, baseFilename, dumpPath, sbeTypeId);
 
-		checkSbeState(pib);
-		executeSbeExtractRc(proc, dumpPath);
+		// Dump the PIBMEM Array based on starting and number of
+		// address
+		collectPibMemDumpData(chip, baseFilename, dumpPath, sbeTypeId);
 
-		// Collect various dumps
-		collectLocalRegDump(proc, dumpPath, baseFilename);
-		collectPIBMSRegDump(proc, dumpPath, baseFilename);
-		collectPIBMEMDump(proc, dumpPath, baseFilename);
-		collectPPEState(proc, dumpPath, baseFilename);
-
-		// Finalize the collection process
-		finalizeCollection(pib, dumpPath,
-				   true); // Indicate successful completion
-		log(level::INFO, "SBE dump collection completed successfully");
-	} catch (const std::exception& e) {
-		log(level::ERROR, "Failed to collect the SBE dump: %s",
-		    e.what());
-		// In case of any exception, attempt to finalize with a failure
-		// state
-		if (proc) {
-			pib = getPibTarget(proc);
-			finalizeCollection(pib, dumpPath, false);
+		// Dump the PPE state based on the based base address
+		collectPPEStateData(chip, baseFilename, dumpPath, sbeTypeId);
+	}
+	catch (const std::exception& e) {
+		log(level::ERROR, "Failed to collect the SBE dump");
+		if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
+			log(level::ERROR, "Failed to set SBE state to FAILED");
 		}
+		// Dump collection failed remove the directory
+		// and partial contents
+		std::filesystem::remove_all(dumpPath);
+		// Rethrow the exception
 		throw;
 	}
-}
 
+	// Set SBE state to SBE_STATE_FAILED
+	if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
+		log(level::ERROR, "Failed to set SBE state to FAILED");
+	}
+	log(level::INFO, "SBE dump collected");
+}
 } // namespace dump
 } // namespace openpower::phal
