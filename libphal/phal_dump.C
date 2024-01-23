@@ -249,7 +249,7 @@ void checkSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId)
 		rv = sbe_get_state(pib_fsi, &state);
 	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
 		rv = sbe_ody_get_state(pib_fsi, &state);
-	
+
 	if (rv) {
 		log(level::ERROR, "Failed to read SBE state information (%s)",
 		    pdbg_target_path(pib_fsi));
@@ -271,7 +271,8 @@ void checkSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId)
  * @param pib_fsi The pib or fsi target depending upon the chip
  * @param sbeTypeId The chip type ID
  */
-int setSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId, const sbe_state& state)
+int setSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId,
+		const sbe_state& state)
 {
 	// Set SBE state to state mode
 	if (PROC_SBE_DUMP == sbeTypeId)
@@ -324,7 +325,7 @@ void extractSbeRc(struct pdbg_target* target,
 struct pdbg_target* probeFsiTarget(struct pdbg_target* target,
 				   const int sbeTypeId)
 {
-	//FSI target for HWP execution
+	// FSI target for HWP execution
 	struct pdbg_target* fsi = nullptr;
 	if (sbeTypeId == PROC_SBE_DUMP) {
 		char path[16];
@@ -394,15 +395,15 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	initializePdbgLibEkb();
 	// Find the proc target from the failing unit id
 	auto chip = getTargetFromFailingId(failingUnit, sbeTypeId);
-	//To check SBE state P10 uses a pib target which in PDBG
-	//library internally gets translated into fsi one
-	//But for Odyssey we directly pass on a fsi target
+	// To check SBE state P10 uses a pib target which in PDBG
+	// library internally gets translated into fsi one
+	// But for Odyssey we directly pass on a fsi target
 	struct pdbg_target* pib_fsi = nullptr;
 	if (PROC_SBE_DUMP == sbeTypeId)
 		pib_fsi = probePibTarget(chip, sbeTypeId);
 	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
 		pib_fsi = probeFsiTarget(chip, sbeTypeId);
-	
+
 	checkSbeState(pib_fsi, sbeTypeId);
 	extractSbeRc(chip, dumpPath, sbeTypeId);
 	return chip;
@@ -737,9 +738,9 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	// Execute pre-collection and get chip corresponding to failing unit
 	auto chip = preCollection(failingUnit, dumpPath, sbeTypeId);
 
-	//To set SBE state P10 uses a pib target which in PDBG
-	//library internally gets translated into fsi one
-	//But for Odyssey we directly pass on a fsi target
+	// To set SBE state P10 uses a pib target which in PDBG
+	// library internally gets translated into fsi one
+	// But for Odyssey we directly pass on a fsi target
 	struct pdbg_target* pib_fsi = nullptr;
 	if (PROC_SBE_DUMP == sbeTypeId)
 		pib_fsi = probePibTarget(chip, sbeTypeId);
