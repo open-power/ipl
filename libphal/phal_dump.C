@@ -236,17 +236,23 @@ void initializePdbgLibEkb()
 /**
  * @brief Checks the SBE state
  *
- * @param pib The pib target
- * @param target The target (OCMB or proc)
+ * @param pib_fsi The pib or fsi target depending upon the chip
+ * @param sbeTypeId The chip type ID
  */
-void checkSbeState(struct pdbg_target* pib)
+void checkSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId)
 {
 	enum sbe_state state;
 
 	// If the SBE dump is already collected return error
-	if (sbe_get_state(pib, &state)) {
+	auto rv = -1;
+	if (PROC_SBE_DUMP == sbeTypeId)
+		rv = sbe_get_state(pib_fsi, &state);
+	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
+		rv = sbe_ody_get_state(pib_fsi, &state);
+	
+	if (rv) {
 		log(level::ERROR, "Failed to read SBE state information (%s)",
-		    pdbg_target_path(pib));
+		    pdbg_target_path(pib_fsi));
 		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
 	}
 
@@ -254,9 +260,26 @@ void checkSbeState(struct pdbg_target* pib)
 		log(level::ERROR,
 		    "Dump is already collected from the "
 		    "SBE on (%s)",
-		    pdbg_target_path(pib));
+		    pdbg_target_path(pib_fsi));
 		throw sbeError_t(exception::SBE_DUMP_IS_ALREADY_COLLECTED);
-	};
+	}
+}
+
+/**
+ * @brief Sets the SBE state
+ *
+ * @param pib_fsi The pib or fsi target depending upon the chip
+ * @param sbeTypeId The chip type ID
+ */
+int setSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId, const sbe_state& state)
+{
+	// Set SBE state to state mode
+	if (PROC_SBE_DUMP == sbeTypeId)
+		return sbe_set_state(pib_fsi, state);
+	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
+		return sbe_ody_set_state(pib_fsi, state);
+	else
+		return -1;
 }
 
 /**
@@ -289,6 +312,38 @@ void extractSbeRc(struct pdbg_target* target,
 	    targetTypeString, pdbg_target_path(target), fapiRc);
 
 	writeSbeData(dumpPath, fapiRc, recovAction);
+}
+
+/**
+ * @brief Probes and returns the corresponding FSI target of the chip
+ *
+ * @param target The target chip
+ * @param sbeTypeId The chip type number
+ * @return struct pdbg_target* The fsi target obtained
+ */
+struct pdbg_target* probeFsiTarget(struct pdbg_target* target,
+				   const int sbeTypeId)
+{
+	//FSI target for HWP execution
+	struct pdbg_target* fsi = nullptr;
+	if (sbeTypeId == PROC_SBE_DUMP) {
+		char path[16];
+		sprintf(path, "/proc%d/fsi", pdbg_target_index(target));
+		fsi = pdbg_target_from_path(nullptr, path);
+	} else if (sbeTypeId == ODYSSEY_SBE_DUMP) {
+		fsi = get_ody_fsi_target(target);
+	}
+	if (!fsi) {
+		log(level::ERROR, "Failed to get FSI target for(%s)",
+		    pdbg_target_path(target));
+		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+	// Probe FSI for HWP execution
+	if (pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED) {
+		log(level::ERROR, "Failed to prob FSI");
+		throw dumpError_t(exception::PDBG_TARGET_NOT_OPERATIONAL);
+	}
+	return fsi;
 }
 
 /**
@@ -339,8 +394,16 @@ struct pdbg_target* preCollection(const uint32_t failingUnit,
 	initializePdbgLibEkb();
 	// Find the proc target from the failing unit id
 	auto chip = getTargetFromFailingId(failingUnit, sbeTypeId);
-	auto pib = probePibTarget(chip, sbeTypeId);
-	checkSbeState(pib);
+	//To check SBE state P10 uses a pib target which in PDBG
+	//library internally gets translated into fsi one
+	//But for Odyssey we directly pass on a fsi target
+	struct pdbg_target* pib_fsi = nullptr;
+	if (PROC_SBE_DUMP == sbeTypeId)
+		pib_fsi = probePibTarget(chip, sbeTypeId);
+	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
+		pib_fsi = probeFsiTarget(chip, sbeTypeId);
+	
+	checkSbeState(pib_fsi, sbeTypeId);
 	extractSbeRc(chip, dumpPath, sbeTypeId);
 	return chip;
 }
@@ -388,7 +451,7 @@ void writeDumpFile(char* data, size_t len, std::filesystem::path& dumpPath)
 template <typename DumpRegVal>
 void writeDumpFileForDumpContents(std::vector<DumpRegVal>& dumpRegs,
 				  std::filesystem::path& basePath,
-				  const std::string_view dumpType)
+				  const std::string& dumpType)
 {
 	try {
 		writeDumpFile(reinterpret_cast<char*>(&dumpRegs[0]),
@@ -398,7 +461,7 @@ void writeDumpFileForDumpContents(std::vector<DumpRegVal>& dumpRegs,
 		    "Error in writing %s "
 		    "file "
 		    "errorMsg=%s",
-		    dumpType.data(), e.what());
+		    dumpType, e.what());
 		throw;
 	}
 }
@@ -674,11 +737,17 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	// Execute pre-collection and get chip corresponding to failing unit
 	auto chip = preCollection(failingUnit, dumpPath, sbeTypeId);
 
-	// Get pib for the chip
-	auto pib = probePibTarget(chip, sbeTypeId);
+	//To set SBE state P10 uses a pib target which in PDBG
+	//library internally gets translated into fsi one
+	//But for Odyssey we directly pass on a fsi target
+	struct pdbg_target* pib_fsi = nullptr;
+	if (PROC_SBE_DUMP == sbeTypeId)
+		pib_fsi = probePibTarget(chip, sbeTypeId);
+	else if (ODYSSEY_SBE_DUMP == sbeTypeId)
+		pib_fsi = probeFsiTarget(chip, sbeTypeId);
 
 	// Set SBE state to SBE_STATE_DEBUG_MODE
-	if (0 > sbe_set_state(pib, SBE_STATE_DEBUG_MODE)) {
+	if (0 > setSbeState(pib_fsi, sbeTypeId, SBE_STATE_DEBUG_MODE)) {
 		log(level::ERROR, "Setting SBE state to debug mode failed");
 		throw std::runtime_error(
 		    "Setting SBE state to debug mode failed");
@@ -702,7 +771,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		collectPPEStateData(chip, baseFilename, dumpPath, sbeTypeId);
 	} catch (const std::exception& e) {
 		log(level::ERROR, "Failed to collect the SBE dump");
-		if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
+		if (0 > setSbeState(pib_fsi, sbeTypeId, SBE_STATE_FAILED)) {
 			log(level::ERROR, "Failed to set SBE state to FAILED");
 		}
 		// Dump collection failed remove the directory
@@ -713,7 +782,7 @@ void collectSBEDump(uint32_t id, uint32_t failingUnit,
 	}
 
 	// Set SBE state to SBE_STATE_FAILED
-	if (0 > sbe_set_state(pib, SBE_STATE_FAILED)) {
+	if (0 > setSbeState(pib_fsi, sbeTypeId, SBE_STATE_FAILED)) {
 		log(level::ERROR, "Failed to set SBE state to FAILED");
 	}
 	log(level::INFO, "SBE dump collected");
