@@ -340,25 +340,47 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
 void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
 {
-	log(level::INFO, "Enter: getDump(%d) on %s", type,
-	    pdbg_target_path(chip));
-
+	log(level::INFO, "Enter: getDump(%d) on %s", type, pdbg_target_path(chip));
 	if (is_ody_ocmb_chip(chip))
 	{
-		auto ret = sbe_dump(chip, type, clock, faCollect, data, dataLen);
+		if (pdbg_target_probe(chip) != PDBG_TARGET_ENABLED)
+		{
+			log(level::ERROR, "getDump probe ody ocmb target (%d) failed", pdbg_target_index(chip));
+			return;
+		}
+		struct pdbg_target *co = get_ody_chipop_target(chip);
+		if (pdbg_target_probe(co) != PDBG_TARGET_ENABLED)
+		{
+			log(level::ERROR, "getDump probe ody chipop target (%d) failed", pdbg_target_index(co));
+			return;
+		}
+
+		struct pdbg_target *fsi = get_ody_fsi_target(chip);
+		if (pdbg_target_probe(fsi) != PDBG_TARGET_ENABLED)
+		{
+			log(level::ERROR, "getDump probe ody fsi target (%d) failed", pdbg_target_index(fsi));
+			return;
+		}
+
+		struct pdbg_target *pib = get_ody_pib_target(chip);
+		if (pdbg_target_probe(pib) != PDBG_TARGET_ENABLED)
+		{
+			log(level::ERROR, "getDump probe ody pib target (%d) failed", pdbg_target_index(pib));
+			return;
+		}
+		auto ret = sbe_dump(pib, type, clock, faCollect, data, dataLen);
 		if (ret != 0)
 		{
 			log(level::ERROR, "getDump(%s) failed", pdbg_target_path(chip));
 		}
 		return;
 	}
-
 	// Validate input target is processor target.
 	validateProcTgt(chip);
 
 	if (!isTgtPresent(chip)) {
 		log(level::ERROR, "getDump(%s) Target is not present",
-		    pdbg_target_path(chip));
+				pdbg_target_path(chip));
 	}
 	// SBE halt state need recovery before dump chip-ops
 	sbeHaltStateRecovery(chip);
