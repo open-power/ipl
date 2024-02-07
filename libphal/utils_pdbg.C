@@ -128,6 +128,23 @@ struct pdbg_target *getTgtFromBinPath(const ATTR_PHYS_BIN_PATH_Type &binPath)
 	return targetInfo.target;
 }
 
+bool isOdysseyChip(struct pdbg_target *target)
+{
+    const uint16_t ODYSSEY_CHIP_ID = 0x60C0;
+    const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
+    ATTR_TYPE_Type type;
+    DT_GET_PROP(ATTR_TYPE, target, type);
+    if(type != ATTR_TYPE_OCMB_CHIP) {
+        return false;
+    }
+    ATTR_CHIP_ID_Type chipId = 0;
+    DT_GET_PROP(ATTR_CHIP_ID, target,chipId);
+    if(chipId == ODYSSEY_CHIP_ID) {
+        return true;
+        }
+    return false;
+}
+
 void validateProcTgt(struct pdbg_target *tgt)
 {
 	const char *tgtClass = pdbg_target_class_name(tgt);
@@ -142,6 +159,15 @@ void validateProcTgt(struct pdbg_target *tgt)
 		    "validateProcTgt: Target is not processor type");
 		throw pdbgError_t(exception::PDBG_TARGET_INVALID);
 	}
+}
+
+void validateChipTgt(struct pdbg_target *tgt)
+{
+	if (isOdysseyChip(tgt))
+	{
+		return;
+	}
+	validateProcTgt(tgt);
 }
 
 } // namespace pdbg

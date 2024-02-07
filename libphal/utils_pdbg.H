@@ -51,5 +51,14 @@ struct pdbg_target *getTgtFromBinPath(const ATTR_PHYS_BIN_PATH_Type &binPath);
  */
 void validateProcTgt(struct pdbg_target *tgt);
 
+/**
+ * @brief Check whether the input target is an Odyssey OCMB
+ *
+ * @param target Pointer to the chip tartget
+ *
+ * @return True if Odyssey OCMB chip else false
+*/
+bool isOdysseyChip(struct pdbg_target *target);
+
 } // namespace pdbg
 } // namespace openpower::phal::utils
