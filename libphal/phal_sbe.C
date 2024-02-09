@@ -235,22 +235,37 @@ bool isDumpAllowed(struct pdbg_target *proc)
 	return allowed;
 }
 
-sbeError_t captureFFDC(struct pdbg_target *proc)
+sbeError_t captureFFDC(struct pdbg_target *target)
 {
 	// get SBE FFDC info
 	bufPtr_t bufPtr;
 	uint32_t ffdcLen = 0;
 	uint32_t status = 0;
 
-	// Log SBE debug data.
-	logSbeDebugData(proc);
+	if (is_ody_ocmb_chip(target)) {
+		// sbe_ffdc_get internall uses chipop target so probe it
+		pdbg_target *co = get_ody_chipop_target(target);
+		if (pdbg_target_probe(co) != PDBG_TARGET_ENABLED) {
+			return sbeError_t(exception::PDBG_TARGET_INVALID);
+		}
+		// TODO at present OCMB is under proc and it does not have its
+		// own pib target in device tree. This needs to be fixed after
+		// ocmb is pulled out of proc to use ocmb pib target directly
+		if (sbe_ffdc_get(target, &status, bufPtr.getPtr(), &ffdcLen)) {
+			log(level::ERROR,
+			    "odyssey sbe_ffdc_get function failed");
+			throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+		}
+	} else {
+		// Log SBE debug data.
+		logSbeDebugData(target);
 
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
-
-	if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
-		log(level::ERROR, "sbe_ffdc_get function failed");
-		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+		// get PIB target
+		pdbg_target *pib = getPibTarget(target);
+		if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
+			log(level::ERROR, "proc sbe_ffdc_get function failed");
+			throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+		}
 	}
 	// TODO Need to remove this once pdbg header file support in place
 	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
@@ -258,7 +273,7 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 
 	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
 		log(level::ERROR, "SBE chipop timeout reported(%s)",
-		    pdbg_target_path(proc));
+		    pdbg_target_path(target));
 		return sbeError_t(exception::SBE_CMD_TIMEOUT);
 	}
 
@@ -266,7 +281,7 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	if (!ffdcLen) {
 		// log message and return.
 		log(level::ERROR, "Empty SBE FFDC returned (%s)",
-		    pdbg_target_path(proc));
+		    pdbg_target_path(target));
 		return sbeError_t(exception::SBE_FFDC_NO_DATA);
 	}
 
@@ -343,35 +358,42 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	log(level::INFO, "Enter: getDump(%d) on %s", type,
 	    pdbg_target_path(chip));
 
-	if (is_ody_ocmb_chip(chip))
-	{
-		auto ret = sbe_dump(chip, type, clock, faCollect, data, dataLen);
-		if (ret != 0)
-		{
-			log(level::ERROR, "getDump(%s) failed", pdbg_target_path(chip));
+	if (is_ody_ocmb_chip(chip)) {
+		// sbe_ffdc_get internall uses chipop target so probe it
+		pdbg_target *co = get_ody_chipop_target(chip);
+		if (pdbg_target_probe(co) != PDBG_TARGET_ENABLED) {
+			log(level::ERROR, "failed to get ody chipop target",
+			    pdbg_target_path(chip));
+			return;
 		}
-		return;
-	}
+		auto ret =
+		    sbe_dump(chip, type, clock, faCollect, data, dataLen);
+		if (ret != 0) {
+			log(level::ERROR, "getDump(%s) failed",
+			    pdbg_target_path(chip));
+			throw captureFFDC(chip);
+		}
+	} else { // proc
+		// Validate input target is processor target.
+		validateProcTgt(chip);
 
-	// Validate input target is processor target.
-	validateProcTgt(chip);
+		if (!isTgtPresent(chip)) {
+			log(level::ERROR, "getDump(%s) Target is not present",
+			    pdbg_target_path(chip));
+		}
+		// SBE halt state need recovery before dump chip-ops
+		sbeHaltStateRecovery(chip);
 
-	if (!isTgtPresent(chip)) {
-		log(level::ERROR, "getDump(%s) Target is not present",
-		    pdbg_target_path(chip));
-	}
-	// SBE halt state need recovery before dump chip-ops
-	sbeHaltStateRecovery(chip);
+		// validate SBE state
+		validateSBEState(chip);
 
-	// validate SBE state
-	validateSBEState(chip);
+		// get PIB target
+		struct pdbg_target *pib = getPibTarget(chip);
 
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(chip);
-
-	// call pdbg back-end function
-	if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
-		throw captureFFDC(chip);
+		// call pdbg back-end function
+		if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
+			throw captureFFDC(chip);
+		}
 	}
 }
 

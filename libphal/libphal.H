@@ -80,7 +80,7 @@ bool isDumpAllowed(struct pdbg_target *proc);
  * @brief utility function to capture SBE ffdc data using
  *        pdbg function sbe_ffdc_get().
  *
- * @param[in] proc processor target to operate on
+ * @param[in] target processor/ocmb target to operate on
  *
  * return  sbeError_t sbe error exception type object which
  *         includes chip-op failure reason code and, file which includes
@@ -89,7 +89,7 @@ bool isDumpAllowed(struct pdbg_target *proc);
  * Exceptions: SbeError for pdbg lib function failure
  *             std::runtime_error - for file operation failure.
  */
-sbeError_t captureFFDC(struct pdbg_target *proc);
+sbeError_t captureFFDC(struct pdbg_target *target);
 
 /**
  * @brief Execute continue mpipl on the pib
