@@ -4,16 +4,18 @@
 #include "utils_buffer.H"
 #include "utils_pdbg.H"
 #include "utils_tempfile.H"
+#include <arpa/inet.h>
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <unistd.h>
+#include <unordered_map>
+
 extern "C"
 {
 #include <libsbefifo.h>
 }
-
 namespace openpower::phal
 {
 namespace sbe
@@ -23,6 +25,22 @@ using namespace openpower::phal::logging;
 using namespace openpower::phal;
 using namespace openpower::phal::utils::pdbg;
 using namespace openpower::phal::pdbg;
+
+constexpr uint16_t minFFDCPackageWordSizePOZ = 5;
+constexpr uint16_t pozFfdcMagicCode = 0xFBAD;
+constexpr uint16_t slidOffset = 2 * sizeof(uint32_t);
+
+struct pozFfdcHeader {
+	uint32_t magicByte : 16;
+	uint32_t lengthinWords : 16;
+	uint32_t seqId : 16;
+	uint32_t cmdClass : 8;
+	uint32_t cmd : 8;
+	uint32_t slid : 16;
+	uint32_t severity : 8;
+	uint32_t chipId : 8;
+	uint32_t fapiRc;
+} __attribute__((packed));
 
 /**
  * @brief helper function to log SBE debug data
@@ -236,7 +254,7 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	struct pdbg_target *pib = getPibTarget(proc);
 
 	if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
-		log(level::ERROR, "sbe_ffdc_get function failed");
+		log(level::ERROR, "proc sbe_ffdc_get function failed");
 		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
 	}
 
@@ -257,7 +275,91 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 	// create ffdc file
 	tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
 	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFile.getFd(),
-			  ffdcFile.getPath().c_str());
+			  ffdcFile.getPath());
+}
+
+sbeError_t capturePOZFFDC(struct pdbg_target *target)
+{
+	assert(is_ody_ocmb_chip(target));
+	// get SBE FFDC info
+	bufPtr_t bufPtr;
+	uint32_t ffdcLen = 0;
+	uint32_t status = 0;
+
+	// sbe_ffdc_get internall uses chipop target so probe it
+	if (pdbg_target_probe(get_ody_chipop_target(target)) != PDBG_TARGET_ENABLED) {
+		throw sbeError_t(exception::PDBG_TARGET_INVALID);
+	}
+
+	if (sbe_ffdc_get(target, &status, bufPtr.getPtr(), &ffdcLen)) {
+		log(level::ERROR, "POZ  sbe_ffdc_get function failed");
+		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+	}
+
+	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
+		log(level::ERROR, "POZ SBE chipop timeout reported(%s)",
+		    pdbg_target_path(target));
+		return sbeError_t(exception::SBE_CMD_TIMEOUT);
+	}
+
+	// Handle empty buffer.
+	if (!ffdcLen) {
+		// log message and return.
+		log(level::ERROR, "POZ empty SBE FFDC returned (%s)",
+		    pdbg_target_path(target));
+		return sbeError_t(exception::SBE_FFDC_NO_DATA);
+	}
+
+	// first store all the data based on slid
+	std::unordered_multimap<uint16_t, std::vector<uint8_t>> mulSlidData;
+	uint32_t offset = 0;
+	while ((offset < ffdcLen) &&
+		ffdcLen >= (offset + minFFDCPackageWordSizePOZ)) {
+		pozFfdcHeader *ffdc =
+			reinterpret_cast<pozFfdcHeader *>(bufPtr.getData() + offset);
+		uint16_t magicBytes = ntohs(ffdc->magicByte);
+		assert(magicBytes == pozFfdcMagicCode);
+		uint32_t lenInBytes =
+			ntohs(ffdc->lengthinWords) * sizeof(uint32_t);
+		uint16_t slid = ntohs(ffdc->slid);
+		std::vector<uint8_t> data;
+		data.reserve(lenInBytes);
+		std::copy(bufPtr.getData() + offset,
+			  bufPtr.getData() + offset + lenInBytes,
+			  std::back_inserter(data));
+		mulSlidData.emplace(std::make_pair(slid, data));
+		offset += lenInBytes;
+	}
+	// now combine data with same slid numbers
+	std::unordered_map<uint16_t, std::vector<uint8_t>> slidData;
+	int prevKey = -1;
+	for (auto it = mulSlidData.begin(); it != mulSlidData.end(); ++it) {
+		if (it->first != prevKey) {
+			// New key found, print values associated with the key
+			auto range = mulSlidData.equal_range(it->first);
+			size_t totalSize = 0;
+			for (auto dataIt = range.first; dataIt != range.second;
+				++dataIt) {
+				totalSize += (dataIt->second).size();
+			}
+			std::vector<uint8_t> data;
+			data.reserve(totalSize);
+			for (auto dataIt = range.first; dataIt != range.second;
+				++dataIt) {
+				data.insert(data.end(), dataIt->second.begin(),
+					dataIt->second.end());
+			}
+			slidData.emplace(it->first, data);
+		}
+	}
+	FFDCFileList ffdcFileList;
+	for (auto &iter : slidData) {
+		tmpfile_t ffdcFile(iter.second.data(), iter.second.size());
+		ffdcFileList.insert(std::make_pair(
+			iter.first,
+			std::make_pair(ffdcFile.getFd(), ffdcFile.getPath())));
+	}
+	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFileList);
 }
 
 void mpiplContinue(struct pdbg_target *proc)
@@ -325,37 +427,35 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
 {
 	log(level::INFO, "Enter: getDump(%d) on %s", type,
-	    pdbg_target_path(chip));
+		pdbg_target_path(chip));
 
-	if (is_ody_ocmb_chip(chip))
-	{
-		auto ret = sbe_dump(chip, type, clock, faCollect, data, dataLen);
-		if (ret != 0)
-		{
-			log(level::ERROR, "getDump(%s) failed", pdbg_target_path(chip));
+	if (is_ody_ocmb_chip(chip)) {
+		if (sbe_dump(chip, type, clock, faCollect, data, dataLen)) {
+			log(level::ERROR, "POZ getDump(%s) failed",
+			    pdbg_target_path(chip));
+			throw capturePOZFFDC(chip);
 		}
-		return;
-	}
+	} else { // proc
+		// Validate input target is processor target.
+		validateProcTgt(chip);
 
-	// Validate input target is processor target.
-	validateProcTgt(chip);
+		if (!isTgtPresent(chip)) {
+			log(level::ERROR, "getDump(%s) Target is not present",
+				pdbg_target_path(chip));
+		}
+		// SBE halt state need recovery before dump chip-ops
+		sbeHaltStateRecovery(chip);
 
-	if (!isTgtPresent(chip)) {
-		log(level::ERROR, "getDump(%s) Target is not present",
-		    pdbg_target_path(chip));
-	}
-	// SBE halt state need recovery before dump chip-ops
-	sbeHaltStateRecovery(chip);
+		// validate SBE state
+		validateSBEState(chip);
 
-	// validate SBE state
-	validateSBEState(chip);
+		// get PIB target
+		struct pdbg_target *pib = getPibTarget(chip);
 
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(chip);
-
-	// call pdbg back-end function
-	if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
-		throw captureFFDC(chip);
+		// call pdbg back-end function
+		if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
+			throw captureFFDC(chip);
+		}
 	}
 }
 

@@ -10,11 +10,13 @@ using namespace openpower::phal::logging;
 
 SbeError::~SbeError()
 {
-	if (!fileName.empty()) {
-		if (remove(fileName.c_str())) {
+	for(const auto& iter : ffdcFileList)
+	{
+		if(fs::remove(iter.second.second) == false)
+		{
 			// Log error message and exit from destructor
 			log(level::ERROR, "File(%s) remove failed(errnno:%d)",
-			    fileName.c_str(), errno);
+			    iter.second.second.c_str(), errno);
 		}
 	}
 }
