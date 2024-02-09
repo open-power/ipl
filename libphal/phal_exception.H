@@ -3,9 +3,13 @@
 #include <exception>
 #include <map>
 #include <string>
+#include <filesystem>
 
 namespace openpower::phal
 {
+namespace fs = std::filesystem;
+
+using FFDCFileList = std::map<uint16_t, std::pair<int, fs::path>>;
 namespace exception
 {
 
@@ -33,7 +37,7 @@ enum ERR_TYPE {
 	PDBG_FSI_WRITE_FAIL,
 	SBE_DUMP_IS_ALREADY_COLLECTED,
 };
-
+constexpr uint16_t DEFAULT_SLID = 0;
 // Error type to message map.
 typedef std::map<ERR_TYPE, const char *> errMsgMapType;
 const errMsgMapType errMsgMap = {
@@ -63,7 +67,6 @@ const errMsgMapType errMsgMap = {
 struct phalError : public std::exception {
 	virtual ERR_TYPE errType() const noexcept = 0;
 }; // namespace exception
-
 // libphal SBE specific errors base exception class
 // SBE related functions errors base exception class
 // Exception class includes all the required for SBE RAS
@@ -76,12 +79,19 @@ struct phalError : public std::exception {
 class SbeError final : public phalError
 {
        public:
-	SbeError(ERR_TYPE type, int fd, const std::string fileName) :
-	    type(type), fd(fd), fileName(fileName)
+	SbeError(ERR_TYPE type, int fd, const fs::path fileName) : type(type)
+	{
+		// ffdcFileList.insert(DEFAULT_SLID, std::make_pair(fd,
+		// fileName));
+		ffdcFileList.insert(
+		    std::make_pair(DEFAULT_SLID, std::make_pair(fd, fileName)));
+	}
+	SbeError(ERR_TYPE type) : type(type){};
+	SbeError() : type(NONE){};
+	SbeError(ERR_TYPE type, const FFDCFileList &fileList) :
+	    type(type), ffdcFileList(fileList)
 	{
 	}
-	SbeError(ERR_TYPE type) : type(type), fd(-1){};
-	SbeError() : type(NONE), fd(-1){};
 
 	SbeError &operator=(SbeError &&) = default;
 	SbeError(SbeError &&) = default;
@@ -108,24 +118,35 @@ class SbeError final : public phalError
 	/* return file descriptor includes the FFDC data */
 	int getFd() const noexcept
 	{
-		return fd;
+		if (!ffdcFileList.empty()) {
+			const auto &it = ffdcFileList.begin();
+			return it->second.first;
+		}
+		return -1;
 	}
 
 	/* return filename information */
 	const std::string getFileName() const noexcept
 	{
-		return fileName;
+		if (!ffdcFileList.empty()) {
+			const auto &it = ffdcFileList.begin();
+			return it->second.second;
+		}
+		return "";
+	}
+
+	/* return ffdcmap information */
+	const FFDCFileList getFfdcFileList() const noexcept
+	{
+		return ffdcFileList;
 	}
 
        private:
 	/* Error type */
 	ERR_TYPE type;
 
-	/* FFDC File descriptor */
-	int fd;
-
-	/* FFDC File name */
-	std::string fileName;
+	/* POZ FFDC map of slid, fd and filepath */
+	FFDCFileList ffdcFileList;
 };
 
 // Exception handling for dump specific functions

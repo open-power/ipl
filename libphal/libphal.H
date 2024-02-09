@@ -8,15 +8,12 @@ extern "C" {
 }
 
 #include <attributes_info.H>
-
-#include <filesystem>
 #include <vector>
 
 namespace openpower::phal
 {
 namespace sbe
 {
-
 /**
  * @brief utility function to check SBE state to allow chipops.
  *
@@ -75,6 +72,22 @@ bool isPrimaryIplDone();
  * Exceptions: SbeError
  */
 bool isDumpAllowed(struct pdbg_target *proc);
+
+/**
+ * @brief utility function to capture SBE ffdc data using
+ *        pdbg function sbe_ffdc_get().
+ *
+ * @param[in] target ocmb target to operate on
+ *
+ * return  sbeError_t sbe error exception type object which
+ *         includes chip-op failure reason code and, file which includes
+ *         SBE FFDC response data if any
+ *
+ * Exceptions: SbeError for pdbg lib function failure
+ *             std::runtime_error - for file operation failure.
+ */
+sbeError_t capturePOZFFDC(struct pdbg_target *target);
+
 
 /**
  * @brief utility function to capture SBE ffdc data using
@@ -274,7 +287,7 @@ bool isSbeVitalAttnActive(struct pdbg_target *proc);
  * @brief Check if Hostboot has completed and the control transistioned to Host/PHYP
  *
  * @return true when we have moved to PHYP
- * @return false if there is any error in reading the scom address, 
+ * @return false if there is any error in reading the scom address,
  * consider control still in hostboot
  */
 bool hasControlTransitionedToHost();
