@@ -23,18 +23,18 @@ using namespace openpower::phal::pdbg;
 bool is_ody_ocmb_chip(struct pdbg_target *target)
 {
 	const uint16_t ODYSSEY_CHIP_ID = 0x60C0;
-    const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
-    ATTR_TYPE_Type type;
-    DT_GET_PROP(ATTR_TYPE, target, type);
-    if(type != ATTR_TYPE_OCMB_CHIP) {
-    	return false;
-    }
-    ATTR_CHIP_ID_Type chipId = 0;
-    DT_GET_PROP(ATTR_CHIP_ID, target,chipId);
-    if(chipId == ODYSSEY_CHIP_ID) {
-        return true;
-	}    
-    return false;
+	const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
+	ATTR_TYPE_Type type;
+	DT_GET_PROP(ATTR_TYPE, target, type);
+	if (type != ATTR_TYPE_OCMB_CHIP) {
+		return false;
+	}
+	ATTR_CHIP_ID_Type chipId = 0;
+	DT_GET_PROP(ATTR_CHIP_ID, target, chipId);
+	if (chipId == ODYSSEY_CHIP_ID) {
+		return true;
+	}
+	return false;
 }
 
 /**
