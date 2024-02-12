@@ -158,7 +158,7 @@ struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
 			continue;
 		}
 		if (sbeTypeId == ODYSSEY_SBE_DUMP) {
-			if (!openpower::phal::sbe::is_ody_ocmb_chip(target)) {
+			if (!is_ody_ocmb_chip(target)) {
 				log(level::ERROR,
 				    "No ocmb target found to execute the dump "
 				    "for failing unit=%d",

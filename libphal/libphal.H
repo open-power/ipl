@@ -150,17 +150,6 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
  *             std::runtime_error - for file operation failure.
  */
 void threadStopProc(struct pdbg_target *proc);
-
-
-/**
- * @brief Check whether the input target is an Odyssey OCMB
- * 
- * @param target Pointer to the chip tartget
- * 
- * @return True if Odyssey OCMB chip else false
-*/
-bool is_ody_ocmb_chip(struct pdbg_target *target);
-
 } // namespace sbe
 
 namespace pdbg
