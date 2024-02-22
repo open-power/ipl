@@ -9,6 +9,10 @@
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
 #include <ekb/hwpf/fapi2/include/return_code_defs.H>
 #include <unistd.h>
+extern "C"
+{
+#include <libsbefifo.h>
+}
 
 namespace openpower::phal
 {
@@ -235,9 +239,6 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 		log(level::ERROR, "sbe_ffdc_get function failed");
 		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
 	}
-	// TODO Need to remove this once pdbg header file support in place
-	const auto SBEFIFO_PRI_UNKNOWN_ERROR = 0x00FE0000;
-	const auto SBEFIFO_SEC_HW_TIMEOUT = 0x0010;
 
 	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
 		log(level::ERROR, "SBE chipop timeout reported(%s)",
