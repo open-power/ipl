@@ -339,7 +339,7 @@ void executeSbeExtractRc(struct pdbg_target* target,
 
 	if (ODYSSEY_SBE_DUMP == sbeTypeId) {
 		// ody_extract_sbe_rc is returning the error.
-		fapiRc = ody_extract_sbe_rc(target);
+		fapiRc = ody_extract_sbe_rc(target, true, false);
 		targetTypeString = "ocmb";
 	} else if (PROC_SBE_DUMP == sbeTypeId) {
 		// p10_extract_sbe_rc is returning the error along with
