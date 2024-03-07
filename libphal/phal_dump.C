@@ -587,6 +587,8 @@ void collectPIBMEMDump(struct pdbg_target* target,
 	// Define these constants and types as per your requirement
 	const uint32_t pibmemDumpStartByte = 0;	      // Starting byte for dump
 	const uint32_t pibmemDumpNumOfByte = 0x7D400; // Number of bytes to read
+	// Number of bytes (512KB) to read for Odyssey
+	constexpr uint32_t pibmemDumpNumOfByteOdy = 0x80000;
 	const user_options userOptions =
 	    INTERMEDIATE_TILL_INTERMEDIATE; // User options, define as per your
 	const usr_options userOptionsOdy = INTERMEDIATE_TO_INTERMEDIATE;
@@ -606,7 +608,7 @@ void collectPIBMEMDump(struct pdbg_target* target,
 		hwpName = "p10_pibmem_dump";
 	} else if (ODYSSEY_SBE_DUMP == sbeTypeId) {
 		fapiRc = ody_pibmem_dump(target, pibmemDumpStartByte,
-					 pibmemDumpNumOfByte, userOptionsOdy,
+					 pibmemDumpNumOfByteOdy, userOptionsOdy,
 					 eccEnable, pibmemContentsOdy);
 		hwpName = "ody_pibmem_dump";
 	}
