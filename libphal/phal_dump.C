@@ -158,7 +158,7 @@ struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
 			continue;
 		}
 		if (sbeTypeId == ODYSSEY_SBE_DUMP) {
-			if (!openpower::phal::sbe::is_ody_ocmb_chip(target)) {
+			if (!isOdysseyChip(target)) {
 				log(level::ERROR,
 				    "No ocmb target found to execute the dump "
 				    "for failing unit=%d",
@@ -400,8 +400,6 @@ void writeSBERegValuesToFile(const std::vector<DumpSBERegVal>& dumpRegs,
  * will be used to form the complete file path along with the dumpPath.
  * @param sbeTypeId[in] Chip type ID
  *
- * @throw std::runtime_error Throws if there is an error in collecting the local
- * register dump or writing to the file.
  */
 void collectLocalRegDump(struct pdbg_target* target,
 			 const std::filesystem::path& dumpPath,
@@ -424,7 +422,7 @@ void collectLocalRegDump(struct pdbg_target* target,
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X", target,
 		    pdbg_target_path(target), fapiRc);
-		throw std::runtime_error(hwpName + " failed");
+		return;
 	}
 	std::vector<DumpSBERegVal> dumpRegs;
 	// As both sbeScomRegValueOdy and sbeScomRegValue can not have data
@@ -484,8 +482,6 @@ void writePIBMSRegValuesToFile(const std::vector<DumpPIBMSRegVal>& dumpRegs,
  * @param sbeTypeId[in] Chip type ID
  * will be used to form the complete file path along with the dumpPath.
  *
- * @throw std::runtime_error Throws if there is an error in collecting the PIBMS
- * register dump or writing to the file.
  */
 void collectPIBMSRegDump(struct pdbg_target* target,
 			 const std::filesystem::path& dumpPath,
@@ -516,7 +512,7 @@ void collectPIBMSRegDump(struct pdbg_target* target,
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
-		throw std::runtime_error(hwpName + " failed");
+		return;
 	}
 	std::vector<DumpPIBMSRegVal> dumpRegs;
 	// As both pibmsRegSetOdy and pibmsRegSet can not have data at the
@@ -577,8 +573,6 @@ void writePIBMEMDataToFile(const std::vector<uint64_t>& dumpData,
  * will be used to form the complete file path along with the dumpPath.
  * @param sbeTypeId[in] The chip type, i.e.; proc or OCMB
  *
- * @throw std::runtime_error Throws if there is an error in collecting the
- * PIBMEM dump data or writing to the file.
  */
 void collectPIBMEMDump(struct pdbg_target* target,
 		       const std::filesystem::path& dumpPath,
@@ -613,7 +607,7 @@ void collectPIBMEMDump(struct pdbg_target* target,
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
-		throw std::runtime_error(hwpName + " failed");
+		return;
 	}
 	std::vector<uint64_t> dumpData;
 	// As both pibmemContentsOdy and pibmemContents can not have data at
@@ -670,8 +664,6 @@ void writePPEStateToFile(const std::vector<DumpPPERegValue>& ppeState,
  * will be used to form the complete file path along with the dumpPath.
  * @param sbeTypeId[in] The chip type, i.e.; proc or OCMB
  *
- * @throw std::runtime_error Throws if there is an error in collecting the PPE
- * state or writing to the file.
  */
 void collectPPEState(struct pdbg_target* target,
 		     const std::filesystem::path& dumpPath,
@@ -704,7 +696,7 @@ void collectPPEState(struct pdbg_target* target,
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
-		throw std::runtime_error(hwpName + " failed");
+		return;
 	}
 
 	std::vector<DumpPPERegValue> ppeState;
