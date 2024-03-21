@@ -2,14 +2,25 @@
 
 #include <exception>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <filesystem>
 
 namespace openpower::phal
 {
-namespace fs = std::filesystem;
+//taken from error_info_defs.H, including the header file breaks logging and
+//debug collector as they need to include ekb in include path
+enum errlSeverity_t
+{
+    FAPI2_ERRL_SEV_UNDEFINED     = 0x00, /// Used internally by ffdc mechanism
+    FAPI2_ERRL_SEV_RECOVERED     = 0x10, /// Not seen by customer
+    FAPI2_ERRL_SEV_PREDICTIVE    = 0x20, /// Error recovered but customer will see
+    FAPI2_ERRL_SEV_UNRECOVERABLE = 0x40  /// Unrecoverable, general
+};
 
-using FFDCFileList = std::map<uint16_t, std::pair<int, fs::path>>;
+namespace fs = std::filesystem;
+//slid, severity, fd, filename
+using FFDCFileList = std::unordered_map<uint16_t, std::tuple<uint8_t, int, fs::path>>;
 namespace exception
 {
 
@@ -79,13 +90,7 @@ struct phalError : public std::exception {
 class SbeError final : public phalError
 {
        public:
-	SbeError(ERR_TYPE type, int fd, const fs::path fileName) : type(type)
-	{
-		// ffdcFileList.insert(DEFAULT_SLID, std::make_pair(fd,
-		// fileName));
-		ffdcFileList.insert(
-		    std::make_pair(DEFAULT_SLID, std::make_pair(fd, fileName)));
-	}
+	SbeError(ERR_TYPE type, int fd, const fs::path fileName);
 	SbeError(ERR_TYPE type) : type(type){};
 	SbeError() : type(NONE){};
 	SbeError(ERR_TYPE type, const FFDCFileList &fileList) :
@@ -119,28 +124,31 @@ class SbeError final : public phalError
 	int getFd() const noexcept
 	{
 		if (!ffdcFileList.empty()) {
-			const auto &it = ffdcFileList.begin();
-			return it->second.first;
+			const auto& tuple = ffdcFileList.begin()->second;
+			return std::get<1>(tuple);
 		}
 		return -1;
 	}
 
 	/* return filename information */
-	const std::string getFileName() const noexcept
+	std::string getFileName() const noexcept
 	{
 		if (!ffdcFileList.empty()) {
-			const auto &it = ffdcFileList.begin();
-			return it->second.second;
+    		const auto& tuple = ffdcFileList.begin()->second;
+			return std::get<2>(tuple);
 		}
 		return "";
 	}
 
 	/* return ffdcmap information */
-	const FFDCFileList getFfdcFileList() const noexcept
+	const FFDCFileList& getFfdcFileList() const noexcept
 	{
 		return ffdcFileList;
 	}
-
+	size_t getFfdcFileListSize() const noexcept
+	{
+		return ffdcFileList.size();
+	}
        private:
 	/* Error type */
 	ERR_TYPE type;
