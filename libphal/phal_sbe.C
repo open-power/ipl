@@ -310,54 +310,47 @@ sbeError_t capturePOZFFDC(struct pdbg_target *target)
 		return sbeError_t(exception::SBE_FFDC_NO_DATA);
 	}
 
-	// first store all the data based on slid
-	std::unordered_multimap<uint16_t, std::vector<uint8_t>> mulSlidData;
 	uint32_t offset = 0;
-	while ((offset < ffdcLen) &&
-		ffdcLen >= (offset + minFFDCPackageWordSizePOZ)) {
-		pozFfdcHeader *ffdc =
-			reinterpret_cast<pozFfdcHeader *>(bufPtr.getData() + offset);
+	//map - slid, <severty, data>
+	std::unordered_map<uint16_t, std::pair<uint8_t, std::vector<uint8_t>>> slidData;
+	while ((offset < ffdcLen) && (ffdcLen >= (offset + minFFDCPackageWordSizePOZ))) {
+		pozFfdcHeader* ffdc = reinterpret_cast<pozFfdcHeader*>(bufPtr.getData() + offset);
 		uint16_t magicBytes = ntohs(ffdc->magicByte);
 		assert(magicBytes == pozFfdcMagicCode);
-		uint32_t lenInBytes =
-			ntohs(ffdc->lengthinWords) * sizeof(uint32_t);
+
+		uint32_t lenInBytes = ntohs(ffdc->lengthinWords) * sizeof(uint32_t);
 		uint16_t slid = ntohs(ffdc->slid);
-		std::vector<uint8_t> data;
-		data.reserve(lenInBytes);
-		std::copy(bufPtr.getData() + offset,
-			  bufPtr.getData() + offset + lenInBytes,
-			  std::back_inserter(data));
-		mulSlidData.emplace(std::make_pair(slid, data));
-		offset += lenInBytes;
-	}
-	// now combine data with same slid numbers
-	std::unordered_map<uint16_t, std::vector<uint8_t>> slidData;
-	int prevKey = -1;
-	for (auto it = mulSlidData.begin(); it != mulSlidData.end(); ++it) {
-		if (it->first != prevKey) {
-			// New key found, print values associated with the key
-			auto range = mulSlidData.equal_range(it->first);
-			size_t totalSize = 0;
-			for (auto dataIt = range.first; dataIt != range.second;
-				++dataIt) {
-				totalSize += (dataIt->second).size();
+		uint8_t severity = ffdc->severity;
+
+		auto it = slidData.find(slid);
+		if (it == slidData.end()) {
+			// New slid found, insert into slidData
+			std::vector<uint8_t> data(lenInBytes);
+			std::copy(bufPtr.getData() + offset,
+				bufPtr.getData() + offset + lenInBytes, data.begin());
+			slidData.emplace(slid, std::make_pair(severity, std::move(data)));
+		} else {
+			// Slid already exists, update severity and append data
+			// assumption here is that the severity in error_info_defs.H under
+			// errlSeverity_t is defined from lower severity to higher
+			if (severity > it->second.first) {
+				it->second.first = severity; // Update severity if higher
 			}
-			std::vector<uint8_t> data;
-			data.reserve(totalSize);
-			for (auto dataIt = range.first; dataIt != range.second;
-				++dataIt) {
-				data.insert(data.end(), dataIt->second.begin(),
-					dataIt->second.end());
-			}
-			slidData.emplace(it->first, data);
+			auto& existingData = it->second.second;
+			size_t prevSize = existingData.size();
+			existingData.resize(prevSize + lenInBytes);
+			std::copy(bufPtr.getData() + offset,
+				bufPtr.getData() + offset + lenInBytes, existingData.begin() + prevSize);
 		}
+		offset += lenInBytes;
 	}
 	FFDCFileList ffdcFileList;
 	for (auto &iter : slidData) {
-		tmpfile_t ffdcFile(iter.second.data(), iter.second.size());
+		auto& pair = iter.second;
+		tmpfile_t ffdcFile(pair.second.data(), pair.second.size());
 		ffdcFileList.insert(std::make_pair(
 			iter.first,
-			std::make_pair(ffdcFile.getFd(), ffdcFile.getPath())));
+			std::make_tuple(pair.first, ffdcFile.getFd(), ffdcFile.getPath())));
 	}
 	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFileList);
 }
