@@ -78,6 +78,7 @@ bool isDumpAllowed(struct pdbg_target *proc);
  *        pdbg function sbe_ffdc_get().
  *
  * @param[in] target ocmb target to operate on
+ * @param[in] coSuccess flag to inidicate if the chipop is sucess 
  *
  * return  sbeError_t sbe error exception type object which
  *         includes chip-op failure reason code and, file which includes
@@ -86,7 +87,7 @@ bool isDumpAllowed(struct pdbg_target *proc);
  * Exceptions: SbeError for pdbg lib function failure
  *             std::runtime_error - for file operation failure.
  */
-sbeError_t capturePOZFFDC(struct pdbg_target *target);
+sbeError_t capturePOZFFDC(struct pdbg_target *target, bool coSuccess);
 
 
 /**
@@ -94,6 +95,7 @@ sbeError_t capturePOZFFDC(struct pdbg_target *target);
  *        pdbg function sbe_ffdc_get().
  *
  * @param[in] proc processor target to operate on
+ * @param[in] coSuccess flag to inidicate if the chipop is sucess 
  *
  * return  sbeError_t sbe error exception type object which
  *         includes chip-op failure reason code and, file which includes
@@ -102,7 +104,7 @@ sbeError_t capturePOZFFDC(struct pdbg_target *target);
  * Exceptions: SbeError for pdbg lib function failure
  *             std::runtime_error - for file operation failure.
  */
-sbeError_t captureFFDC(struct pdbg_target *proc);
+sbeError_t captureFFDC(struct pdbg_target *proc, bool coSuccess = false);
 
 /**
  * @brief Execute continue mpipl on the pib

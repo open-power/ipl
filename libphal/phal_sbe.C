@@ -29,6 +29,8 @@ using namespace openpower::phal::pdbg;
 constexpr uint16_t minFFDCPackageWordSizePOZ = 5;
 constexpr uint16_t pozFfdcMagicCode = 0xFBAD;
 constexpr uint16_t slidOffset = 2 * sizeof(uint32_t);
+constexpr bool CO_CMD_SUCCESS = true;
+constexpr bool CO_CMD_FAILURE = false;
 
 struct pozFfdcHeader {
 	uint32_t magicByte : 16;
@@ -41,7 +43,6 @@ struct pozFfdcHeader {
 	uint32_t chipId : 8;
 	uint32_t fapiRc;
 } __attribute__((packed));
-
 /**
  * @brief helper function to log SBE debug data
  *
@@ -240,7 +241,7 @@ bool isDumpAllowed(struct pdbg_target *proc)
 	return allowed;
 }
 
-sbeError_t captureFFDC(struct pdbg_target *proc)
+sbeError_t captureFFDC(struct pdbg_target *proc, bool coSuccess)
 {
 	// get SBE FFDC info
 	bufPtr_t bufPtr;
@@ -274,11 +275,16 @@ sbeError_t captureFFDC(struct pdbg_target *proc)
 
 	// create ffdc file
 	tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
+	if(coSuccess)
+	{
+		return sbeError_t(exception::SBE_INTERNAL_FFDC_DATA, ffdcFile.getFd(),
+			  ffdcFile.getPath());
+	}
 	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFile.getFd(),
 			  ffdcFile.getPath());
 }
 
-sbeError_t capturePOZFFDC(struct pdbg_target *target)
+sbeError_t capturePOZFFDC(struct pdbg_target *target, bool coSuccess)
 {
 	assert(is_ody_ocmb_chip(target));
 	// get SBE FFDC info
@@ -351,6 +357,10 @@ sbeError_t capturePOZFFDC(struct pdbg_target *target)
 		ffdcFileList.insert(std::make_pair(
 			iter.first,
 			std::make_tuple(pair.first, ffdcFile.getFd(), ffdcFile.getPath())));
+	}
+	if(coSuccess)
+	{
+		return sbeError_t(exception::SBE_INTERNAL_FFDC_DATA, ffdcFileList);
 	}
 	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFileList);
 }
@@ -426,8 +436,9 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 		if (sbe_dump(chip, type, clock, faCollect, data, dataLen)) {
 			log(level::ERROR, "POZ getDump(%s) failed",
 			    pdbg_target_path(chip));
-			throw capturePOZFFDC(chip);
+			throw capturePOZFFDC(chip, CO_CMD_FAILURE);
 		}
+		throw capturePOZFFDC(chip, CO_CMD_SUCCESS);
 	} else { // proc
 		// Validate input target is processor target.
 		validateProcTgt(chip);
@@ -447,8 +458,9 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 
 		// call pdbg back-end function
 		if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
-			throw captureFFDC(chip);
+			throw captureFFDC(chip, CO_CMD_FAILURE);
 		}
+		throw captureFFDC(chip, CO_CMD_SUCCESS);
 	}
 }
 

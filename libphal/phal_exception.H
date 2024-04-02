@@ -47,6 +47,7 @@ enum ERR_TYPE {
 	PDBG_FSI_READ_FAIL,
 	PDBG_FSI_WRITE_FAIL,
 	SBE_DUMP_IS_ALREADY_COLLECTED,
+	SBE_INTERNAL_FFDC_DATA,
 };
 constexpr uint16_t DEFAULT_SLID = 0;
 // Error type to message map.
