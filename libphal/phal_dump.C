@@ -148,12 +148,7 @@ struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
 
 	pdbg_for_each_class_target(chipTypeString.c_str(), target)
 	{
-		uint8_t targetIdx = 0;
-		if (sbeTypeId == ODYSSEY_SBE_DUMP)
-			targetIdx = getFapiUnitPos(target);
-		else if (sbeTypeId == PROC_SBE_DUMP)
-			targetIdx = pdbg_target_index(target);
-
+		auto targetIdx = pdbg_target_index(target);
 		if (targetIdx != failingUnit) {
 			continue;
 		}
