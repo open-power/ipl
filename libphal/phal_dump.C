@@ -110,22 +110,6 @@ static constexpr int PROC_SBE_DUMP = 0xA;
 static constexpr int ODYSSEY_SBE_DUMP = 0xB;
 
 /**
- * @brief Get the Fapi Unit Pos object for OCMB
- *
- * @param target The target
- * @return uint8_t The position
- */
-uint32_t getFapiUnitPos(pdbg_target* target)
-{
-	uint32_t fapiUnitPos = 0; // chip unit position
-	if (!pdbg_target_get_attribute(target, "ATTR_FAPI_POS", 4, 1,
-				       &fapiUnitPos))
-		log(level::ERROR, "ATTR_FAPI_POS Attribute get failed");
-
-	return fapiUnitPos;
-}
-
-/**
  * @brief Return the chip target corresponding to failing unit
  * @param[in] failingUnit Position of the ocmb containing the failed SBE
  * @param sbeTypeId The chip type number
