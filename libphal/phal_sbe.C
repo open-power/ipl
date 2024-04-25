@@ -5,6 +5,8 @@
 #include "utils_pdbg.H"
 #include "utils_tempfile.H"
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
@@ -12,8 +14,7 @@
 #include <unistd.h>
 #include <unordered_map>
 
-extern "C"
-{
+extern "C" {
 #include <libsbefifo.h>
 }
 namespace openpower::phal
@@ -28,6 +29,7 @@ using namespace openpower::phal::pdbg;
 
 constexpr uint16_t minFFDCPackageWordSizePOZ = 5;
 constexpr uint16_t pozFfdcMagicCode = 0xFBAD;
+constexpr uint16_t ffdcMagicCode = 0xFFDC;
 constexpr uint16_t slidOffset = 2 * sizeof(uint32_t);
 constexpr bool CO_CMD_SUCCESS = true;
 constexpr bool CO_CMD_FAILURE = false;
@@ -251,128 +253,125 @@ bool isDumpAllowed(struct pdbg_target *proc)
 	return allowed;
 }
 
-sbeError_t captureFFDC(struct pdbg_target *proc, bool coSuccess)
+sbeError_t processPOZFFDC(const uint8_t *bufPtr, uint32_t ffdcLen,
+			  bool coSuccess)
 {
-	// get SBE FFDC info
-	bufPtr_t bufPtr;
-	uint32_t ffdcLen = 0;
-	uint32_t status = 0;
-
-	// Log SBE debug data.
-	logSbeDebugData(proc);
-
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
-
-	if (sbe_ffdc_get(pib, &status, bufPtr.getPtr(), &ffdcLen)) {
-		log(level::ERROR, "proc sbe_ffdc_get function failed");
-		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
-	}
-
-	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
-		log(level::ERROR, "SBE chipop timeout reported(%s)",
-		    pdbg_target_path(proc));
-		return sbeError_t(exception::SBE_CMD_TIMEOUT);
-	}
-
-	// Handle empty buffer.
-	if (!ffdcLen) {
-		// log message and return.
-		log(level::ERROR, "Empty SBE FFDC returned (%s)",
-		    pdbg_target_path(proc));
-		return sbeError_t(exception::SBE_FFDC_NO_DATA);
-	}
-
-	// create ffdc file
-	tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
-	if(coSuccess)
-	{
-		return sbeError_t(exception::SBE_INTERNAL_FFDC_DATA, ffdcFile.getFd(),
-			  ffdcFile.getPath());
-	}
-	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFile.getFd(),
-			  ffdcFile.getPath());
-}
-
-sbeError_t capturePOZFFDC(struct pdbg_target *target, bool coSuccess)
-{
-	assert(is_ody_ocmb_chip(target));
-	// get SBE FFDC info
-	bufPtr_t bufPtr;
-	uint32_t ffdcLen = 0;
-	uint32_t status = 0;
-
-	// sbe_ffdc_get internall uses chipop target so probe it
-	if (pdbg_target_probe(get_ody_chipop_target(target)) != PDBG_TARGET_ENABLED) {
-		throw sbeError_t(exception::PDBG_TARGET_INVALID);
-	}
-
-	if (sbe_ffdc_get(target, &status, bufPtr.getPtr(), &ffdcLen)) {
-		log(level::ERROR, "POZ  sbe_ffdc_get function failed");
-		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
-	}
-
-	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
-		log(level::ERROR, "POZ SBE chipop timeout reported(%s)",
-		    pdbg_target_path(target));
-		return sbeError_t(exception::SBE_CMD_TIMEOUT);
-	}
-
-	// Handle empty buffer.
-	if (!ffdcLen) {
-		// log message and return.
-		log(level::ERROR, "POZ empty SBE FFDC returned (%s)",
-		    pdbg_target_path(target));
-		return sbeError_t(exception::SBE_FFDC_NO_DATA);
-	}
-
 	uint32_t offset = 0;
-	//map - slid, <severty, data>
-	std::unordered_map<uint16_t, std::pair<uint8_t, std::vector<uint8_t>>> slidData;
-	while ((offset < ffdcLen) && (ffdcLen >= (offset + minFFDCPackageWordSizePOZ))) {
-		pozFfdcHeader* ffdc = reinterpret_cast<pozFfdcHeader*>(bufPtr.getData() + offset);
-		uint16_t magicBytes = ntohs(ffdc->magicByte);
-		assert(magicBytes == pozFfdcMagicCode);
+	FFDCFileList ffdcFileList;
 
-		uint32_t lenInBytes = ntohs(ffdc->lengthinWords) * sizeof(uint32_t);
-		uint16_t slid = ntohs(ffdc->slid);
-		uint8_t severity = ffdc->severity;
-
-		auto it = slidData.find(slid);
-		if (it == slidData.end()) {
-			// New slid found, insert into slidData
-			std::vector<uint8_t> data(lenInBytes);
-			std::copy(bufPtr.getData() + offset,
-				bufPtr.getData() + offset + lenInBytes, data.begin());
-			slidData.emplace(slid, std::make_pair(severity, std::move(data)));
-		} else {
-			// Slid already exists, update severity and append data
-			// assumption here is that the severity in error_info_defs.H under
-			// errlSeverity_t is defined from lower severity to higher
-			if (severity > it->second.first) {
-				it->second.first = severity; // Update severity if higher
-			}
-			auto& existingData = it->second.second;
-			size_t prevSize = existingData.size();
-			existingData.resize(prevSize + lenInBytes);
-			std::copy(bufPtr.getData() + offset,
-				bufPtr.getData() + offset + lenInBytes, existingData.begin() + prevSize);
+	while (offset < ffdcLen) {
+		const auto *ffdcHeader =
+		    reinterpret_cast<const pozFfdcHeader *>(bufPtr + offset);
+		if (ntohs(ffdcHeader->magicByte) != pozFfdcMagicCode) {
+			log(level::ERROR,
+			    "UNKNOWN magic word: (%X) in the FFDC packet",
+			    ffdcHeader->magicByte);
+			throw std::runtime_error("Invalid FFDC magic byte");
 		}
+
+		uint32_t lenInBytes =
+		    ntohs(ffdcHeader->lengthinWords) * sizeof(uint32_t);
+		uint16_t slid = ntohs(ffdcHeader->slid);
+		uint8_t severity = ffdcHeader->severity;
+
+		auto iter = ffdcFileList.find(slid);
+		if (iter == ffdcFileList.end()) {
+			// New SLID, create a new TemporaryFile
+			tmpfile_t ffdcFile(
+			    const_cast<uint8_t *>(bufPtr + offset), lenInBytes);
+			ffdcFileList[slid] = std::make_tuple(
+			    severity, ffdcFile.getFd(), ffdcFile.getPath());
+		} else {
+			// Existing SLID, update severity if higher, append data
+			// to existing file
+			auto &[existingSeverity, existingFd, existingPath] =
+			    iter->second;
+			if (severity > existingSeverity) {
+				existingSeverity =
+				    severity; // Update severity if higher
+			}
+			// Append new data to the existing file
+			int fd =
+			    open(existingPath.c_str(), O_WRONLY | O_APPEND);
+			if (fd == -1) {
+				throw std::runtime_error(
+				    "Failed to open existing FFDC file for "
+				    "appending");
+			}
+			if (write(fd, bufPtr + offset, lenInBytes) !=
+			    static_cast<ssize_t>(lenInBytes)) {
+				close(fd);
+				throw std::runtime_error(
+				    "Failed to append data to FFDC file");
+			}
+			close(fd);
+		}
+
 		offset += lenInBytes;
 	}
-	FFDCFileList ffdcFileList;
-	for (auto &iter : slidData) {
-		auto& pair = iter.second;
-		tmpfile_t ffdcFile(pair.second.data(), pair.second.size());
-		ffdcFileList.insert(std::make_pair(
-			iter.first,
-			std::make_tuple(pair.first, ffdcFile.getFd(), ffdcFile.getPath())));
-	}
-	if(coSuccess)
-	{
-		return sbeError_t(exception::SBE_INTERNAL_FFDC_DATA, ffdcFileList);
+
+	if (coSuccess) {
+		return sbeError_t(exception::SBE_INTERNAL_FFDC_DATA,
+				  ffdcFileList);
 	}
 	return sbeError_t(exception::SBE_CMD_FAILED, ffdcFileList);
+}
+
+sbeError_t captureFFDC(struct pdbg_target *target, bool coSuccess)
+{
+	bufPtr_t bufPtr;
+	uint32_t ffdcLen = 0;
+	uint32_t status = 0;
+
+	bool isOcmb = is_ody_ocmb_chip(target);
+
+	struct pdbg_target *opTarget = target;
+	if (!isOcmb) {
+		opTarget = getPibTarget(target);
+		logSbeDebugData(target);
+
+	} else {
+		if (pdbg_target_probe(get_ody_chipop_target(opTarget)) !=
+		    PDBG_TARGET_ENABLED) {
+			log(level::ERROR,
+			    "Failed to capture FFDC, Target not enabled (%s)",
+			    pdbg_target_path(opTarget));
+			throw sbeError_t(exception::PDBG_TARGET_INVALID);
+		}
+	}
+
+	if (sbe_ffdc_get(opTarget, &status, bufPtr.getPtr(), &ffdcLen)) {
+		log(level::ERROR, "Failed to get SBE FFDC data (%s)",
+		    pdbg_target_path(opTarget));
+		throw sbeError_t(exception::SBE_FFDC_GET_FAILED);
+	}
+
+	if (status == (SBEFIFO_PRI_UNKNOWN_ERROR | SBEFIFO_SEC_HW_TIMEOUT)) {
+		return sbeError_t(exception::SBE_CMD_TIMEOUT);
+	}
+
+	if (!ffdcLen) {
+		return sbeError_t(exception::SBE_FFDC_NO_DATA);
+	}
+
+	uint16_t magicByte =
+	    ntohs(*reinterpret_cast<uint16_t *>(bufPtr.getData()));
+	if (magicByte == ffdcMagicCode) {
+		// Process as PROC FFDC
+		tmpfile_t ffdcFile(bufPtr.getData(), ffdcLen);
+		return coSuccess
+			   ? sbeError_t(exception::SBE_INTERNAL_FFDC_DATA,
+					ffdcFile.getFd(), ffdcFile.getPath())
+			   : sbeError_t(exception::SBE_CMD_FAILED,
+					ffdcFile.getFd(), ffdcFile.getPath());
+	} else if (magicByte == pozFfdcMagicCode) {
+		// Process as OCMB FFDC (POZ)
+		return processPOZFFDC(bufPtr.getData(), ffdcLen, coSuccess);
+	} else {
+		log(level::ERROR, "UnSupported FFDC format, magic word: (%X)",
+		    magicByte);
+		throw std::runtime_error("Unsupported FFDC format");
+	}
 }
 
 void mpiplContinue(struct pdbg_target *proc)
@@ -465,16 +464,15 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 
 	// call pdbg back-end function
 	if (sbe_dump(chipOpTarget, type, clock, faCollect, data, dataLen)) {
-		if (isOcmb) {
-			throw capturePOZFFDC(chip, CO_CMD_FAILURE);
-		}
 		throw captureFFDC(chip, CO_CMD_FAILURE);
 	}
 
-	if (isOcmb) {
-		throw capturePOZFFDC(chip, CO_CMD_SUCCESS);
+	sbeError_t result = captureFFDC(chip, CO_CMD_SUCCESS);
+
+	// Throw only if FFDC present
+	if (result.errType() != exception::SBE_FFDC_NO_DATA) {
+		throw result;
 	}
-	throw captureFFDC(chip, CO_CMD_SUCCESS);
 }
 
 void threadStopProc(struct pdbg_target *proc)
