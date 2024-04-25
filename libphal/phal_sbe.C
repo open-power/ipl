@@ -147,8 +147,9 @@ void sbeHaltStateRecovery(struct pdbg_target *proc)
 	}
 }
 
-void validateSBEState(struct pdbg_target *proc)
+void validateSBEState(struct pdbg_target *chip)
 {
+
 	// In order to allow SBE operation following conditions should be met
 	// 1. Caller has to make sure processor target should be functional
 	// or dump functional
@@ -156,18 +157,7 @@ void validateSBEState(struct pdbg_target *proc)
 	// 3. In case the SBE state is marked as CHECK_CFAM then SBE's
 	// PERV_SB_MSG_FSI register must be checked to see if SBE is booted or
 	// NOT.
-
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
-
-	// Get the current SBE state
-	enum sbe_state state;
-
-	if (sbe_get_state(pib, &state)) {
-		log(level::ERROR, "Failed to read SBE state information (%s)",
-		    pdbg_target_path(proc));
-		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
-	}
+	enum sbe_state state = getState(chip);
 
 	// SBE_STATE_CHECK_CFAM case is already handled by pdbg api
 	if (state == SBE_STATE_BOOTED) {
@@ -175,33 +165,53 @@ void validateSBEState(struct pdbg_target *proc)
 	} else {
 		log(level::INFO,
 		    "SBE (%s) is not ready for chip-op: state(0x%08x)",
-		    pdbg_target_path(proc), state);
+		    pdbg_target_path(chip), state);
 		throw sbeError_t(exception::SBE_CHIPOP_NOT_ALLOWED);
 	}
 }
-void setState(struct pdbg_target *proc, enum sbe_state state)
+
+void setState(struct pdbg_target *chip, enum sbe_state state)
 {
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
-	if (sbe_set_state(pib, state)) {
+	bool isOcmb = is_ody_ocmb_chip(chip);
+	struct pdbg_target *targetToSet =
+	    isOcmb ? get_ody_fsi_target(chip) : getPibTarget(chip);
+
+	int rc = isOcmb ? sbe_ody_set_state(targetToSet, state)
+			: sbe_set_state(targetToSet, state);
+
+	if (rc) {
 		log(level::ERROR,
 		    "Failed to set SBE state(%d) information (%s)", state,
-		    pdbg_target_path(proc));
+		    pdbg_target_path(chip));
 		throw sbeError_t(exception::SBE_STATE_WRITE_FAIL);
 	}
 }
 
-enum sbe_state getState(struct pdbg_target *proc)
+enum sbe_state getState(struct pdbg_target *chip)
 {
-	// get PIB target
-	struct pdbg_target *pib = getPibTarget(proc);
+	bool isOcmb = is_ody_ocmb_chip(chip);
+	struct pdbg_target *targetToCheck =
+	    isOcmb ? get_ody_fsi_target(chip) : getPibTarget(chip);
+
 	enum sbe_state state = SBE_STATE_NOT_USABLE; // default value
 
-	if (sbe_get_state(pib, &state)) {
+	int rc = isOcmb ? sbe_ody_get_state(targetToCheck, &state)
+			: sbe_get_state(targetToCheck, &state);
+
+	if (rc) {
 		log(level::ERROR, "Failed to get SBE state information (%s)",
-		    pdbg_target_path(proc));
-		throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+		    pdbg_target_path(chip));
+
+		// Unlike PROC, OCMB doesnt have standby power
+		// so state read will fail until that is
+		// initialized so for OCMB, return a read fail
+		// as not usable
+		if (!isOcmb) {
+			throw sbeError_t(exception::SBE_STATE_READ_FAIL);
+		}
+		state = SBE_STATE_NOT_USABLE;
 	}
+
 	return state;
 }
 
@@ -430,38 +440,41 @@ void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
 	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
 {
 	log(level::INFO, "Enter: getDump(%d) on %s", type,
-		pdbg_target_path(chip));
+	    pdbg_target_path(chip));
 
-	if (is_ody_ocmb_chip(chip)) {
-		if (sbe_dump(chip, type, clock, faCollect, data, dataLen)) {
-			log(level::ERROR, "POZ getDump(%s) failed",
-			    pdbg_target_path(chip));
-			throw capturePOZFFDC(chip, CO_CMD_FAILURE);
-		}
-		throw capturePOZFFDC(chip, CO_CMD_SUCCESS);
-	} else { // proc
+	bool isOcmb = is_ody_ocmb_chip(chip);
+
+	if (!isTgtPresent(chip)) {
+		log(level::ERROR, "getDump(%s) Target is not present",
+		    pdbg_target_path(chip));
+	}
+
+	if (!isOcmb) {
 		// Validate input target is processor target.
 		validateProcTgt(chip);
 
-		if (!isTgtPresent(chip)) {
-			log(level::ERROR, "getDump(%s) Target is not present",
-				pdbg_target_path(chip));
-		}
 		// SBE halt state need recovery before dump chip-ops
 		sbeHaltStateRecovery(chip);
-
-		// validate SBE state
-		validateSBEState(chip);
-
-		// get PIB target
-		struct pdbg_target *pib = getPibTarget(chip);
-
-		// call pdbg back-end function
-		if (sbe_dump(pib, type, clock, faCollect, data, dataLen)) {
-			throw captureFFDC(chip, CO_CMD_FAILURE);
-		}
-		throw captureFFDC(chip, CO_CMD_SUCCESS);
 	}
+
+	// validate SBE state
+	validateSBEState(chip);
+
+	// get PIB target for proc else use same target
+	struct pdbg_target *chipOpTarget = isOcmb ? chip : getPibTarget(chip);
+
+	// call pdbg back-end function
+	if (sbe_dump(chipOpTarget, type, clock, faCollect, data, dataLen)) {
+		if (isOcmb) {
+			throw capturePOZFFDC(chip, CO_CMD_FAILURE);
+		}
+		throw captureFFDC(chip, CO_CMD_FAILURE);
+	}
+
+	if (isOcmb) {
+		throw capturePOZFFDC(chip, CO_CMD_SUCCESS);
+	}
+	throw captureFFDC(chip, CO_CMD_SUCCESS);
 }
 
 void threadStopProc(struct pdbg_target *proc)
