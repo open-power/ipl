@@ -126,6 +126,59 @@ uint32_t getFapiUnitPos(pdbg_target* target)
 }
 
 /**
+ * @brief Converts a FAPI RC to string
+ *
+ * @param[in] rc The FAPI RC to be converted to string
+ * @return std::string The converted string suffixed with 'ELog ID ' string
+ */
+std::string convertFapiRcToString(const fapi2::ReturnCode& rc)
+{
+	std::string errLogID = "ELog ID: ";
+	std::stringstream ss;
+	ss << std::setw(8) << std::setfill('0')
+	   << static_cast<uint32_t>(rc);
+	errLogID += ss.str();
+	return errLogID;
+}
+
+/**
+ * @brief Write the dump file to the path
+ * @param[in] rc The FAPI RC to be written in metadata
+ * @param[in] dumpPath Path of the file
+ *
+ * Throws FILE_OPERATION_FAILED in the case of error
+ */
+void writeDumpFileOnChipOpFailure(const fapi2::ReturnCode& rc, std::filesystem::path& dumpPath)
+{
+	log(level::INFO,
+	    "writng dump data to file for chip op failure");
+	std::ofstream outfile{dumpPath,
+			      std::ios::out | std::ios::binary};
+	if (!outfile.good()) {
+			int err = errno;
+			log(level::ERROR,
+			    "Failed to open the dump file for writing err=%d",
+			    err);
+			throw dumpError_t(exception::FILE_OPERATION_FAILED);
+	}
+	outfile.exceptions(std::ifstream::failbit |
+			   std::ifstream::badbit |
+			   std::ifstream::eofbit);
+	try {
+		auto fapiRcAsString = convertFapiRcToString(rc);
+		outfile.write(fapiRcAsString.data(), fapiRcAsString.length());
+	} catch (const std::ofstream::failure& oe) {
+		int err = errno;
+		log(level::ERROR,
+		    "Failed to write to dump file err=%d error "
+		    "message=%s",
+		    err, oe.what());
+		    throw dumpError_t(exception::FILE_OPERATION_FAILED);
+	}
+	outfile.close();
+}
+
+/**
  * @brief Return the chip target corresponding to failing unit
  * @param[in] failingUnit Position of the ocmb containing the failed SBE
  * @param sbeTypeId The chip type number
@@ -416,9 +469,13 @@ void collectLocalRegDump(struct pdbg_target* target,
 		hwpName = "p10_sbe_localreg_dump";
 		fapiRc = p10_sbe_localreg_dump(target, true, sbeScomRegValue);
 	}
+	std::string dumpFilename = baseFilename + hwpName;
+	std::filesystem::path basePath = dumpPath / dumpFilename;
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X", target,
 		    pdbg_target_path(target), fapiRc);
+
+		writeDumpFileOnChipOpFailure(fapiRc, basePath);
 		throw std::runtime_error(hwpName + " failed");
 	}
 	std::vector<DumpSBERegVal> dumpRegs;
@@ -433,8 +490,6 @@ void collectLocalRegDump(struct pdbg_target* target,
 			dumpRegs.emplace_back(reg.reg.number, reg.reg.name,
 					      reg.value);
 	}
-	std::string dumpFilename = baseFilename + hwpName;
-	std::filesystem::path basePath = dumpPath / dumpFilename;
 	// Writing the SBE register values to a file
 	writeSBERegValuesToFile(dumpRegs, basePath);
 }
@@ -508,9 +563,14 @@ void collectPIBMSRegDump(struct pdbg_target* target,
 		fapiRc = ody_pibms_reg_dump(target, pibmsRegSetOdy);
 		hwpName = "ody_pibms_reg_dump";
 	}
+	std::string dumpFilename = baseFilename + hwpName;
+	std::filesystem::path basePath = dumpPath / dumpFilename;
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
+
+		writeDumpFileOnChipOpFailure(fapiRc, basePath);
+
 		throw std::runtime_error(hwpName + " failed");
 	}
 	std::vector<DumpPIBMSRegVal> dumpRegs;
@@ -527,9 +587,6 @@ void collectPIBMSRegDump(struct pdbg_target* target,
 					      regs.reg.attr, regs.value);
 		}
 	}
-	std::string dumpFilename = baseFilename + hwpName;
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
 	// Writing the PIBMS register values to a file
 	writePIBMSRegValuesToFile(dumpRegs, basePath);
 }
@@ -607,9 +664,15 @@ void collectPIBMEMDump(struct pdbg_target* target,
 					 eccEnable, pibmemContentsOdy);
 		hwpName = "ody_pibmem_dump";
 	}
+	std::string dumpFilename = baseFilename + hwpName;
+	std::filesystem::path basePath = dumpPath / dumpFilename;
+
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
+
+		writeDumpFileOnChipOpFailure(fapiRc, basePath);
+
 		throw std::runtime_error(hwpName + " failed");
 	}
 	std::vector<uint64_t> dumpData;
@@ -622,8 +685,6 @@ void collectPIBMEMDump(struct pdbg_target* target,
 		for (auto& data : pibmemContentsOdy)
 			dumpData.push_back(data.rd_data);
 	}
-	std::string dumpFilename = baseFilename + hwpName;
-	std::filesystem::path basePath = dumpPath / dumpFilename;
 	// Writing the PIBMEM data to a file
 	writePIBMEMDataToFile(dumpData, basePath);
 }
@@ -697,10 +758,15 @@ void collectPPEState(struct pdbg_target* target,
 				       ppeXirsValueOdy);
 		hwpName = "ody_ppe_state";
 	}
+	std::string dumpFilename = baseFilename + hwpName;
+	std::filesystem::path basePath = dumpPath / dumpFilename;
 
 	if (fapiRc != FAPI2_RC_SUCCESS) {
 		log(level::ERROR, "Failed in %s for proc=%s, rc=0x%08X",
 		    hwpName, pdbg_target_path(target), fapiRc);
+
+		writeDumpFileOnChipOpFailure(fapiRc, basePath);
+
 		throw std::runtime_error(hwpName + " failed");
 	}
 
@@ -726,10 +792,6 @@ void collectPPEState(struct pdbg_target* target,
 			ppeState.emplace_back(gpr.number, gpr.value);
 		}
 	}
-
-	std::string dumpFilename = baseFilename + hwpName;
-	std::filesystem::path basePath = dumpPath / dumpFilename;
-
 	// Writing the PPE state data to a file
 	writePPEStateToFile(ppeState, basePath);
 }
