@@ -77,25 +77,8 @@ bool isDumpAllowed(struct pdbg_target *proc);
  * @brief utility function to capture SBE ffdc data using
  *        pdbg function sbe_ffdc_get().
  *
- * @param[in] target ocmb target to operate on
- * @param[in] coSuccess flag to inidicate if the chipop is sucess 
- *
- * return  sbeError_t sbe error exception type object which
- *         includes chip-op failure reason code and, file which includes
- *         SBE FFDC response data if any
- *
- * Exceptions: SbeError for pdbg lib function failure
- *             std::runtime_error - for file operation failure.
- */
-sbeError_t capturePOZFFDC(struct pdbg_target *target, bool coSuccess);
-
-
-/**
- * @brief utility function to capture SBE ffdc data using
- *        pdbg function sbe_ffdc_get().
- *
  * @param[in] proc processor target to operate on
- * @param[in] coSuccess flag to inidicate if the chipop is sucess 
+ * @param[in] coSuccess flag to inidicate if the chipop is sucess
  *
  * return  sbeError_t sbe error exception type object which
  *         includes chip-op failure reason code and, file which includes
@@ -286,7 +269,8 @@ void putCFAM(struct pdbg_target *proc, const uint32_t addr, const uint32_t val);
 bool isSbeVitalAttnActive(struct pdbg_target *proc);
 
 /**
- * @brief Check if Hostboot has completed and the control transistioned to Host/PHYP
+ * @brief Check if Hostboot has completed and the control transistioned to
+ * Host/PHYP
  *
  * @return true when we have moved to PHYP
  * @return false if there is any error in reading the scom address,
@@ -304,8 +288,9 @@ namespace dump
  * @param[in] failingUnit Id of proc containing failing SBE
  * @param[in] dumpPath Path to stored the dump files
  * @param[in] sbeTypeId ID for SBE type i.e.; Odyssey or normal memory chip
- * 						0xA-->Normal SBE type, 0xB-->Odyssey SBE type
- * Exceptions: PDBG_INIT_FAIL for any pdbg init related failure.
+ * 						0xA-->Normal SBE type,
+ * 0xB-->Odyssey SBE type Exceptions: PDBG_INIT_FAIL for any pdbg init related
+ * failure.
  */
 void collectSBEDump(uint32_t id, uint32_t failingUnit,
 		    const std::filesystem::path &dumpPath, const int sbeTypeId);
