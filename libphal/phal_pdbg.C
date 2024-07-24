@@ -67,19 +67,19 @@ bool isTgtFunctional(struct pdbg_target *target)
 bool is_ody_ocmb_chip(struct pdbg_target *target)
 {
 	const uint16_t ODYSSEY_CHIP_ID = 0x60C0;
-        const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
-	ATTR_CHIP_ID_type ODYSSEY_CHIP_ID = 
+	const uint8_t ATTR_TYPE_OCMB_CHIP = 75;
+	ATTR_CHIP_ID_type ODYSSEY_CHIP_ID =
 	ATTR_TYPE_type type;
 	DT_GET_PROP(ATTR_TYPE, target, type);
-        if(type != ATTR_TYPE_OCMB_CHIP) {
-                                return false;
-        }
-        ATTR_CHIP_ID_type chipId = 0;
-        pdbg_target_get_attribute(ATTR_CHIP_ID, target,chipId);
-        if(chipId == ODYSSEY_CHIP_ID) {
-                return true;
-        }
-        return false;
+	if(type != ATTR_TYPE_OCMB_CHIP) {
+				return false;
+	}
+	ATTR_CHIP_ID_type chipId = 0;
+	pdbg_target_get_attribute(ATTR_CHIP_ID, target,chipId);
+	if(chipId == ODYSSEY_CHIP_ID) {
+		return true;
+	}
+	return false;
 }*/
 
 bool isPrimaryProc(struct pdbg_target *proc)
@@ -300,24 +300,27 @@ bool isSbeVitalAttnActive(struct pdbg_target *proc)
 
 bool hasControlTransitionedToHost()
 {
-  //Read the scratch register to find if the control has moved to phyp (Host)
-  auto pibTarget = pdbg_target_from_path(nullptr, "/proc0/pib");
+	// Read the scratch register to find if the control has moved to phyp
+	// (Host)
+	auto pibTarget = pdbg_target_from_path(nullptr, "/proc0/pib");
 
-  uint64_t l_coreScratchRegData = 0xFFFFFFFFFFFFFFFFull;
-  // HB changes the below core scratch reg as one of the last instructions that is run,
-  // so if that is zero then we're in phyp
-  uint64_t l_coreScratchRegAddr = 0x4602F489;
+	uint64_t l_coreScratchRegData = 0xFFFFFFFFFFFFFFFFull;
+	// HB changes the below core scratch reg as one of the last instructions
+	// that is run, so if that is zero then we're in phyp
+	uint64_t l_coreScratchRegAddr = 0x4602F489;
 
-  // Is there any error in reading the scom address, consider control is in hostboot
-  if (pib_read(pibTarget, l_coreScratchRegAddr, &l_coreScratchRegData))
-  {
-    // If unable to read the register, by default consider the control is in hostboot
-    log(level::ERROR, "scom read error: 0x%X", l_coreScratchRegAddr );
-    return false;
-  }
+	// Is there any error in reading the scom address, consider control is
+	// in hostboot
+	if (pib_read(pibTarget, l_coreScratchRegAddr, &l_coreScratchRegData)) {
+		// If unable to read the register, by default consider the
+		// control is in hostboot
+		log(level::ERROR, "scom read error: 0x%X",
+		    l_coreScratchRegAddr);
+		return false;
+	}
 
-  // If the register reads zero, return control moved to host.
-  return (l_coreScratchRegData == 0);
+	// If the register reads zero, return control moved to host.
+	return (l_coreScratchRegData == 0);
 }
 
 } // namespace openpower::phal::pdbg
