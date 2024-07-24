@@ -6,12 +6,16 @@
 #include <attributes_info.H>
 
 #include <cstring>
+#include <optional>
+#include <set>
+#include <expected>
 
 namespace openpower::phal::pdbg
 {
 
 using namespace openpower::phal::logging;
 using namespace openpower::phal::utils::pdbg;
+namespace phal_exception = openpower::phal::exception;
 
 void init(pdbg_backend pdbgBackend, const int32_t logLevel,
 	  const std::string pdbgDtbPath)
@@ -323,4 +327,119 @@ bool hasControlTransitionedToHost()
 	return (l_coreScratchRegData == 0);
 }
 
+std::optional<LocationCode> getUnexpandedLocCode(const LocationCode &locCode)
+{
+	constexpr uint8_t EXP_LOCATION_CODE_MIN_LENGTH = 17;
+	// Location code should start with "U"
+	if (locCode[0] != 'U') {
+		log(level::ERROR,
+		    "Location code should start with \"U\""
+		    " but, given location code %s",
+		    locCode.c_str());
+		return std::nullopt;
+	}
+
+	// Given location code length should be need to match with minimum
+	// length
+	// to drop expanded format in given location code.
+	if (locCode.length() < EXP_LOCATION_CODE_MIN_LENGTH) {
+		log(level::ERROR,
+		    "Given location code %s is not meet "
+		    "with minimum length %d",
+		    locCode.c_str(), EXP_LOCATION_CODE_MIN_LENGTH);
+		return std::nullopt;
+	}
+
+	// "-" should be there to seggregate all (FC, Node number and SE values)
+	// together.
+	// Note: Each (FC, Node number and SE) value can be seggregate by "."
+	// but, cec device tree just have unexpand format so, just skipping
+	// still first occurrence "-" and replacing with "fcs".
+	auto endPosOfFcs = locCode.find('-', EXP_LOCATION_CODE_MIN_LENGTH);
+	if (endPosOfFcs == std::string::npos) {
+		log(level::ERROR,
+		    "Given location code %s is not valid i.e could not find "
+		    "dash",
+		    locCode.c_str());
+		return std::nullopt;
+	}
+
+	std::string unExpandedLocCode("Ufcs");
+
+	if (locCode.length() > EXP_LOCATION_CODE_MIN_LENGTH) {
+		unExpandedLocCode.append(
+		    locCode.substr(endPosOfFcs, std::string::npos));
+	}
+
+	return unExpandedLocCode;
+}
+
+/**
+ * @brief Fetch FRU type from device tree.
+ *
+ * @details An api to get FRU ATTR_TYPE corresponding to
+ *          a given unexpanded location code.
+ *
+ * @param[in] locationCode - Location code in unexpanded format.
+ * @param[out] fruType - Fru type of a given location code.
+ *
+ * @return 0 if fru type is found.
+ * @return -1 if unable to find a fru with the given location code.
+ * @return DEVTREE_ATTR_READ_FAIL if unable to fetch ATTR_TYPE from device tree.
+ */
+static int fetchFruTypeFromDevTree(const LocationCode &locationCode,
+				   ATTR_TYPE_Type &fruType)
+{
+	ATTR_LOCATION_CODE_Type locCode;
+	// Defining a list of existing frus
+	// Note: We need to update the list if a new fru is added
+	std::vector<const char *> frus{"proc", "tpm", "dimm"};
+	struct pdbg_target *target;
+
+	for (auto fru : frus) {
+		pdbg_for_each_class_target(fru, target)
+		{
+			if (DT_GET_PROP(ATTR_LOCATION_CODE, target, locCode)) {
+				continue;
+			} else if (locCode == locationCode) {
+				if (DT_GET_PROP(ATTR_TYPE, target, fruType)) {
+					return phal_exception::
+					    DEVTREE_ATTR_READ_FAIL;
+				}
+				return 0; // success
+			}
+		}
+	}
+	return -1;
+}
+
+std::expected<FRUType, phal_exception::ERR_TYPE>
+    getFRUType(const LocationCode &locationCode) noexcept
+{
+	LocationCode unExpandedLocCode = locationCode;
+	if (!unExpandedLocCode.starts_with("Ufcs-")) {
+
+		auto loc = getUnexpandedLocCode(locationCode);
+		if (loc.has_value()) {
+			unExpandedLocCode = loc.value();
+		} else {
+			log(level::ERROR, "Given location code %s is not valid",
+			    unExpandedLocCode.c_str());
+			return std::unexpected(
+			    phal_exception::ATTR_LOC_CODE_NOT_VALID);
+		}
+	}
+	ATTR_TYPE_Type fruType = ENUM_ATTR_TYPE_NA;
+	auto ret = fetchFruTypeFromDevTree(unExpandedLocCode, fruType);
+	if (ret == 0) {
+		return fruType;
+	} else if (ret == phal_exception::DEVTREE_ATTR_READ_FAIL) {
+		log(level::ERROR, "Attribute Type not found for the "
+				  "target at given location code");
+		return std::unexpected(phal_exception::DEVTREE_ATTR_READ_FAIL);
+	}
+	log(level::ERROR, "Given location code %s is not found ",
+	    unExpandedLocCode);
+	return std::unexpected(phal_exception::ATTR_LOC_CODE_NOT_FOUND);
+}
 } // namespace openpower::phal::pdbg

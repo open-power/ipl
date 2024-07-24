@@ -49,6 +49,8 @@ enum ERR_TYPE {
 	PDBG_FSI_WRITE_FAIL,
 	SBE_DUMP_IS_ALREADY_COLLECTED,
 	SBE_INTERNAL_FFDC_DATA,
+	ATTR_LOC_CODE_NOT_VALID,
+	ATTR_LOC_CODE_NOT_FOUND,
 };
 constexpr uint16_t DEFAULT_SLID = 0;
 // Error type to message map.
@@ -75,6 +77,8 @@ const errMsgMapType errMsgMap = {
     {PDBG_FSI_READ_FAIL, "FSI read failed"},
     {PDBG_FSI_WRITE_FAIL, "FSI write failed"},
     {SBE_DUMP_IS_ALREADY_COLLECTED, "Dump from this SBE is already collected"},
+    {ATTR_LOC_CODE_NOT_VALID, "The location code is not valid"},
+    {ATTR_LOC_CODE_NOT_FOUND, "The location code is not found in device tree"},
 };
 // phal specific errors base exception class
 struct phalError : public std::exception {
