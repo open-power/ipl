@@ -9,6 +9,8 @@ extern "C" {
 
 #include <attributes_info.H>
 #include <vector>
+#include <optional>
+#include <expected>
 
 namespace openpower::phal
 {
@@ -152,6 +154,9 @@ void threadStopProc(struct pdbg_target *proc);
 
 namespace pdbg
 {
+using LocationCode = std::string;
+using FRUType = uint8_t;
+
 /**
  * @brief wrapper function to Initialise the pdbg library targeting system
  *        based on user provided back-end and device tree.
@@ -277,6 +282,32 @@ bool isSbeVitalAttnActive(struct pdbg_target *proc);
  * consider control still in hostboot
  */
 bool hasControlTransitionedToHost();
+
+/**
+ * @brief Get unexpanded location code
+ *
+ * @details An api to get an unexpanded location code corresponding to
+ *          a given expanded location code. Unexpanded location codes
+ *          give the location of the FRU in the system.
+ *
+ * @param[in] locCode - Location code in expanded format.
+ *
+ * @return Location code as string which will be in un-expanded format or
+ *         empty optional on failure.
+ */
+std::optional<LocationCode> getUnexpandedLocCode(const LocationCode &locCode);
+
+/**
+ * @brief Retrieves FRU information for the provided location codes.
+ *
+ * Location codes can be in either expanded or unexpanded format.
+ *
+ * @param[in] locationCode A FRU location code to fetch its type.
+ *
+ * @return FRUType or error code
+ */
+std::expected<FRUType, openpower::phal::exception::ERR_TYPE>
+    getFRUType(const LocationCode &locationCode) noexcept;
 
 } // namespace pdbg
 
