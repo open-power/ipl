@@ -132,7 +132,19 @@ struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
 
 	pdbg_for_each_class_target(chipTypeString.c_str(), target)
 	{
-		auto targetIdx = pdbg_target_index(target);
+		uint8_t targetIdx = 0;
+		bool rc = pdbg_target_get_attribute(
+		    target, "ATTR_INVENTORY_INDEX",
+		    1, // The size of the element is 1 as it is of type u8
+		    1, // we need to read 1 element
+		    &targetIdx);
+		if (!rc) {
+			log(level::ERROR,
+			    "Attribute ATTR_INVENTORY_INDEX read failed"
+			    " for target '%s' \n",
+			    pdbg_target_path(target));
+			continue;
+		}
 		if (targetIdx != failingUnit) {
 			continue;
 		}
