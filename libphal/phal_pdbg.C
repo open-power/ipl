@@ -439,7 +439,7 @@ std::expected<FRUType, phal_exception::ERR_TYPE>
 		return std::unexpected(phal_exception::DEVTREE_ATTR_READ_FAIL);
 	}
 	log(level::ERROR, "Given location code %s is not found ",
-	    unExpandedLocCode);
+	    unExpandedLocCode.c_str());
 	return std::unexpected(phal_exception::ATTR_LOC_CODE_NOT_FOUND);
 }
 } // namespace openpower::phal::pdbg
