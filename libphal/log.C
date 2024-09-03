@@ -16,6 +16,7 @@ void log(level logLevel, const char *fmt, ...)
 
 	vfprintf(stdout, fmt, ap);
 	std::cout << "\n";
+	fflush(stdout);
 
 	va_end(ap);
 }
