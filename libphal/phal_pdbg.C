@@ -438,7 +438,7 @@ std::expected<FRUType, phal_exception::ERR_TYPE>
 				  "target at given location code");
 		return std::unexpected(phal_exception::DEVTREE_ATTR_READ_FAIL);
 	}
-	log(level::ERROR, "Given location code %s is not found ",
+	log(level::DEBUG, "Given location code %s is not found ",
 	    unExpandedLocCode.c_str());
 	return std::unexpected(phal_exception::ATTR_LOC_CODE_NOT_FOUND);
 }
