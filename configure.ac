@@ -96,6 +96,16 @@ AC_LINK_IFELSE(
 LDFLAGS=$saved_LDFLAGS
 CXXFLAGS=$saved_CXXFLAGS
 
+LDFLAGS="$LDFLAGS -lhostfw_ipl"
+CXXFLAGS="$CXXFLAGS -I${INCDIR}"
+AC_LINK_IFELSE(
+               [AC_LANG_PROGRAM([#include<iplfacade.H>],
+			   [])],
+			   [LIBS="$LIBS -lhostfw_ipl"],
+			   [AC_MSG_ERROR([hostfw library not found])])
+LDFLAGS=$saved_LDFLAGS
+CXXFLAGS=$saved_CXXFLAGS
+
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
