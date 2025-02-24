@@ -139,8 +139,19 @@ bool ipl_sbe_booted(struct pdbg_target *proc, uint32_t wait_time_seconds)
 	loopcount = wait_time_seconds > 0 ? wait_time_seconds : 25;
 
 	while (loopcount > 0) {
-		fapi_rc = p10_get_sbe_msg_register(proc, sbeReg);
-		if (fapi_rc == fapi2::FAPI2_RC_SUCCESS) {
+		struct pdbg_target *fsi;
+	uint32_t data;
+	int rc;
+
+	if (!(fsi = fapi2::get_fsi_target(proc)))
+	{	rc=fapi2::FAPI2_RC_PLAT_ERR_SEE_DATA;
+	}
+    else
+	{
+     	rc = fsi_read(fsi, 0x2809, &data);
+		sbeReg.reg = data;
+	}
+		if (rc == fapi2::FAPI2_RC_SUCCESS) {
 			if (sbeReg.sbeBooted) {
 				ipl_log(IPL_INFO,
 					"SBE booted. sbeReg[0x%08x] Wait time: "

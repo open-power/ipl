@@ -231,6 +231,23 @@ static int ipl_cbs_start(void)
         {
             std::cout << "succes in call to HWP ps_cbs_start "
                       << std::endl;
+            
+           ipl_set_sbe_state(hubchip,
+							  SBE_STATE_CHECK_CFAM);
+
+					if (!ipl_sbe_booted(hubchip, 25)) {
+						ipl_log(IPL_ERROR,
+							"SBE did not boot\n");
+						//err_type = IPL_ERR_SBE_BOOT;
+					} else {
+						// Update Primary processor SBE
+						// state to booted Boot error
+						// callback is only required for
+						// failure.
+						ipl_set_sbe_state(
+						    hubchip, SBE_STATE_BOOTED);
+                        std::cout<<"sbe booted"<<std::endl;
+					}
         }
         break;
     }
