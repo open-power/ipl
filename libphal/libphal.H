@@ -313,17 +313,155 @@ std::expected<FRUType, openpower::phal::exception::ERR_TYPE>
 
 namespace dump
 {
+// Define the chip types numbers
+static constexpr int PROC_SBE_DUMP = 0xA;
+static constexpr int ODYSSEY_SBE_DUMP = 0xB;
+
 /**
- * @brief Execute HWPs to collect SBE dump
- * @param[in] id Id of the dump
- * @param[in] failingUnit Id of proc containing failing SBE
- * @param[in] dumpPath Path to stored the dump files
- * @param[in] sbeTypeId ID for SBE type i.e.; Odyssey or normal memory chip
- * 						0xA-->Normal SBE type,
- * 0xB-->Odyssey SBE type Exceptions: PDBG_INIT_FAIL for any pdbg init related
- * failure.
+ * @brief Initializes the PDBG and LIBEKB environments.
+ *
+ * @throw std::runtime_error Throws if either PDBG or LIBEKB initialization
+ * fails.
  */
-void collectSBEDump(uint32_t id, uint32_t failingUnit,
-		    const std::filesystem::path &dumpPath, const int sbeTypeId);
+void initializePdbgLibEkb();
+
+/**
+ * @brief Return the chip target corresponding to failing unit
+ * @param[in] failingUnit Position of the ocmb containing the failed SBE
+ * @param sbeTypeId The chip type number
+ *
+ * @return Pointer to the pdbg target for retreived chip
+ *
+ * Exceptions: PDBG_TARGET_NOT_OPERATIONAL if target is not available
+ */
+struct pdbg_target* getTargetFromFailingId(const uint32_t failingUnit,
+					   const int sbeTypeId);
+
+/**
+ * @brief Probes a target (FSI or PIB) for the given processor target.
+ * @param[in] proc The processor or Odyssey target to probe the FSI/PIB target
+ * for.
+ * @param[in] targetType The type of target to probe ("fsi" or "pib").
+ * @param[in] sbeTypeId The chip type ID
+ * @return Pointer to the probed pdbg target. If the target is not operational,
+ *         the function throws an exception.
+ *
+ * @throw dumpError_t Throws if the target is not found or not operational.
+ */
+struct pdbg_target* probeTarget(struct pdbg_target* proc,
+				const char* targetType, const int sbeTypeId);
+
+/**
+ * @brief Checks the state of the SBE on the given PIB target.
+ * @param[in] pib_fsi The PIB or FSI target to check the SBE state of.
+ * @param[in] sbeTypeId The chip type ID
+ *
+ * @throw sbeError_t Throws if the SBE state is 'FAILED' (indicating a dump
+ *        has already been collected) or if there is a failure in reading the
+ * SBE state.
+ */
+void checkSbeState(struct pdbg_target* pib_fsi, const int sbeTypeId);
+
+/**
+ * @brief Executes the SBE extract RC and writes recovery action data.
+ * @param[in] target The processor/odyssey target on which to execute the SBE
+ * extract RC.
+ * @param[in] dumpPath The filesystem path where the SBE data and recovery
+ * action information will be written.
+ * @param sbeTypeId[in] The chip type, i.e.; proc or OCMB
+ *
+ * @throw std::runtime_error Throws if the SBE extract RC operation fails.
+ */
+void executeSbeExtractRc(struct pdbg_target* target,
+			 const std::filesystem::path& dumpPath,
+			 const int sbeTypeId);
+
+/**
+ * @brief Collects and writes local register dump data for a given processor
+ * target.
+ *
+ * This function is responsible for collecting the local register dump from the
+ * specified processor target and writing this data to a file. It forms the
+ * complete file path using the provided base filename and dump path. If the
+ * function encounters any errors during the data collection or file writing
+ * process, it throws an exception.
+ *
+ * @param[in] target The processor or Odyssey target from which to collect the
+ * local register dump.
+ * @param[in] dumpPath The filesystem path where the dump file will be written.
+ * @param[in] baseFilename The base filename to use for the dump file. This name
+ * will be used to form the complete file path along with the dumpPath.
+ * @param sbeTypeId[in] Chip type ID
+ *
+ * @throw std::runtime_error Throws if there is an error in collecting the local
+ * register dump or writing to the file.
+ */
+void collectLocalRegDump(struct pdbg_target* target,
+			 const std::filesystem::path& dumpPath,
+			 const std::string& baseFilename, const int sbeTypeId);
+
+/**
+ * @brief Collects and writes PIBMS register dump data for a given processor
+ * target.
+ * @param[in] target The processor or odyssey target from which to collect the
+ * PIBMS register dump.
+ * @param[in] dumpPath The filesystem path where the dump file will be written.
+ * @param[in] baseFilename The base filename to use for the dump file. This name
+ * @param sbeTypeId[in] Chip type ID
+ * will be used to form the complete file path along with the dumpPath.
+ *
+ * @throw std::runtime_error Throws if there is an error in collecting the PIBMS
+ * register dump or writing to the file.
+ */
+void collectPIBMSRegDump(struct pdbg_target* target,
+			 const std::filesystem::path& dumpPath,
+			 const std::string& baseFilename, const int sbeTypeId);
+
+/**
+ * @brief Collects and writes PIBMEM dump data for a given processor target.
+ * @param[in] target The processor target from which to collect the PIBMEM dump
+ * data.
+ * @param[in] dumpPath The filesystem path where the dump file will be written.
+ * @param[in] baseFilename The base filename to use for the dump file. This name
+ * will be used to form the complete file path along with the dumpPath.
+ * @param sbeTypeId[in] The chip type, i.e.; proc or OCMB
+ *
+ * @throw std::runtime_error Throws if there is an error in collecting the
+ * PIBMEM dump data or writing to the file.
+ */
+void collectPIBMEMDump(struct pdbg_target* target,
+		       const std::filesystem::path& dumpPath,
+		       const std::string& baseFilename, const int sbeTypeId);
+
+/**
+ * @brief Collects and writes the state of the Programmable Processing Element
+ * (PPE).
+ * @param[in] target The processor or Odyssey target from which to collect the
+ * PPE state.
+ * @param[in] dumpPath The filesystem path where the dump file will be written.
+ * @param[in] baseFilename The base filename to use for the dump file. This name
+ * will be used to form the complete file path along with the dumpPath.
+ * @param sbeTypeId[in] The chip type, i.e.; proc or OCMB
+ *
+ * @throw std::runtime_error Throws if there is an error in collecting the PPE
+ * state or writing to the file.
+ */
+void collectPPEState(struct pdbg_target* target,
+		     const std::filesystem::path& dumpPath,
+		     const std::string& baseFilename, const int sbeTypeId);
+
+/**
+ * @brief Finalizes the collection process.
+ * @param[in] pib_fsi The PIB (For PROC) or FSI (For Odyssey) target for which
+ * the collection is being finalized.
+ * @param[in] dumpPath The filesystem path where the dump was written. Used for
+ * cleanup in case of failure.
+ * @param[in] isSuccess A boolean flag indicating whether the preceding
+ * collection steps were successful.
+ * @param sbeTypeId The chip type ID
+ */
+void finalizeCollection(struct pdbg_target* pib_fsi,
+			const std::filesystem::path& dumpPath, bool isSuccess,
+			const int sbeTypeId);	
 } // namespace dump
 } // namespace openpower::phal
