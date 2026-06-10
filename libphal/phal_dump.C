@@ -417,7 +417,7 @@ void collectPIBMSRegDump(struct pdbg_target* target,
 
 	if (PROC_SBE_DUMP == sbeTypeId) {
 		for (auto& reg : pibms_regs_2dump) {
-			sRegV regv;
+			sRegV regv = {};
 			regv.reg = reg;
 			pibmsRegSet.emplace_back(regv);
 		}
@@ -425,7 +425,7 @@ void collectPIBMSRegDump(struct pdbg_target* target,
 		hwpName = "p10_pibms_reg_dump";
 	} else if (ODYSSEY_SBE_DUMP == sbeTypeId) {
 		for (auto& reg : pibms_regs_2dump_ody) {
-			sRegVOdy regv;
+			sRegVOdy regv = {};
 			regv.reg = reg;
 			pibmsRegSetOdy.emplace_back(regv);
 		}
