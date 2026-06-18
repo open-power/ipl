@@ -1,12 +1,17 @@
+#include <fapi2.H>
 #include "libphal.H"
 #include "log.H"
 #include "phal_exception.H"
 #include "utils_buffer.H"
 #include "utils_pdbg.H"
 #include "utils_tempfile.H"
+//#include "plat/plat_target.H"
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include "sbeInf/response_info.H"
+#include "sbeInf/sbe_cmd_implementation.H"
 
 #include <ekb/chips/p10/procedures/hwp/perv/p10_sbe_hreset.H>
 #include <ekb/chips/p10/procedures/hwp/sbe/p10_get_sbe_msg_register.H>
@@ -435,48 +440,42 @@ void getTiInfo(struct pdbg_target *proc, uint8_t **data, uint32_t *dataLen)
 	}
 }
 
-void getDump(struct pdbg_target *chip, const uint8_t type, const uint8_t clock,
-	     const uint8_t faCollect, uint8_t **data, uint32_t *dataLen)
+void getDump(struct pdbg_target* chip,
+             const uint8_t type, const uint8_t clock, const uint8_t faCollect,
+             uint8_t** data, uint32_t* dataLen)
 {
-	log(level::INFO, "Enter: getDump(%d) on %s", type,
-	    pdbg_target_path(chip));
+    std::vector<uint8_t> dataVec;
+    std::vector<sbeIntf::ResponseInfo::FFDC> ffdcVec;
 
-	bool isOcmb = is_ody_ocmb_chip(chip);
+    log(level::ERROR, "In get dump");
 
-	if (!isTgtPresent(chip)) {
-		log(level::ERROR, "getDump(%s) Target is not present",
-		    pdbg_target_path(chip));
-	}
+    fapi2::Target<fapi2::TARGET_TYPE_PROC_CHIP> fapiTarget(chip);
+    auto rc = sbeIntf::getDump(fapiTarget, type, clock, faCollect, dataVec, ffdcVec);
 
-	if (!isOcmb) {
-		// Validate input target is processor target.
-		validateProcTgt(chip);
+    if (rc != fapi2::FAPI2_RC_SUCCESS)
+    {
+	log(level::ERROR, "fapi rc not success");
+        *data = nullptr;
+        *dataLen = 0;
+        throw sbeError_t(exception::SBE_CMD_FAILED);
+    }
 
-		// SBE halt state need recovery before dump chip-ops
-		sbeHaltStateRecovery(chip, false);
-	}
+    *dataLen = dataVec.size();
+    *data = static_cast<uint8_t*>(malloc(*dataLen));
+    if (!*data)
+    {
+        *dataLen = 0;
+        throw sbeError_t(exception::SBE_CMD_FAILED);
+    }
 
-	// validate SBE state
-	validateSBEState(chip);
+    std::memcpy(*data, dataVec.data(), *dataLen);
 
-	// get PIB target for proc else use same target
-	struct pdbg_target *chipOpTarget = isOcmb ? chip : getPibTarget(chip);
-
-	// call pdbg back-end function
-	if (sbe_dump(chipOpTarget, type, clock, faCollect, data, dataLen)) {
-		throw captureFFDC(chip, CO_CMD_FAILURE);
-	}
-
-	sbeError_t result = captureFFDC(chip, CO_CMD_SUCCESS);
-
-	// Throw only if FFDC present
-	if (result.errType() != exception::SBE_FFDC_NO_DATA) {
-		throw result;
-	}
+    // need to handle FFDC
 }
 
 void threadStopProc(struct pdbg_target *proc)
 {
+
 	validateProcTgt(proc);
 
 	log(level::INFO, "Enter: threadStopProc(%s)", pdbg_target_path(proc));
